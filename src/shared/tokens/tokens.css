@@ -1,0 +1,54 @@
+/*
+ * LearnAble design tokens — RULE-17 / NFR-15.
+ * High-contrast + large-text là theme MẶC ĐỊNH và DUY NHẤT, không phải opt-in.
+ * Mọi cặp màu chữ/nền phải đạt ≥ 7:1 (AAA), UI phi văn bản ≥ 4.5:1 —
+ * kiểm bằng scripts/check-contrast.mjs trong CI, không kiểm bằng mắt.
+ */
+:root {
+  /* ---- Màu (cặp chữ/nền được CI kiểm tra) ---- */
+  --color-bg: #ffffff;
+  --color-surface: #f4f4f5;
+  --color-text: #18181b; /* trên --color-bg: ~17.4:1 */
+  --color-text-muted: #3f3f46; /* trên --color-bg: ~10.3:1 */
+  --color-primary: #1d3f8f; /* trên --color-bg: ~9.7:1 */
+  --color-primary-text: #ffffff; /* trên --color-primary */
+  --color-primary-hover: #16306e;
+  --color-border: #52525b; /* phi văn bản, trên --color-bg: ~6.4:1 */
+  --color-error: #99191f; /* trên --color-bg: ~8.6:1 */
+  --color-error-text: #ffffff;
+  --color-success: #14532d; /* trên --color-bg: ~10.6:1 */
+  --color-warning-bg: #fef3c7;
+  --color-warning-text: #451a03; /* trên --color-warning-bg: ~12:1 */
+  --color-focus: #16306e;
+  --color-selected-bg: #dbe4ff;
+  --color-selected-text: #16306e; /* trên --color-selected-bg: ~8:1 */
+
+  /* ---- Chữ ---- */
+  /* Root 18px đặt ở index.css qua html { font-size }. */
+  --font-body: "Inter Variable", system-ui, sans-serif;
+  --text-body: 1.125rem; /* không có chữ nào < 1rem */
+  --text-sm: 1rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --leading-body: 1.7; /* tối thiểu — dấu tiếng Việt chồng thanh điệu cần khoảng thở */
+  --leading-heading: 1.35;
+
+  /* ---- Kích thước tương tác ---- */
+  --target-min: 44px; /* min 44×44 CSS px, áp trong primitive, không per-screen */
+
+  /* ---- Focus ring ---- */
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* ---- Spacing (thang thô có chủ đích) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius: 8px;
+}
