@@ -5,6 +5,17 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 export default defineConfig({
+  server: {
+    host: "localhost",
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      "/api": {
+        target: "https://backend-learnable.onrender.com",
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

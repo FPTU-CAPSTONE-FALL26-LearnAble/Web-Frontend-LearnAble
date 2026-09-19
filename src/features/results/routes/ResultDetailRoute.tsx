@@ -24,7 +24,7 @@ export function ResultDetailRoute() {
       <div className="flex flex-col items-start gap-4">
         <p role="alert">{vi.errors.notFound}</p>
         <Button asChild variant="secondary">
-          <Link to="/ket-qua">{vi.common.back}</Link>
+          <Link to="/results">{vi.common.back}</Link>
         </Button>
       </div>
     );
@@ -52,7 +52,7 @@ export function ResultDetailRoute() {
       </Card>
 
       <Button asChild variant="secondary" className="self-start">
-        <Link to="/ket-qua">{vi.common.back}</Link>
+        <Link to="/results">{vi.common.back}</Link>
       </Button>
     </div>
   );

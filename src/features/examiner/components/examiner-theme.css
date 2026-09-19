@@ -1,0 +1,42 @@
+.examiner-shell {
+  --examiner-navy: var(--color-text);
+  --examiner-orange: var(--color-action);
+  --examiner-blue: var(--color-secondary);
+  color: var(--color-text);
+}
+.examiner-shell .examiner-panel {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  background: #fff;
+}
+.examiner-shell .examiner-major {
+  border: 1px solid color-mix(in srgb, var(--color-border) 64%, white);
+  border-radius: 16px;
+  background: #fff;
+}
+.examiner-shell .examiner-kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.examiner-shell .examiner-primary {
+  background: var(--color-action);
+  color: #fff;
+}
+.examiner-shell .examiner-command {
+  background: var(--color-text);
+  color: #fff;
+}
+.examiner-shell .examiner-scroll {
+  scrollbar-color: var(--color-border) white;
+  scrollbar-width: thin;
+}
+@media (prefers-reduced-motion: reduce) {
+  .examiner-shell * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

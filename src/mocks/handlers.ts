@@ -6,17 +6,36 @@ import { mockExamResults, mockPracticeSets, mockProgress, mockUser } from "@/moc
  * team backend (§2). Đường dẫn khớp BASE_URL mặc định /api/v1.
  */
 
-const BASE = "/api/v1";
+const BASE = "http://18.190.2.18:8080/api";
 
 export const handlers = [
   // API-01 — đăng nhập
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     await delay(400);
-    const body = (await request.json()) as { email?: string; password?: string };
+    const body = (await request.json()) as { identifier?: string; password?: string };
     if (body.password === "sai-mat-khau") {
       return HttpResponse.json({ message: "Invalid credentials" }, { status: 401 });
     }
-    return HttpResponse.json({ token: "mock-jwt-token", user: { ...mockUser, email: body.email ?? mockUser.email } });
+    return HttpResponse.json({
+      success: true,
+      message: "Signed in",
+      data: {
+        accessToken: "mock-access-token",
+        refreshToken: "mock-refresh-token",
+        accessTokenExpiresAt: "2026-09-14T08:00:00Z",
+      },
+      errors: null,
+    });
+  }),
+
+  http.get(`${BASE}/auth/me`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      success: true,
+      message: null,
+      data: { userId: mockUser.id, fullName: mockUser.fullName, email: mockUser.email, role: mockUser.role },
+      errors: null,
+    });
   }),
 
   // API-02 — đọc hồ sơ trợ năng
@@ -56,21 +75,21 @@ export const handlers = [
     await delay(900);
     const { question } = (await request.json()) as { question: string };
     // Ca khó: câu hỏi ngoài tài liệu → trả lời không có nguồn
-    if (question.includes("ngoài tài liệu")) {
+    if (question.toLowerCase().includes("outside the materials")) {
       return HttpResponse.json({
         answer:
-          "Nội dung này không nằm trong tài liệu môn học đã được tải lên, nên câu trả lời dưới đây chỉ mang tính tham khảo chung.",
+          "This topic is not present in the uploaded course materials, so the response is only general guidance.",
         grounded: false,
         citations: [],
       });
     }
     return HttpResponse.json({
       answer:
-        "Tính đóng gói (encapsulation) che giấu trạng thái bên trong đối tượng và chỉ cho phép truy cập qua phương thức công khai. Xem thêm chương 2 của giáo trình.",
+        "Encapsulation hides an object's internal state and provides controlled access through public methods. See chapter 2 of the course book.",
       grounded: true,
       citations: [
-        { title: "Giáo trình PRO192 — Chương 2: Đóng gói", page: 34 },
-        { title: "Slide bài giảng tuần 3", page: 12 },
+        { title: "PRO192 Course Book — Chapter 2: Encapsulation", page: 34 },
+        { title: "Week 3 lecture slides", page: 12 },
       ],
     });
   }),
