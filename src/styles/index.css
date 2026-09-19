@@ -1,8 +1,5 @@
 @import "tailwindcss";
-/* index.css của @fontsource-variable/inter chứa sẵn subset vietnamese
-   (unicode-range → files/inter-vietnamese-wght-normal.woff2).
-   Khi review: xác nhận ế ộ ữ ằ ẳ ỹ render từ Inter, không phải font fallback (§9). */
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
 @import "../shared/tokens/tokens.css";
 
 @theme {
@@ -21,6 +18,9 @@
   --color-primary-text: var(--color-primary-text);
   --color-primary-foreground: var(--color-primary-text);
   --color-primary-hover: var(--color-primary-hover);
+  --color-action: var(--color-action);
+  --color-action-hover: var(--color-action-hover);
+  --color-action-text: var(--color-action-text);
   --color-secondary: var(--color-surface);
   --color-secondary-foreground: var(--color-text);
   --color-muted: var(--color-surface);
@@ -34,25 +34,41 @@
   --color-error: var(--color-error);
   --color-error-text: var(--color-error-text);
   --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
   --color-warning-bg: var(--color-warning-bg);
   --color-warning-text: var(--color-warning-text);
   --color-focus: var(--color-focus);
   --color-ring: var(--color-focus);
   --color-selected-bg: var(--color-selected-bg);
   --color-selected-text: var(--color-selected-text);
+  --color-info-bg: var(--color-info-bg);
+  --color-info-text: var(--color-info-text);
+  --color-success-bg: var(--color-success-bg);
+  --color-success-text: var(--color-success-text);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-danger-text: var(--color-danger-text);
+  --color-panel: var(--color-panel);
 }
 
 html {
-  /* RULE-17 / NFR-15: chữ lớn là mặc định, không phải cài đặt. */
-  font-size: 18px;
+  font-size: 16px;
+  color-scheme: light;
 }
 
 body {
+  min-width: 320px;
+  min-height: 100vh;
   font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--leading-body);
   color: var(--color-text);
   background-color: var(--color-bg);
+  caret-color: var(--color-primary);
+}
+
+::selection {
+  color: var(--color-selected-text);
+  background: var(--color-selected-bg);
 }
 
 h1,
@@ -62,14 +78,16 @@ h4 {
   line-height: var(--leading-heading);
 }
 
-/* Focus ring thống nhất: 3px solid, offset 2px, tương phản với cả nền trang lẫn phần tử.
-   `outline: none` bị cấm (ESLint + review). */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: var(--focus-ring-width) solid var(--color-focus);
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Tôn trọng người dùng giảm chuyển động */
+/* Route headings receive programmatic focus for screen-reader context. */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

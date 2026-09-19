@@ -39,7 +39,7 @@ export function ResultsListRoute() {
                   </p>
                 </div>
                 <Button asChild variant="secondary">
-                  <Link to={`/ket-qua/${r.sessionId}`}>{vi.results.detail}</Link>
+                  <Link to={`/results/${r.sessionId}`}>{vi.results.detail}</Link>
                 </Button>
               </Card>
             </li>

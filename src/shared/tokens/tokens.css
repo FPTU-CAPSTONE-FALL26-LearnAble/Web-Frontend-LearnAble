@@ -1,47 +1,58 @@
-/*
- * LearnAble design tokens — RULE-17 / NFR-15.
- * High-contrast + large-text là theme MẶC ĐỊNH và DUY NHẤT, không phải opt-in.
- * Mọi cặp màu chữ/nền phải đạt ≥ 7:1 (AAA), UI phi văn bản ≥ 4.5:1 —
- * kiểm bằng scripts/check-contrast.mjs trong CI, không kiểm bằng mắt.
- */
+/* LearnAble shared design tokens. Keep all product colors and scale values here. */
 :root {
-  /* ---- Màu (cặp chữ/nền được CI kiểm tra) ---- */
   --color-bg: #ffffff;
-  --color-surface: #f4f4f5;
-  --color-text: #18181b; /* trên --color-bg: ~17.4:1 */
-  --color-text-muted: #3f3f46; /* trên --color-bg: ~10.3:1 */
-  --color-primary: #1d3f8f; /* trên --color-bg: ~9.7:1 */
-  --color-primary-text: #ffffff; /* trên --color-primary */
-  --color-primary-hover: #16306e;
-  --color-border: #52525b; /* phi văn bản, trên --color-bg: ~6.4:1 */
-  --color-error: #99191f; /* trên --color-bg: ~8.6:1 */
+  --color-surface: #ffffff;
+  --color-surface-muted: #ffffff;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-primary: #0f172a;
+  --color-primary-brand: #f26f21;
+  --color-primary-text: #ffffff;
+  --color-primary-hover: var(--color-primary);
+  --color-action: #f26f21;
+  --color-action-hover: var(--color-action);
+  --color-action-text: #0f172a;
+  --color-secondary: #176eb4;
+  --color-secondary-text: #ffffff;
+  --color-tertiary: #176eb4;
+  --color-border: #64748b;
+  --color-border-subtle: #e2e8f0;
+  --color-error: #dc2626;
   --color-error-text: #ffffff;
-  --color-success: #14532d; /* trên --color-bg: ~10.6:1 */
-  --color-warning-bg: #fef3c7;
-  --color-warning-text: #451a03; /* trên --color-warning-bg: ~12:1 */
-  --color-focus: #16306e;
-  --color-selected-bg: #dbe4ff;
-  --color-selected-text: #16306e; /* trên --color-selected-bg: ~8:1 */
+  --color-success: #16a34a;
+  --color-warning: #eab308;
+  --color-warning-bg: color-mix(in srgb, var(--color-warning) 14%, var(--color-bg));
+  --color-warning-text: var(--color-text);
+  --color-focus: #176eb4;
+  --color-selected-bg: color-mix(in srgb, var(--color-action) 10%, var(--color-bg));
+  --color-selected-text: #0f172a;
+  --color-info-bg: color-mix(in srgb, var(--color-secondary) 10%, var(--color-bg));
+  --color-info-text: var(--color-secondary);
+  --color-success-bg: color-mix(in srgb, var(--color-success) 14%, var(--color-bg));
+  --color-success-text: var(--color-text);
+  --color-danger-bg: color-mix(in srgb, var(--color-error) 14%, var(--color-bg));
+  --color-danger-text: var(--color-text);
+  --color-neutral-status-bg: color-mix(in srgb, var(--color-border) 12%, var(--color-bg));
+  --color-neutral-status-text: var(--color-text-muted);
+  --color-panel: #ffffff;
+  --auth-login-image-overlay: linear-gradient(180deg, transparent 0%, transparent 76%, rgb(15 23 42 / 0.40) 86%, rgb(15 23 42 / 0.78) 100%);
+  --shadow-image-text: 0 1px 4px rgb(15 23 42 / 0.8);
+  --text-auth-hero: 30px;
 
-  /* ---- Chữ ---- */
-  /* Root 18px đặt ở index.css qua html { font-size }. */
-  --font-body: "Inter Variable", system-ui, sans-serif;
-  --text-body: 1.125rem; /* không có chữ nào < 1rem */
-  --text-sm: 1rem;
-  --text-lg: 1.375rem;
-  --text-xl: 1.75rem;
-  --text-2xl: 2.25rem;
-  --leading-body: 1.7; /* tối thiểu — dấu tiếng Việt chồng thanh điệu cần khoảng thở */
+  --font-body: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+  --text-body: 1rem;
+  --text-sm: 0.875rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-display: 2.75rem;
+  --leading-body: 1.625;
   --leading-heading: 1.35;
 
-  /* ---- Kích thước tương tác ---- */
-  --target-min: 44px; /* min 44×44 CSS px, áp trong primitive, không per-screen */
-
-  /* ---- Focus ring ---- */
+  --target-min: 44px;
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 
-  /* ---- Spacing (thang thô có chủ đích) ---- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -49,6 +60,10 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
+  --space-16: 64px;
 
-  --radius: 8px;
+  --radius: 10px;
+  --radius-card: 16px;
+  --shadow-card: 0 24px 60px -28px rgb(15 23 42 / 0.35);
+  --shadow-control: 0 8px 18px -12px rgb(15 23 42 / 0.35);
 }

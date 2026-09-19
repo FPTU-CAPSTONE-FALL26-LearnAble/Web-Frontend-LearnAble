@@ -37,7 +37,7 @@ export function PracticeAttemptRoute() {
       <main id="main" className="flex flex-col items-start gap-4 p-6">
         <p role="alert">{vi.errors.notFound}</p>
         <Button asChild variant="secondary">
-          <Link to="/luyen-tap">{vi.practice.backToList}</Link>
+          <Link to="/practice">{vi.practice.backToList}</Link>
         </Button>
       </main>
     );
@@ -184,7 +184,7 @@ function PracticeResult({
       <div className="flex flex-wrap gap-3">
         <Button onClick={onRetry}>{vi.practice.tryAgain}</Button>
         <Button asChild variant="secondary">
-          <Link to="/luyen-tap">{vi.practice.backToList}</Link>
+          <Link to="/practice">{vi.practice.backToList}</Link>
         </Button>
       </div>
     </main>

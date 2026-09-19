@@ -36,7 +36,7 @@ export function PracticeListRoute() {
                   </p>
                 </div>
                 <Button asChild>
-                  <Link to={`/luyen-tap/${set.id}`}>{vi.practice.start}</Link>
+                  <Link to={`/practice/${set.id}`}>{vi.practice.start}</Link>
                 </Button>
               </Card>
             </li>

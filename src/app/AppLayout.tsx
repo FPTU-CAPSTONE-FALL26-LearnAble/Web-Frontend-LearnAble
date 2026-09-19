@@ -6,11 +6,11 @@ import { vi } from "@/shared/strings/vi";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
 const navItems = [
-  { to: "/luyen-tap", label: vi.practice.title },
-  { to: "/tro-ly", label: vi.assistant.title },
-  { to: "/tien-do", label: vi.progress.title },
-  { to: "/ket-qua", label: vi.results.title },
-  { to: "/cai-dat/tro-nang", label: vi.a11ySettings.title },
+  { to: "/practice", label: vi.practice.title },
+  { to: "/assistant", label: vi.assistant.title },
+  { to: "/progress", label: vi.progress.title },
+  { to: "/results", label: vi.results.title },
+  { to: "/settings/accessibility", label: vi.a11ySettings.title },
 ];
 
 /** Layout chung (trừ màn làm bài — màn đó full-screen qua ExamShell). */
@@ -47,7 +47,7 @@ export function AppLayout() {
               variant="ghost"
               onClick={() => {
                 logout();
-                navigate("/dang-nhap");
+                navigate("/login");
               }}
             >
               {vi.common.logout}
