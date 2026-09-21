@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Button } from "@/shared/ui/primitives/button";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
 import { useAuthStore } from "@/features/auth/store/authStore";

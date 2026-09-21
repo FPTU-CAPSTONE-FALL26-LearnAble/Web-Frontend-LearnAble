@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
-import { SelectField, SelectItem } from "@/shared/ui/primitives/Select";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/RadioGroup";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { SelectField, SelectItem } from "@/shared/ui/primitives/select";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";

@@ -16,9 +16,9 @@ import {
   ImagePlus,
 } from "lucide-react";
 import "../components/lecturer-studio.css";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent, CardHeader } from "@/shared/ui/primitives/card";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/primitives/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/shared/ui/primitives/alert-dialog";
 import { ChoiceField, TextField } from "../questions/QuestionFields";
 import { QuestionTypeForm } from "../questions/QuestionTypeForm";
 import { QuestionPreview } from "../questions/QuestionPreview";
@@ -45,7 +45,7 @@ import { useAcademicOptions } from "../api/useLecturerData";
 import { ReadState, ScrollRegion } from "../components/Workbench";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 
 export function CreateQuestionRoute() {
   const [searchParams] = useSearchParams();

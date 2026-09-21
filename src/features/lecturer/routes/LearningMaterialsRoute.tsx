@@ -11,10 +11,10 @@ import {
   Upload,
   AlertCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import { getMaterials } from "@/api/lecturer";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { ChoiceField } from "../questions/QuestionFields";

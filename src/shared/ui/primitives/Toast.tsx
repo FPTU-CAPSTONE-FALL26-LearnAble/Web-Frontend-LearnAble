@@ -58,7 +58,7 @@ export function Toaster() {
             if (!open) dismiss(t.id);
           }}
           className={cn(
-            "flex items-start gap-3 rounded-[var(--radius)] border-2 bg-[var(--color-bg)] p-4",
+            "flex items-start gap-3 rounded-[var(--radius)] border-2 bg-[var(--color-bg)] p-4 shadow-lg",
             t.variant === "error"
               ? "border-[var(--color-error)]"
               : "border-[var(--color-border)]",
@@ -71,7 +71,7 @@ export function Toaster() {
               {t.title}
             </ToastPrimitive.Title>
             {t.description ? (
-              <ToastPrimitive.Description className="mt-1">
+              <ToastPrimitive.Description className="mt-1 text-sm text-[var(--color-text-muted)]">
                 {t.description}
               </ToastPrimitive.Description>
             ) : null}

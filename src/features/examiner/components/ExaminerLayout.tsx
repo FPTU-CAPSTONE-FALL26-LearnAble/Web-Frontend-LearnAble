@@ -2,16 +2,16 @@ import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/shared/ui/primitives/sheet";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { ExaminerSidebar } from "./ExaminerSidebar";
 import "./examiner-theme.css";
 

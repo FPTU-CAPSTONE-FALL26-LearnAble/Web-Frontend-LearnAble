@@ -9,11 +9,11 @@ import {
   TriangleAlert,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Input } from "@/shared/ui/primitives/input";
+import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
+import { Dialog, DialogContent } from "@/shared/ui/primitives/dialog";
 import { ExamOverview } from "../components/ExamOverview";
 import {
   Breadcrumb,
@@ -163,7 +163,7 @@ export function AttendanceRoute() {
               ).map((value) => (
                 <Button
                   key={value}
-                  variant={value === "All" && value === filter ? "default" : "outline"}
+                  variant={value === "All" && value === filter ? "primary" : "outline"}
                   style={filterStyle(value, value === filter)}
                   aria-pressed={filter === value}
                   onClick={() => setFilter(value)}
@@ -251,7 +251,7 @@ export function AttendanceRoute() {
                 {(["All", "Not checked in"] as const).map((value) => (
                   <Button
                     key={value}
-                    variant={listFilter === value ? "default" : "outline"}
+                    variant={listFilter === value ? "primary" : "outline"}
                     aria-pressed={listFilter === value}
                     onClick={() => setListFilter(value)}
                   >
@@ -306,7 +306,6 @@ export function AttendanceRoute() {
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Button
-                            size="sm"
                             variant="outline"
                             className="border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-error-text)] hover:bg-[var(--color-success)] hover:opacity-90"
                             onClick={() =>
@@ -316,7 +315,6 @@ export function AttendanceRoute() {
                             Present
                           </Button>
                           <Button
-                            size="sm"
                             variant="outline"
                             className="border-[var(--color-error)] bg-[var(--color-error)] text-[var(--color-error-text)] hover:bg-[var(--color-error)] hover:opacity-90"
                             onClick={() => notConnected(`Mark ${seat.name} absent`)}

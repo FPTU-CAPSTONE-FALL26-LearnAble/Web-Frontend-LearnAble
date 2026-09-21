@@ -29,6 +29,18 @@ export default tseslint.config(
       // Rule này không lần được liên kết htmlFor → label từ phía control (false positive
       // với textarea có label ngoài); label-has-associated-control đã phủ chiều ngược lại.
       "jsx-a11y/control-has-associated-label": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/components/ui", "@/components/ui/*"],
+              message:
+                "src/components/ui đã bị hợp nhất vào src/shared/ui/primitives/ theo Plan 001. Hãy import từ @/shared/ui/primitives/*.",
+            },
+          ],
+        },
+      ],
     },
   },
   {

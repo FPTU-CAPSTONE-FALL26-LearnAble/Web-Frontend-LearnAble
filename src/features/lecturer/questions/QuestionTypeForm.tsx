@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/shared/ui/primitives/button";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { ChoiceField, TextField } from "./QuestionFields";
 import type { QuestionDraft } from "./model";
 import { Trash2 } from "lucide-react";

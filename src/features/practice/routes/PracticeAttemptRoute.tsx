@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { ExamShell } from "@/shared/ui/patterns/ExamShell";
-import { QuestionCard } from "@/shared/ui/patterns/QuestionCard";
-import { AnswerOptionList } from "@/shared/ui/patterns/AnswerOptionList";
-import { Button } from "@/shared/ui/primitives/Button";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/shared/ui/primitives/Dialog";
+import { ExamShell } from "@/shared/ui/patterns/exam/ExamShell";
+import { QuestionCard } from "@/shared/ui/patterns/exam/QuestionCard";
+import { AnswerOptionList } from "@/shared/ui/patterns/exam/AnswerOptionList";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/shared/ui/primitives/dialog";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { usePracticeSet } from "@/features/practice/api/usePracticeSets";

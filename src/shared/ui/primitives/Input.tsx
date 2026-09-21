@@ -1,50 +1,52 @@
-import { forwardRef, useId, type InputHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/shared/ui/cn";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  /** Label luôn bắt buộc và luôn hiển thị — không dùng placeholder thay label. */
-  label: string;
-  hint?: string;
-  error?: string;
+  label?: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
 }
 
-/**
- * Input "cứng": label gắn bằng htmlFor, hint/error nối qua aria-describedby,
- * lỗi đánh dấu aria-invalid và hiển thị bằng cả màu lẫn chữ (không chỉ màu).
- */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, className, id: idProp, ...props }, ref) => {
-    const autoId = useId();
-    const id = idProp ?? autoId;
-    const hintId = `${id}-hint`;
-    const errorId = `${id}-error`;
-    const describedBy =
-      [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
+  ({ className, label, hint, error, id, "aria-describedby": describedBy, ...props }, ref) => {
+    const hintId = hint && id ? `${id}-hint` : undefined;
+    const errorId = error && id ? `${id}-error` : undefined;
+    const descriptions = [hintId, errorId, describedBy].filter(Boolean).join(" ") || undefined;
+
+    const inputElement = (
+      <input
+        ref={ref}
+        id={id}
+        aria-invalid={Boolean(error) || undefined}
+        aria-describedby={descriptions}
+        className={cn(
+          "w-full min-h-[var(--target-min)] rounded-[var(--radius)] border-2 border-[var(--color-border-strong)] bg-white px-3 py-2 text-[length:var(--text-body)] transition-colors focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-[var(--focus-ring-offset)] disabled:cursor-not-allowed disabled:bg-[var(--color-surface)] disabled:opacity-70",
+          error && "border-[var(--color-error)]",
+          className,
+        )}
+        {...props}
+      />
+    );
+
+    if (!label && !hint && !error) {
+      return inputElement;
+    }
 
     return (
-      <div className="flex flex-col gap-2">
-        <label htmlFor={id} className="font-medium">
-          {label}
-        </label>
-        {hint ? (
-          <p id={hintId} className="text-[var(--color-text-muted)] text-[length:var(--text-sm)]">
+      <div className="flex flex-col gap-1.5">
+        {label ? (
+          <label htmlFor={id} className="font-medium text-[length:var(--text-body)]">
+            {label}
+          </label>
+        ) : null}
+        {inputElement}
+        {hint && !error ? (
+          <p id={hintId} className="text-sm text-[var(--color-text-muted)]">
             {hint}
           </p>
         ) : null}
-        <input
-          ref={ref}
-          id={id}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy}
-          className={cn(
-            "min-h-[var(--target-min)] rounded-[var(--radius)] border-2 border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[length:var(--text-body)]",
-            error && "border-[var(--color-error)]",
-            className,
-          )}
-          {...props}
-        />
         {error ? (
-          <p id={errorId} role="alert" className="font-medium text-[var(--color-error)]">
+          <p id={errorId} role="alert" className="text-sm font-medium text-[var(--color-error)]">
             {error}
           </p>
         ) : null}

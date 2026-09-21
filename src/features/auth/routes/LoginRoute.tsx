@@ -4,13 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Info, LogIn } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/primitives/alert";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Separator } from "@/shared/ui/primitives/separator";
 import { ApiFailure } from "@/api/client";
 import { announce } from "@/shared/a11y/announcer";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
@@ -222,7 +222,6 @@ export function LoginRoute() {
               ) : null}
               <Button
                 type="submit"
-                size="lg"
                 disabled={loginMutation.isPending}
                 className="w-full"
               >
@@ -238,7 +237,6 @@ export function LoginRoute() {
               <Button
                 type="button"
                 variant="outline"
-                size="lg"
                 className="w-full"
                 onClick={showGoogleDemo}
               >

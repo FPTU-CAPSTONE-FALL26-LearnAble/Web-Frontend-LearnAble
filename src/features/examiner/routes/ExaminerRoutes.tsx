@@ -20,20 +20,20 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Progress } from "@/shared/ui/primitives/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/shared/ui/primitives/select";
+import { Textarea } from "@/shared/ui/primitives/textarea";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   getQuestion,
@@ -44,8 +44,8 @@ import {
 } from "@/api/catalog";
 import { useExpiredSession } from "@/features/lecturer/api/useLecturerData";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { Dialog, DialogContent } from "@/shared/ui/primitives/dialog";
+import { toast } from "@/shared/ui/primitives/toast";
 import { candidates, examPapers, incidents, rooms } from "../data/fixtures";
 
 const unavailable = (label: string) =>
@@ -541,7 +541,7 @@ export function ExamBankRoute() {
           <div className="flex rounded-lg border border-[var(--color-border-subtle)] p-1">
             <Button
               size="icon"
-              variant={view === "grid" ? "default" : "ghost"}
+              variant={view === "grid" ? "primary" : "ghost"}
               aria-label="Grid view"
               onClick={() => setView("grid")}
             >
@@ -549,7 +549,7 @@ export function ExamBankRoute() {
             </Button>
             <Button
               size="icon"
-              variant={view === "list" ? "default" : "ghost"}
+              variant={view === "list" ? "primary" : "ghost"}
               aria-label="List view"
               onClick={() => setView("list")}
             >
@@ -1061,7 +1061,6 @@ export function QuestionSelectionRoute() {
                       </p>
                     </div>
                     <Button
-                      size="sm"
                       variant="outline"
                       type="button"
                       onClick={(event) => {
@@ -2313,7 +2312,7 @@ export function RoomMonitoringRoute() {
         ].map(([value, label]) => (
           <Button
             key={value}
-            variant={filter === value ? "default" : "outline"}
+            variant={filter === value ? "primary" : "outline"}
             onClick={() => setFilter(value)}
           >
             {label}

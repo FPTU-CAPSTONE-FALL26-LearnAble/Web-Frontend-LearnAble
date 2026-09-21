@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { Check, Flag } from "lucide-react";
-import { Button } from "@/shared/ui/primitives/Button";
-import { SaveStatus, type SaveState } from "@/shared/ui/patterns/SaveStatus";
+import { Button } from "@/shared/ui/primitives/button";
+import { SaveStatus, type SaveState } from "@/shared/ui/patterns/exam/SaveStatus";
 import { announce } from "@/shared/a11y/announcer";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
@@ -56,7 +56,7 @@ export function ExamShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <header role="banner" className="flex flex-wrap items-center gap-4 border-b-2 border-[var(--color-border)] px-6 py-3">
-        <h1 tabIndex={-1} className="text-[length:var(--text-xl)] font-bold">
+        <h1 tabIndex={-1} className="text-[length:var(--text-xl)] font-bold text-[var(--color-text)]">
           {title}
         </h1>
         <div className="ms-auto flex items-center gap-4">
@@ -80,14 +80,14 @@ export function ExamShell({
                     aria-current={i === currentIndex ? "true" : undefined}
                     onClick={() => goTo(i)}
                     className={cn(
-                      "relative flex min-h-[var(--target-min)] w-full min-w-[var(--target-min)] items-center justify-center rounded-[var(--radius)] border-2 border-[var(--color-border)] font-medium",
+                      "relative flex min-h-[52px] w-full min-w-[52px] items-center justify-center rounded-[var(--radius)] border-2 border-[var(--color-border)] text-[length:var(--text-lg)] font-bold transition-colors outline-none focus-visible:outline focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-2",
                       q.answered && "bg-[var(--color-selected-bg)] text-[var(--color-selected-text)] border-[var(--color-selected-text)]",
                       i === currentIndex && "outline outline-[var(--focus-ring-width)] outline-offset-2 outline-[var(--color-focus)]",
                     )}
                   >
                     {i + 1}
-                    {q.answered ? <Check aria-hidden className="absolute right-0.5 top-0.5 size-3.5" /> : null}
-                    {q.flagged ? <Flag aria-hidden className="absolute left-0.5 top-0.5 size-3.5 fill-current" /> : null}
+                    {q.answered ? <Check aria-hidden className="absolute right-1 top-1 size-4" strokeWidth={3} /> : null}
+                    {q.flagged ? <Flag aria-hidden className="absolute left-1 top-1 size-4 fill-current" /> : null}
                   </button>
                 </li>
               );
@@ -101,10 +101,10 @@ export function ExamShell({
       </div>
 
       <footer role="contentinfo" className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--color-border)] px-6 py-3">
-        <Button variant="secondary" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}>
+        <Button size="exam" variant="secondary" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}>
           {vi.common.previous}
         </Button>
-        <Button variant="secondary" disabled={currentIndex === total - 1} onClick={() => goTo(currentIndex + 1)}>
+        <Button size="exam" variant="secondary" disabled={currentIndex === total - 1} onClick={() => goTo(currentIndex + 1)}>
           {vi.common.next}
         </Button>
         <div className="ms-auto">{submitAction}</div>

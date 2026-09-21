@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/primitives/alert";
 import { describeError } from "@/app/providers";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { ChoiceField } from "../questions/QuestionFields";
 export function ScrollRegion({
   label,

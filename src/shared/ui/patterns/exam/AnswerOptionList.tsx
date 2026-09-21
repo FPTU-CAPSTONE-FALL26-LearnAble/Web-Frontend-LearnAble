@@ -1,4 +1,4 @@
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/RadioGroup";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 

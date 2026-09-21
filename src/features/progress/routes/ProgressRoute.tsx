@@ -1,5 +1,5 @@
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { usePracticeProgress } from "@/features/progress/api/usePracticeProgress";

@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { Clock3, Grid3X3, MapPin, Users } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Progress } from "@/shared/ui/primitives/progress";
 import { StatusBadge } from "./Workbench";
 import type { ExamShift } from "../data/examFixture";
 import { ExamCodeCard } from "./ExamCodeCard";

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MapPin, Users } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Badge } from "@/shared/ui/primitives/badge";
 import { ExamOverview } from "../components/ExamOverview";
 import { StatusBadge } from "../components/Workbench";
 import { examShifts } from "../data/examFixture";
@@ -33,7 +33,7 @@ export function ExamScheduleRoute() {
     <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] pb-3">
       {semesterGroupStart > 0 && <Button type="button" size="icon" variant="outline" aria-label="Show newer semesters" onClick={() => moveSemesterGroup(-1)}><ChevronLeft aria-hidden /></Button>}
       <div key={semesterGroupStart} className="flex min-w-0 flex-wrap items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300 motion-reduce:animate-none" role="tablist" aria-label="Academic semester">
-        {visibleSemesters.map(([value, label]) => <Button key={value} type="button" role="tab" aria-selected={semester === value} variant={semester === value ? "default" : "outline"} className={semester === value ? "text-white" : undefined} onClick={() => setSemester(value)}>{label}</Button>)}
+        {visibleSemesters.map(([value, label]) => <Button key={value} type="button" role="tab" aria-selected={semester === value} variant={semester === value ? "primary" : "outline"} className={semester === value ? "text-white" : undefined} onClick={() => setSemester(value)}>{label}</Button>)}
       </div>
       {semesterGroupStart < semesterOptions.length - 3 && <Button type="button" size="icon" variant="outline" aria-label="Show older semesters" onClick={() => moveSemesterGroup(1)}><ChevronRight aria-hidden /></Button>}
     </div>
@@ -74,8 +74,8 @@ export function ExamScheduleRoute() {
                   <div className="flex w-full flex-col gap-2 sm:w-96">
                     <ExamCodeCard code={exam.examCode} status={exam.codeStatus} detail={`Unlocks at ${exam.time.split("–")[0]}`} />
                     <div className="grid grid-cols-2 gap-2">
-                      <Button size="sm" variant="outline" asChild><Link to={`/lecturer/exams/${exam.id}/attendance`}>View seating map</Link></Button>
-                      <Button size="sm" variant="outline" disabled title="Attendance opens 30 minutes before the exam">Attendance</Button>
+                      <Button variant="outline" asChild><Link to={`/lecturer/exams/${exam.id}/attendance`}>View seating map</Link></Button>
+                      <Button variant="outline" disabled title="Attendance opens 30 minutes before the exam">Attendance</Button>
                     </div>
                     <p className="text-right text-xs font-semibold text-muted-foreground">Attendance opens 30 minutes before the exam.</p>
                   </div>
@@ -83,8 +83,8 @@ export function ExamScheduleRoute() {
                   <div className="flex flex-col items-stretch gap-2 sm:items-end">
                     <ExamCodeCard code={exam.examCode} status="scheduled" compact />
                     <div className="grid grid-cols-2 gap-2">
-                      <Button size="sm" variant="outline" asChild><Link to={`/lecturer/exams/${exam.id}/attendance`}>Seating map</Link></Button>
-                      <Button size="sm" variant="outline" disabled title="Attendance opens 30 minutes before the exam">Attendance</Button>
+                      <Button variant="outline" asChild><Link to={`/lecturer/exams/${exam.id}/attendance`}>Seating map</Link></Button>
+                      <Button variant="outline" disabled title="Attendance opens 30 minutes before the exam">Attendance</Button>
                     </div>
                     <p className="text-right text-xs font-semibold text-muted-foreground">Attendance opens 30 minutes before the exam.</p>
                   </div>

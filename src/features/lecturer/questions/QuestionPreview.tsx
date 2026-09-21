@@ -1,12 +1,12 @@
 import { useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Textarea } from "@/shared/ui/primitives/textarea";
+import { Label } from "@/shared/ui/primitives/label";
 import type { QuestionDraft } from "./model";
 import { Monitor } from "lucide-react";
 export function QuestionPreview({

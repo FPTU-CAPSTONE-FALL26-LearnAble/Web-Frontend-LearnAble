@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router";
-import { Card } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Card } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { useExamResult } from "@/features/results/api/useExamResults";

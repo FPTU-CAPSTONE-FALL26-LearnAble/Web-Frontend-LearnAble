@@ -13,10 +13,10 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card } from "@/shared/ui/primitives/card";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { lecturerProfileFixture as profile } from "../data/profileFixture";
