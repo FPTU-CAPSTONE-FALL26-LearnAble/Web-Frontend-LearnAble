@@ -101,10 +101,10 @@ export function ExamShell({
       </div>
 
       <footer role="contentinfo" className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--color-border)] px-6 py-3">
-        <Button size="exam" variant="secondary" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}>
+        <Button size="lg" variant="secondary" className="min-h-[3.25rem] px-6 text-base font-semibold" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}>
           {vi.common.previous}
         </Button>
-        <Button size="exam" variant="secondary" disabled={currentIndex === total - 1} onClick={() => goTo(currentIndex + 1)}>
+        <Button size="lg" variant="secondary" className="min-h-[3.25rem] px-6 text-base font-semibold" disabled={currentIndex === total - 1} onClick={() => goTo(currentIndex + 1)}>
           {vi.common.next}
         </Button>
         <div className="ms-auto">{submitAction}</div>

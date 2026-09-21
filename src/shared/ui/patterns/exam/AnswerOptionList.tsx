@@ -1,4 +1,5 @@
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Label } from "@/shared/ui/primitives/label";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 
@@ -34,7 +35,12 @@ export function AnswerOptionList({ options, value, onChange, disabled }: AnswerO
       }}
     >
       {options.map((opt) => (
-        <RadioGroupItem key={opt.id} value={opt.id} label={`${opt.letter}. ${opt.text}`} />
+        <div key={opt.id} className="flex min-h-[44px] items-center gap-3">
+          <RadioGroupItem id={`option-${opt.id}`} value={opt.id} />
+          <Label htmlFor={`option-${opt.id}`} className="cursor-pointer text-base leading-relaxed">
+            {`${opt.letter}. ${opt.text}`}
+          </Label>
+        </div>
       ))}
     </RadioGroup>
   );
