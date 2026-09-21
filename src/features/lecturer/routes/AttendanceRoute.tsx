@@ -13,7 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
 import { ExamOverview } from "../components/ExamOverview";
 import {
   Breadcrumb,
@@ -163,7 +169,7 @@ export function AttendanceRoute() {
               ).map((value) => (
                 <Button
                   key={value}
-                  variant={value === "All" && value === filter ? "primary" : "outline"}
+                  variant={value === "All" && value === filter ? "default" : "outline"}
                   style={filterStyle(value, value === filter)}
                   aria-pressed={filter === value}
                   onClick={() => setFilter(value)}
@@ -251,7 +257,7 @@ export function AttendanceRoute() {
                 {(["All", "Not checked in"] as const).map((value) => (
                   <Button
                     key={value}
-                    variant={listFilter === value ? "primary" : "outline"}
+                    variant={listFilter === value ? "default" : "outline"}
                     aria-pressed={listFilter === value}
                     onClick={() => setListFilter(value)}
                   >
@@ -342,11 +348,13 @@ export function AttendanceRoute() {
                 }}
               >
                 {photoSeat && (
-                  <DialogContent
-                    title={photoSeat.name}
-                    description={`Student photo · ${photoSeat.studentId} · Seat ${photoSeat.seatLocation}`}
-                    className="w-[min(92vw,440px)]"
-                  >
+                  <DialogContent className="w-[min(92vw,440px)]">
+                    <DialogHeader>
+                      <DialogTitle>{photoSeat.name}</DialogTitle>
+                      <DialogDescription>
+                        {`Student photo · ${photoSeat.studentId} · Seat ${photoSeat.seatLocation}`}
+                      </DialogDescription>
+                    </DialogHeader>
                     <Avatar className="mx-auto h-[min(58vh,440px)] w-full max-w-80 rounded-xl border border-[var(--color-border)] after:rounded-xl">
                       <AvatarFallback className="rounded-xl bg-[var(--color-info-bg)] text-6xl font-extrabold text-[var(--color-secondary)]">
                         {initials(photoSeat.name)}

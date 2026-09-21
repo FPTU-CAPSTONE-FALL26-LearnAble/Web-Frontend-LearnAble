@@ -33,7 +33,7 @@ export function ExamScheduleRoute() {
     <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] pb-3">
       {semesterGroupStart > 0 && <Button type="button" size="icon" variant="outline" aria-label="Show newer semesters" onClick={() => moveSemesterGroup(-1)}><ChevronLeft aria-hidden /></Button>}
       <div key={semesterGroupStart} className="flex min-w-0 flex-wrap items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300 motion-reduce:animate-none" role="tablist" aria-label="Academic semester">
-        {visibleSemesters.map(([value, label]) => <Button key={value} type="button" role="tab" aria-selected={semester === value} variant={semester === value ? "primary" : "outline"} className={semester === value ? "text-white" : undefined} onClick={() => setSemester(value)}>{label}</Button>)}
+        {visibleSemesters.map(([value, label]) => <Button key={value} type="button" role="tab" aria-selected={semester === value} variant={semester === value ? "default" : "outline"} className={semester === value ? "text-white" : undefined} onClick={() => setSemester(value)}>{label}</Button>)}
       </div>
       {semesterGroupStart < semesterOptions.length - 3 && <Button type="button" size="icon" variant="outline" aria-label="Show older semesters" onClick={() => moveSemesterGroup(1)}><ChevronRight aria-hidden /></Button>}
     </div>

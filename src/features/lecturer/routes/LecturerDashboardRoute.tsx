@@ -380,7 +380,7 @@ export function LecturerDashboardRoute() {
                   <TableCell className="px-3 text-right">
                     <Button
                       variant={
-                        item.priority === "Urgent" ? "primary" : "outline"
+                        item.priority === "Urgent" ? "default" : "outline"
                       }
                       className={
                         item.priority === "Urgent"

@@ -44,7 +44,13 @@ import {
 } from "@/api/catalog";
 import { useExpiredSession } from "@/features/lecturer/api/useLecturerData";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
 import { toast } from "@/shared/ui/primitives/toast";
 import { candidates, examPapers, incidents, rooms } from "../data/fixtures";
 
@@ -541,7 +547,7 @@ export function ExamBankRoute() {
           <div className="flex rounded-lg border border-[var(--color-border-subtle)] p-1">
             <Button
               size="icon"
-              variant={view === "grid" ? "primary" : "ghost"}
+              variant={view === "grid" ? "default" : "ghost"}
               aria-label="Grid view"
               onClick={() => setView("grid")}
             >
@@ -549,7 +555,7 @@ export function ExamBankRoute() {
             </Button>
             <Button
               size="icon"
-              variant={view === "list" ? "primary" : "ghost"}
+              variant={view === "list" ? "default" : "ghost"}
               aria-label="List view"
               onClick={() => setView("list")}
             >
@@ -1151,11 +1157,11 @@ export function QuestionSelectionRoute() {
           if (!open) setPreviewId(undefined);
         }}
       >
-        <DialogContent
-          title="Question preview"
-          description="Live question detail from LearnAble API."
-          closeLabel="Close question preview"
-        >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Question preview</DialogTitle>
+            <DialogDescription>Live question detail from LearnAble API.</DialogDescription>
+          </DialogHeader>
           <ApiState
             pending={preview.isPending}
             error={preview.error}
@@ -2312,7 +2318,7 @@ export function RoomMonitoringRoute() {
         ].map(([value, label]) => (
           <Button
             key={value}
-            variant={filter === value ? "primary" : "outline"}
+            variant={filter === value ? "default" : "outline"}
             onClick={() => setFilter(value)}
           >
             {label}

@@ -272,7 +272,7 @@ export function LearningMaterialsRoute() {
           retry={() => void data.refetch()}
         />
         {!data.isPending && !data.error && (
-          <Table containerLabel="Learning materials table" className="min-w-[1120px]">
+          <Table aria-label="Learning materials table" className="min-w-[1120px]">
             <TableHeader>
               <TableRow>
                 <TableHead>

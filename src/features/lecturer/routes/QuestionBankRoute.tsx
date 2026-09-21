@@ -308,7 +308,7 @@ export function QuestionBankRoute({
           </p>
         </div>
         <Table
-          containerLabel={`${view.title} table`}
+          aria-label={`${view.title} table`}
           className="min-w-[1120px]"
         >
           <TableHeader>
