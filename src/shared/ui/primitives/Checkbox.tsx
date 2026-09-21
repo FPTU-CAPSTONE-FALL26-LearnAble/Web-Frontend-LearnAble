@@ -1,50 +1,32 @@
-import {
-  forwardRef,
-  type ComponentPropsWithoutRef,
-  type ElementRef,
-  type ReactNode,
-} from "react";
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { Check } from "lucide-react";
-import { cn } from "@/shared/ui/cn";
+"use client"
 
-export interface CheckboxProps
-  extends ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
-  label?: ReactNode;
-}
+import * as React from "react"
+import { cn } from "@/shared/ui/cn"
+import { Checkbox as CheckboxPrimitive } from "radix-ui"
+import { CheckIcon } from "lucide-react"
 
-export const Checkbox = forwardRef<
-  ElementRef<typeof CheckboxPrimitive.Root>,
-  CheckboxProps
->(({ className, label, id, ...props }, ref) => {
-  const checkbox = (
+function Checkbox({
+  className,
+  ...props
+}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+  return (
     <CheckboxPrimitive.Root
-      ref={ref}
-      id={id}
+      data-slot="checkbox"
       className={cn(
-        "peer size-6 shrink-0 rounded-[var(--radius-sm)] border-2 border-[var(--color-border-strong)] bg-white transition-colors focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-[var(--focus-ring-offset)] disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[var(--color-primary)] data-[state=checked]:bg-[var(--color-primary)] data-[state=checked]:text-[var(--color-primary-text)]",
-        className,
+        "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input shadow-xs transition-shadow outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary",
+        className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
-        className={cn("flex items-center justify-center text-current")}
+        data-slot="checkbox-indicator"
+        className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
       >
-        <Check className="size-4 stroke-[3]" />
+        <CheckIcon
+        />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
-  );
+  )
+}
 
-  if (!label) return checkbox;
-
-  return (
-    <label
-      htmlFor={id}
-      className="flex min-h-[var(--target-min)] cursor-pointer select-none items-center gap-3 text-[length:var(--text-body)]"
-    >
-      {checkbox}
-      <span>{label}</span>
-    </label>
-  );
-});
-Checkbox.displayName = "Checkbox";
+export { Checkbox }

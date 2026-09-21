@@ -1,25 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Input } from "./input";
+import { Input } from "../input";
+import { Label } from "../label";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
 
 describe("Input primitive", () => {
-  it("associates label, hint, and error with input", () => {
+  it("renders with associated label and attributes", () => {
     render(
-      <Input
-        id="test-input"
-        label="Full Name"
-        hint="Enter your legal name"
-        error="Name is required"
-      />,
+      <div>
+        <Label htmlFor="test-input">Full Name</Label>
+        <Input
+          id="test-input"
+          aria-invalid="true"
+          placeholder="Enter legal name"
+        />
+      </div>,
     );
     const input = screen.getByLabelText("Full Name");
     expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveAttribute("aria-describedby", "test-input-hint test-input-error");
-    expect(screen.getByRole("alert")).toHaveTextContent("Name is required");
+    expect(input).toHaveAttribute("placeholder", "Enter legal name");
   });
 
-  it("renders as standalone input when no label/hint/error provided", () => {
+  it("renders as standalone input when no label provided", () => {
     render(<Input aria-label="Search" placeholder="Search..." />);
     const input = screen.getByPlaceholderText("Search...");
     expect(input).toHaveAttribute("aria-label", "Search");
@@ -27,12 +29,10 @@ describe("Input primitive", () => {
 
   it("passes accessibility checks", async () => {
     const { container } = render(
-      <Input
-        id="email"
-        label="Email Address"
-        hint="Use school email"
-        error="Invalid email"
-      />,
+      <div>
+        <Label htmlFor="email">Email Address</Label>
+        <Input id="email" type="email" placeholder="user@example.edu.vn" />
+      </div>,
     );
     await expectNoAxeViolations(container);
   });

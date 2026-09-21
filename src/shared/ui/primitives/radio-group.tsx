@@ -1,72 +1,41 @@
-import {
-  forwardRef,
-  type ComponentPropsWithoutRef,
-  type ElementRef,
-  type ReactNode,
-} from "react";
-import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
-import { Circle } from "lucide-react";
-import { cn } from "@/shared/ui/cn";
+import * as React from "react"
+import { cn } from "@/shared/ui/cn"
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
 
-/**
- * Radix RadioGroup: roving tabindex + mũi tên di chuyển có sẵn.
- * Item có đích chạm ≥ 44px; trạng thái chọn thể hiện bằng nền + icon, không chỉ màu.
- */
-export const RadioGroup = forwardRef<
-  ElementRef<typeof RadioGroupPrimitive.Root>,
-  ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Root
-    ref={ref}
-    data-slot="radio-group"
-    className={cn("grid gap-3", className)}
-    {...props}
-  />
-));
-RadioGroup.displayName = "RadioGroup";
-
-export interface RadioGroupItemProps
-  extends ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item> {
-  label?: ReactNode;
+function RadioGroup({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
+  return (
+    <RadioGroupPrimitive.Root
+      data-slot="radio-group"
+      className={cn("grid w-full gap-3", className)}
+      {...props}
+    />
+  )
 }
 
-export const RadioGroupItem = forwardRef<
-  ElementRef<typeof RadioGroupPrimitive.Item>,
-  RadioGroupItemProps
->(({ className, label, id, ...props }, ref) => {
-  const itemElement = (
+function RadioGroupItem({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+  return (
     <RadioGroupPrimitive.Item
-      ref={ref}
-      id={id}
       data-slot="radio-group-item"
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-primary)] transition-colors outline-none focus-visible:outline focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[var(--color-primary)]",
-        !label && className,
+        "group/radio-group-item peer relative flex aspect-square size-4 shrink-0 rounded-full border border-input outline-none group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary",
+        className
       )}
       {...props}
     >
-      <RadioGroupPrimitive.Indicator data-slot="radio-group-indicator">
-        <Circle aria-hidden className="size-3 fill-current" />
+      <RadioGroupPrimitive.Indicator
+        data-slot="radio-group-indicator"
+        className="flex size-4 items-center justify-center"
+      >
+        <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-foreground" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
-  );
+  )
+}
 
-  if (label) {
-    return (
-      <label
-        htmlFor={id}
-        className={cn(
-          "flex min-h-[var(--target-min)] cursor-pointer items-center gap-3 rounded-[var(--radius)] border-2 border-[var(--color-border)] px-4 py-2 font-medium text-[var(--color-text)] transition-colors select-none",
-          "has-[[data-state=checked]]:border-[var(--color-selected-text)] has-[[data-state=checked]]:bg-[var(--color-selected-bg)] has-[[data-state=checked]]:text-[var(--color-selected-text)]",
-          className,
-        )}
-      >
-        {itemElement}
-        <span>{label}</span>
-      </label>
-    );
-  }
-
-  return itemElement;
-});
-RadioGroupItem.displayName = "RadioGroupItem";
+export { RadioGroup, RadioGroupItem }

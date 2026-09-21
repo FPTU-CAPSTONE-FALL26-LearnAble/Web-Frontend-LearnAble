@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import * as ToastPrimitive from "@radix-ui/react-toast";
+import { Toast as ToastPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
