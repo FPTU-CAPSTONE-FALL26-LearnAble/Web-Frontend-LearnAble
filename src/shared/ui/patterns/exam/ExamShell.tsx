@@ -1,7 +1,10 @@
 import { type ReactNode } from "react";
 import { Check, Flag } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
-import { SaveStatus, type SaveState } from "@/shared/ui/patterns/exam/SaveStatus";
+import {
+  SaveStatus,
+  type SaveState,
+} from "@/shared/ui/patterns/exam/SaveStatus";
 import { announce } from "@/shared/a11y/announcer";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
@@ -55,8 +58,14 @@ export function ExamShell({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header role="banner" className="flex flex-wrap items-center gap-4 border-b-2 border-[var(--color-border)] px-6 py-3">
-        <h1 tabIndex={-1} className="text-[length:var(--text-xl)] font-bold text-[var(--color-text)]">
+      <header
+        role="banner"
+        className="flex flex-wrap items-center gap-4 border-b-2 border-[var(--color-border)] px-6 py-3"
+      >
+        <h1
+          tabIndex={-1}
+          className="text-[length:var(--text-xl)] font-bold text-[var(--color-text)]"
+        >
           {title}
         </h1>
         <div className="ms-auto flex items-center gap-4">
@@ -67,10 +76,15 @@ export function ExamShell({
       </header>
 
       <div className="flex flex-1 flex-col gap-6 p-6 md:flex-row">
-        <nav aria-label={vi.exam.questionListLabel} className="md:w-64 shrink-0">
+        <nav
+          aria-label={vi.exam.questionListLabel}
+          className="md:w-64 shrink-0"
+        >
           <ul className="grid grid-cols-5 gap-2 md:grid-cols-4">
             {questions.map((q, i) => {
-              const stateText = q.answered ? vi.exam.answered : vi.exam.unanswered;
+              const stateText = q.answered
+                ? vi.exam.answered
+                : vi.exam.unanswered;
               const flagText = q.flagged ? `, ${vi.exam.flagged}` : "";
               return (
                 <li key={q.id}>
@@ -80,14 +94,27 @@ export function ExamShell({
                     aria-current={i === currentIndex ? "true" : undefined}
                     onClick={() => goTo(i)}
                     className={cn(
-                      "relative flex min-h-[52px] w-full min-w-[52px] items-center justify-center rounded-[var(--radius)] border-2 border-[var(--color-border)] text-[length:var(--text-lg)] font-bold transition-colors outline-none focus-visible:outline focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-2",
-                      q.answered && "bg-[var(--color-selected-bg)] text-[var(--color-selected-text)] border-[var(--color-selected-text)]",
-                      i === currentIndex && "outline outline-[var(--focus-ring-width)] outline-offset-2 outline-[var(--color-focus)]",
+                      "relative flex min-h-[52px] w-full min-w-[52px] items-center justify-center rounded-[var(--radius)] border-2 border-[var(--color-border)] text-[length:var(--text-lg)] font-bold transition-colors outline-none focus-visible:outline focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-offset-2",
+                      q.answered &&
+                        "bg-[var(--color-selected-bg)] text-[var(--color-selected-text)] border-[var(--color-selected-text)]",
+                      i === currentIndex &&
+                        "outline outline-[var(--focus-ring-width)] outline-offset-2",
                     )}
                   >
                     {i + 1}
-                    {q.answered ? <Check aria-hidden className="absolute right-1 top-1 size-4" strokeWidth={3} /> : null}
-                    {q.flagged ? <Flag aria-hidden className="absolute left-1 top-1 size-4 fill-current" /> : null}
+                    {q.answered ? (
+                      <Check
+                        aria-hidden
+                        className="absolute right-1 top-1 size-4"
+                        strokeWidth={3}
+                      />
+                    ) : null}
+                    {q.flagged ? (
+                      <Flag
+                        aria-hidden
+                        className="absolute left-1 top-1 size-4 fill-current"
+                      />
+                    ) : null}
                   </button>
                 </li>
               );
@@ -100,11 +127,26 @@ export function ExamShell({
         </main>
       </div>
 
-      <footer role="contentinfo" className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--color-border)] px-6 py-3">
-        <Button size="lg" variant="secondary" className="min-h-[3.25rem] px-6 text-base font-semibold" disabled={currentIndex === 0} onClick={() => goTo(currentIndex - 1)}>
+      <footer
+        role="contentinfo"
+        className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--color-border)] px-6 py-3"
+      >
+        <Button
+          size="lg"
+          variant="secondary"
+          className="min-h-[3.25rem] px-6 text-base font-semibold"
+          disabled={currentIndex === 0}
+          onClick={() => goTo(currentIndex - 1)}
+        >
           {vi.common.previous}
         </Button>
-        <Button size="lg" variant="secondary" className="min-h-[3.25rem] px-6 text-base font-semibold" disabled={currentIndex === total - 1} onClick={() => goTo(currentIndex + 1)}>
+        <Button
+          size="lg"
+          variant="secondary"
+          className="min-h-[3.25rem] px-6 text-base font-semibold"
+          disabled={currentIndex === total - 1}
+          onClick={() => goTo(currentIndex + 1)}
+        >
           {vi.common.next}
         </Button>
         <div className="ms-auto">{submitAction}</div>

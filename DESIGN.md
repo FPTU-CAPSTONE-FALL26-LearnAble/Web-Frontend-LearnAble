@@ -1,81 +1,6 @@
 ---
-name: LearnAble
-description: Corporate modern, high-legibility academic workbench for FPT University.
-colors:
-  bg: "#ffffff"
-  surface: "#ffffff"
-  text: "#0f172a"
-  text-muted: "#475569"
-  primary: "#0f172a"
-  primary-text: "#ffffff"
-  action: "#f26f21"
-  action-text: "#0f172a"
-  secondary: "#176eb4"
-  border: "#64748b"
-  border-subtle: "#e2e8f0"
-  error: "#dc2626"
-  error-text: "#ffffff"
-  success: "#16a34a"
-  warning: "#eab308"
-  focus: "#176eb4"
-  selected-bg: "#ffffff"
-  selected-text: "#0f172a"
-typography:
-  display:
-    fontFamily: '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif'
-    fontSize: "2.75rem"
-    fontWeight: 700
-    lineHeight: 1.35
-  headline:
-    fontFamily: '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif'
-    fontSize: "2rem"
-    fontWeight: 700
-    lineHeight: 1.35
-  body:
-    fontFamily: '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif'
-    fontSize: "1rem"
-    lineHeight: 1.625
-  label:
-    fontFamily: '"Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif'
-    fontSize: "0.875rem"
-    fontWeight: 600
-rounded:
-  control: "8px"
-  base: "10px"
-  panel: "12px"
-  card: "16px"
-spacing:
-  space-1: "4px"
-  space-2: "8px"
-  space-3: "12px"
-  space-4: "16px"
-  space-6: "24px"
-  space-8: "32px"
-  space-12: "48px"
-  space-16: "64px"
-components:
-  button-primary:
-    backgroundColor: "{colors.action}"
-    textColor: "{colors.action-text}"
-    rounded: "{rounded.control}"
-    padding: "0 16px"
-    height: "44px"
-  button-outline:
-    backgroundColor: "{colors.bg}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.control}"
-    padding: "0 16px"
-    height: "44px"
-  input:
-    backgroundColor: "{colors.bg}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.control}"
-    padding: "8px 12px"
-    height: "44px"
-  card:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.text}"
-    rounded: "{rounded.card}"
+name: learnable-design-guidelines
+description: "Design and build accessible, evidence-led learning, examination, and academic workbench interfaces for LearnAble. Use for student practice, desktop examination, authentication, lecturer, and examiner surfaces."
 ---
 
 # Design System: LearnAble
@@ -90,26 +15,128 @@ Mode: Operate. Preserve the incumbent visual identity and typography. All interf
 
 Admin, Lecturer and Examiner are standard staff-facing roles. Do not add personal assistive-mode controls, TTS/voice-reading controls, A11y scoring or filters, sonification controls, disability-specific dashboards, or accessibility-review actions to their workspaces. Continue to implement semantic HTML, keyboard access, visible focus, correct labels, status announcements and contrast as baseline engineering quality.
 
-**Key Characteristics:**
+## Design priorities
 
-- White work surfaces and readable navy/slate hierarchy.
-- Restrained orange actions, blue focus and information cues, and consistent semantic states.
-- Complete institutional identity, predictable navigation, responsive workbenches.
-- Explicit loading, error, unavailable and local-only states.
+When requirements compete, protect them in this order:
+
+1. Preserve assessment integrity, supplied facts, privacy, role permissions,
+   time limits, scoring status, and clear limits of disconnected features.
+2. Preserve accessibility: keyboard operation, visible focus, readable type,
+   explicit labels and errors, non-colour state cues, and 44×44px minimum
+   interactive targets.
+3. Make the user's immediate task and the next safe action obvious.
+4. Preserve LearnAble and FPT institutional identity, shared tokens, and the
+   web-to-desktop UI boundary.
+5. Choose a composition that fits the task rather than applying a generic
+   dashboard, hero, or card-grid template.
+6. Refine responsive layout and interaction only when they strengthen clarity,
+   trust, or continuity.
+
+Do not invent exam state, backend success, deadlines, ownership, accessibility
+scores, score changes, or AI capability. If a fact is unavailable, use clear
+copy such as “Not available”, “Preview only”, or “Not connected”.
+
+## Design in four passes
+
+### 1. Frame the user’s job
+
+Before designing or modifying a screen, identify the actor, their immediate
+task, the consequence of an error, the assistive modality that matters, and the
+one piece of information or action that must be understood first.
+
+- Student practice and examination surfaces prioritize answer confidence,
+  progress, time awareness, recovery, and unambiguous submission.
+- Lecturer and examiner surfaces prioritize operational status, filtering,
+  accurate data state, and safe next actions.
+- Authentication prioritizes identity, task completion, and explicit failure
+  recovery.
+
+Support two reading speeds where a surface contains data: the first read should
+make the operational state and next action clear; the audit read should retain
+exact labels, filters, status definitions, dates, units, and source limits.
+
+### 2. Establish the hierarchy
+
+The first viewport should communicate the task, current state, and primary
+action without requiring users to decode a decorative heading or a field of
+equal-weight cards. Give each section one reader question. Combine duplicate
+summaries rather than repeating the same answer in a card, chart, table, and
+conclusion.
+
+Use type, alignment, spacing, and density before adding surfaces, borders, or
+color. Empty space must clarify a relationship; rebalance underfilled splits
+and orphaned grid cells rather than filling them with decoration.
+
+### 3. Compose the evidence and controls
+
+Use the representation that makes the task easier:
+
+- Use prose for one conclusion or instruction.
+- Use a semantic table for exact lookup, with headers aligned to their cells.
+- Use charts only when a relationship, trend, threshold, or comparison becomes
+  faster to understand visually; include units, a caption, and a text/table
+  alternative for material data.
+- Use controls when users need to safely change state or test an assumption;
+  controls must have persistent labels, clear units, visible focus, and honest
+  feedback.
+
+Never use visual emphasis to imply a fact the data does not support. Do not
+compare counts as rates, crop an encoding to exaggerate a difference, or use a
+favorable color without a sourced semantic meaning.
+
+### 4. Verify the result
+
+Review desktop and narrow layouts, keyboard flow, loading/empty/error states,
+and reduced-motion behavior. Fix systemic problems first: hierarchy, target
+size, focus, token misuse, overflow, repeated components, or inaccurate state
+copy. Do not ship a screen that is visually polished but misleading, inaccessible,
+or impossible to operate with a keyboard.
 
 ## Colors
 
-The normalized palette is normative in `src/shared/tokens/tokens.css`. Lecturer aliases in `src/features/lecturer/components/lecturer-theme.css` may change contextual roles, but every solid base resolves to one of the ten approved colors in the frontmatter.
+Tailwind CSS v4's published palette is the primitive color source. Do not add
+project-owned hex values, custom shade scales, or new `--color-*` primitives.
+Use Tailwind palette variables through semantic aliases in
+`src/shared/tokens/tokens.css`; components consume the semantic alias, not a
+raw palette color.
 
-- Primary: FPT orange marks decisive actions and retains navy action labels. Orange buttons remain exactly `#f26f21` at rest, hover and pressed; interaction is shown through border, shadow or movement rather than a second orange shade. The navy foundation has its own white foreground; these roles are distinct.
-- Secondary actions: use a white surface, FPT-orange border and navy label. Hover and expanded states use the approved orange-tinted selected surface. Blue remains reserved for information and focus rather than button fills.
-- Secondary: academic blue carries focus, selected type borders, text and rings on white. The shared CSS secondary token is blue with white foreground; the shadcn `secondary` utility is mapped to a white surface with navy foreground in `src/styles/index.css`. Preserve that distinction.
-- Neutral: white owns the canvas, surfaces, muted surfaces, panels and selected backgrounds. Navy carries main and selected text; slate carries supporting text. Slate control borders remain stronger than quiet panel borders and dividers.
-- Brand and action: FPT orange is the only orange. It marks decisive actions, selected navigation emphasis and the LearnAble wordmark.
-- Semantic status: approved green identifies success; approved blue identifies information and focus; approved yellow identifies warning; approved red identifies errors and urgent work. Pale surfaces must be alpha or `color-mix()` variants of those same canonical colors. Status is never communicated by color alone.
-- Focus tokens specify a 3px blue ring with a 2px offset; retain visible focus in shared and shadcn controls. Status always includes readable text or an icon rather than color alone.
+```text
+Primitive palette token          Semantic role
+--color-white                   background, surface, panel
+--color-slate-950               foreground, primary text
+--color-slate-600               muted text
+--color-slate-500               control border
+--color-slate-200               subtle border
+--color-orange-500              decisive action and selection emphasis
+--color-blue-700                focus and information
+--color-green-600               success
+--color-yellow-500              warning
+--color-red-600                 destructive/error
+```
 
-**The Ten-Color Rule.** Solid UI colors are limited to the ten frontmatter hexes. Alpha and `color-mix()` variants are allowed; extra shade hexes and Tailwind chromatic utilities are forbidden.
+The semantic layer remains intentionally small: `background`, `foreground`,
+`primary`, `action`, `secondary`, `muted`, `border`, `focus`, `success`,
+`warning`, and `destructive`. A primitive component uses names such as
+`bg-action`, `text-foreground`, and `border-border`; it must not use a raw
+class such as `bg-orange-500` or a raw `var(--color-orange-500)` reference.
+This lets the visual role remain stable when the palette mapping changes.
+
+- White owns the canvas and work surfaces; slate carries text and borders.
+- Orange is reserved for decisive actions and selected navigation emphasis.
+- Blue is reserved for focus, information, and selection affordances rather
+  than generic button fills.
+- Green, yellow, and red represent sourced semantic states only. Every state
+  also needs readable text, an icon, or another non-colour cue.
+- Pale state surfaces must be derived with `color-mix()` from the relevant
+  semantic alias and the background; do not add a lighter palette shade merely
+  for a background.
+- Focus uses a 3px blue ring with a 2px offset and must meet contrast
+  requirements against its surrounding surface.
+
+**Palette rule.** Tailwind palette tokens are the only solid UI color values.
+Supplied institutional image assets may retain their native brand colors, but
+new UI CSS, component classes, and tokens must not introduce a custom hex,
+RGB, HSL, OKLCH, or duplicate Tailwind shade.
 
 ## Typography
 
@@ -128,20 +155,6 @@ The normalized palette is normative in `src/shared/tokens/tokens.css`. Lecturer 
 - Lecturer and Examiner tools share a persistent 256px staff sidebar from the `lg` breakpoint (1024px), with a 64px mobile header and Sheet navigation below it. The complete FPT University asset and LearnAble lockup sit on one row. The logo uses object containment plus negative safe-area compensation so its visible mark remains larger than the full dark-orange LearnAble wordmark without cropping; the dynamic `user.role` label sits beneath LearnAble.
 - Workbench columns split at extra-large widths (1280px) and stack below. Question Studio is a desktop viewport workbench with independently scrolling panes and an in-layout action footer; on mobile its footer returns to normal document flow. Upload uses normal-flow mobile actions and becomes sticky only at `xl`, where the footer cannot cover focused content. Dense tables use a minimum 1120px table width inside named, keyboard-focusable bounded overflow regions with a visible mobile scrollbar/edge affordance. Seating maps use the same bounded-scroll principle; page actions wrap.
 
-### Authentication Surfaces
-
-Mode: Operate. At desktop widths, the campus story occupies five columns and the authentication task occupies seven. On mobile, the form leads and the campus panel becomes a compact supporting region. The approved Stitch screenshots determine composition; all copy is translated to clear English.
-
-### Lecturer Surfaces
-
-The seven lecturer reference compositions are binding: Dashboard, Question Bank, Question Studio, Learning Materials, Upload Material, Exam Schedule & Rooms, and Attendance. Sources live under `C:\Capstone2026\Stichs\Lecturer Stichs\stitch_learn_able`. Apply the pinned English copy, palette, typography, shared sidebar/brand treatment, and honest real/unavailable data to those compositions. The dashboard prioritizes live exam operations, upcoming invigilation, and blocking work in that order. Dashboard, exam schedule and attendance data remain English fixtures until matching backend contracts exist. Preview-only actions must say they are not connected.
-
-### Examiner Surfaces
-
-The fourteen Examiner reference compositions under `C:\Capstone2026\Stichs\Examiner Stichs` are binding for hierarchy, density and operational topology. All Examiner routes share the 256px staff sidebar, mobile Sheet and shared brand lockup. Dashboard and monitoring may use restrained navy command bands for the current shift; authoring, scheduling and detailed work remain on bordered white panels.
-
-Examiner data is an explicitly identified English simulation until matching deployed contracts exist. The E-06 accessibility-audit reference is adapted to a general exam-readiness review: preserve its review topology but omit NVDA, zoom, contrast-mode, scoring and other personal assistive controls. `EXAMINER_UI.md` records routes, fixture behavior and disconnected actions.
-
 ## Elevation & Depth
 
 Use either a border or a soft shadow to express elevation, not both at equal emphasis. Lecturer summary cards and table panels are flat white surfaces with quiet borders and no shadows. Existing authentication and primary action surfaces retain their incumbent soft shadows. The exact card/control and image-text shadow values live in `src/shared/tokens/tokens.css` and the sidecar extensions. Retain the authentication image overlay only on its existing image composition.
@@ -158,41 +171,27 @@ Use shadcn/ui selectively for controls whose state, focus management or accessib
 
 Primary buttons use orange with navy labels, 44px minimum height, gentle control corners and the existing control shadow. Outline buttons and inputs use white, readable text and stronger control strokes. Include hover, visible focus, disabled and invalid states. Navigation uses readable labels, route state, white selected surfaces and the incumbent semantic border/text treatment. Status badges pair text with success, danger, warning or information tones. Summary cards use quiet borders, compact labels, tabular values and explanatory detail.
 
+The shared component boundary has two layers:
+
+```text
+src/shared/ui/primitives/       # A — canonical controls and accessibility behavior
+src/shared/ui/patterns/exam/    # B — platform-neutral exam/practice compositions
+src/features/<actor>/           # actor- and web-specific compositions
+```
+
+Primitives are context-free: they must not know an actor, route, API state, or
+exam workflow. They expose semantic variants and size/density choices while
+preserving the 44px minimum. The exam pattern layer composes the larger,
+exam-appropriate controls and interaction rules so screens do not duplicate
+one-off sizing classes. Only patterns used by both web practice and desktop
+examination belong in `src/shared/ui/patterns/exam/`.
+
+Use shadcn and Radix as implementation tools, not as the product visual
+language. Generated components must adopt LearnAble tokens, the shared `cn`
+utility, accessibility rules, and desktop-compatible dependencies before they
+become canonical primitives.
+
 `BrandIdentity` is shared by authentication and staff navigation. In Lecturer and Examiner navigation, keep the complete FPT University asset and the full dark-orange LearnAble wordmark on one row, with the dynamic role below the wordmark. Transparent safe-area compensation may enlarge the image box, but the asset must remain `object-contain`, uncropped and visibly dominant. Reuse the component without changing unrelated authentication composition or campus imagery.
-
-### Lecturer Dashboard
-
-The `/lecturer/dashboard` composition follows the Live Shift Commander HTML: a compact greeting and Create question / Upload learning material actions, then a two-to-one desktop row pairing today's exam with upcoming invigilation. The exam panel contains a countdown/progress strip, a two-by-two information grid and its attendance action. The upcoming panel keeps compact dated shifts and schedule links. These regions stack below extra-large widths.
-
-The urgent queue is one compact panel beneath that row, with filters and search in its header, a five-column table (type/identifier, item/course, priority, issue/status, action), and counts with the triage action below. Retain the reference hierarchy and quiet white bordered panels; do not append unrelated resource cards. Search and filters remain client-side over English fixtures, and unavailable operational actions explain that they are not connected.
-
-### Question Bank
-
-Question Management is an expandable sidebar group with two sibling destinations: `/lecturer/questions/exam` and `/lecturer/questions/practice`. The group opens whenever a descendant is active, and the active child remains visually explicit. `/lecturer/questions` redirects to the exam workspace rather than presenting a third bank.
-
-Both purpose routes use the same configured workbench and follow the supplied Stitch composition: purpose-specific heading and import/export/create actions, four summary cards, search and labeled filters, then a wide question table with selection and pagination. Labels, usage language, empty states, bulk actions and create links reflect the selected purpose; shared layout and interaction behavior must not drift between the two banks. Summary cards and table panels are white, use subtle borders, and omit shadows. The summaries expand from one column to two and then four; filters expand to two and then three columns. On smaller screens, actions wrap and the minimum-1120px table scrolls within its named, keyboard-focusable container with an obvious horizontal-scroll affordance.
-
-The purpose split currently uses distinct English simulation datasets; exam and practice rows must never be pooled or relabeled. Future backend support must add `Purpose = Exam | Practice`. `sourceType = Manual | Import` is provenance and must not be repurposed as purpose. Learning Materials reads `/api/v1/LearningMaterials` with `UploadedBy`; Subjects and Topics populate academic metadata. The deployed service is `https://backend-learnable.onrender.com`; local development uses the Vite proxy. Row selection remains local UI state. Show loading, empty, error and retry states without substituting one purpose's fixtures for the other. Missing aggregate, usage and accessibility metrics say “Not available”. Import/export and bulk tagging, validation, deactivation and deletion show a not-connected message; they do not mutate data or report backend success.
-
-### Question Studio
-
-The `/lecturer/questions/new` surface follows the Question Studio HTML as a viewport-height workspace, not a pair of floating cards. Its top bar contains breadcrumb navigation, the real subject/course selector and Cancel. At extra-large widths, the body divides into nearly balanced authoring and live-review panes (a 1.1:1 grid); each pane scrolls independently. Below that breakpoint, the panes stack inside one scrolling body. The action footer remains outside that body in the flex layout, so cancel, saved-draft deletion, local save and publishing are accessible without a sticky overlay obscuring focused fields.
-
-The authoring pane uses compact section labels and metadata for topic, Bloom level and points, six icon-led type tiles, a question-content toolbar and editor, type-specific fields, and a pedagogical explanation. Choice answers use compact vertically stacked cards with correct-answer controls and answer text. The live-review pane contains the student-facing question card, points and local interactive answers. Do not add personal voice-reading, sonification or accessibility-audit controls to the staff-facing studio. Type selection includes an explicit pressed state and blue border/ring treatment; all field labels retain programmatic associations.
-
-The six supported types are Single Choice, Multiple Choice, Essay, Write Code, MathML / LaTeX, and Diagram. Changing type retains common question metadata and content but resets its answer fields. Preview controls are local demonstrations; answers are neither submitted nor scored. LaTeX renders locally with KaTeX, trust disabled, and bounded expansion. MathML remains escaped source only. Code is displayed and never executed. Diagrams use an author-provided image, alt text and description.
-
-Save draft explicitly stores text and answer fields in browser local storage under separate purpose-scoped keys: `learnable.question-draft.<userId>.exam` and `learnable.question-draft.<userId>.practice` (with an anonymous user fallback). Exam and practice drafts must never overwrite or restore into one another. This is not a backend save or automatic synchronization. Image and audio files use session-only object URLs and must be selected again after reload or leaving the editor. Restored-draft and save messages explain these limits; storage failures provide recovery copy. Unsaved changes trigger a leave confirmation. Delete saved draft removes only the active purpose's browser copy while retaining the open editor; delete assessment drafts before leaving a shared campus computer.
-
-Publishing validates required fields locally and then explains that backend publishing is unavailable; no question is added to the bank. Bloom templates and formatting-toolbar actions show transparent not-connected messages. Keep these limitations visible and never imply submission or scoring. `QUESTION_UI.md` records the surface contract; the two route components and `src/features/lecturer/questions` are the implementation evidence.
-
-### Learning Materials and Upload
-
-The materials list retains its summary/filter/table composition, real paginated reads and local selection. Its minimum-1120px table follows the same named bounded-overflow contract as Question Bank. Upload is a split workbench with a dashed file-selection region, metadata controls, processing panel and action footer: normal document flow on mobile and sticky only at `xl`. PDF, DOCX, PPTX, MP3, MP4 and EPUB are selectable locally. File selection and metadata are local/session state; a leave guard protects unsaved edits. Upload, OCR, indexing and AI actions are not connected and must not report backend submission or processing success.
-
-### Exams and Attendance
-
-Exam Schedule & Rooms keeps its operational overview and detailed shift/room composition. Attendance pairs a scrollable seat map with student details and a bottom action bar. English fixtures support local exploration only; attendance changes, incidents, exports and other writes remain disconnected. Do not imply that a fixture status is a live institutional record.
 
 ## Do's and Don'ts
 
@@ -217,6 +216,50 @@ Exam Schedule & Rooms keeps its operational overview and detailed shift/room com
 
 Persistent labels, explicit error descriptions, keyboard-complete controls, visible focus, minimum 44px targets, reduced motion, and non-color status cues are mandatory. Placeholder text never carries essential instructions.
 
+## Restraint and interaction rules
+
+The interface should feel calm and operational, not sparse by default and not
+decorative. Do not use gradients, glass effects, glows, animated backgrounds,
+stock imagery, fake product screenshots, decorative icon tiles, ornamental
+shadows, or cards nested inside cards. Use a border _or_ a soft shadow to show
+elevation, not both with equal emphasis.
+
+Default to stillness. Motion may confirm an action, preserve continuity during
+a state change, or reveal a necessary relationship. Never gate reading behind
+animation, use auto-scrolling content, pulse decorative elements, or add
+parallax, bouncing, or simulated typing. The complete experience must work with
+`prefers-reduced-motion`.
+
+Icons are functional aids, not decoration. Use Lucide when an icon is faster to
+recognize than a label; pair ambiguous icons with accessible text or an
+accessible name. Do not add another icon library unless Lucide cannot provide a
+required symbol.
+
+## Review checklist
+
+Before hand-off, inspect the real route rather than only the component source.
+
+1. **Task and truth:** Is the actor’s next safe action clear? Are data states,
+   backend limits, and local-only behavior described honestly?
+2. **Hierarchy:** Does the first viewport make the task and current state clear?
+   Does every section answer a distinct question?
+3. **Layout:** Are grid edges, baselines, numeric columns, and action rows
+   aligned? Does responsive reflow avoid clipping, accidental whitespace, and
+   character-level wrapping?
+4. **Accessibility:** Are labels, error text, focus, keyboard behavior, target
+   size, headings, landmarks, and non-colour state cues complete?
+5. **Evidence:** Are units, dates, filters, table headers, data bases, and
+   chart scales explicit and faithful?
+6. **Restraint:** Can a card, border, icon, color, paragraph, or animation be
+   removed without losing meaning or affordance? If so, remove it.
+7. **System fit:** Does the change use the approved tokens and shared primitive
+   layers, and will it remain safe to synchronize to desktop?
+
 ### Documentation Scope
 
-This document records the shipped visual world and component/data-state norms. It does not certify exact native pixel equivalence or completed automated accessibility audits. `PRODUCT.md`, `QUESTION_UI.md` and `LECTURER_UI.md` carry the detailed product/API and surface contracts; `.impeccable/review` contains desktop/mobile review evidence.
+This document records the shipped visual world and component/data-state norms.
+It does not certify exact native pixel equivalence or completed automated
+accessibility audits. `docs/PRODUCT.md`, `docs/QUESTION_UI.md`,
+`docs/LECTURER_UI.md`, and `docs/EXAMINER_UI.md` carry detailed product/API
+and surface contracts; `.impeccable/review` contains desktop/mobile review
+evidence.
