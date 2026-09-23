@@ -20,7 +20,7 @@ export class ApiFailure extends Error {
   }
 }
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "https://backend-learnable.onrender.com/api/v1";
+const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 export async function request<T>(
   path: string,

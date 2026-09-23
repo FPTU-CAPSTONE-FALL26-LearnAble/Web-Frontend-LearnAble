@@ -2,11 +2,21 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Info, LogIn } from "lucide-react";
+import { Eye, EyeOff, Info } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/primitives/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/shared/ui/primitives/alert";
 import { Button } from "@/shared/ui/primitives/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/ui/primitives/card";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
@@ -90,129 +100,131 @@ export function LoginRoute() {
       campusImage="/assets/auth/campus-statue.jpeg"
       campusImageAlt="Self Made Man statue at FPT University campus"
       campusImageClassName="object-[52%_center]"
-      imageOverlayClassName="bg-[image:var(--auth-login-image-overlay)]"
       heroTitle="Future Forward – Global Ready"
       heroTitleClassName="text-[length:var(--text-auth-hero)] sm:text-[length:var(--text-auth-hero)]"
       heroBody="A clear, accessible learning environment for FPT University students, lecturers, and staff across every campus."
     >
-      <header className="border-b border-[var(--color-border-subtle)] pb-7">
-        <AuthBrand />
-      </header>
-      <div className="mx-auto mt-8 w-full max-w-2xl">
-        <h1
-          tabIndex={-1}
-          className="text-3xl font-bold tracking-[-0.025em] text-foreground outline-none"
-        >
-          {en.auth.welcome}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">{en.auth.intro}</p>
-        <Card className="mt-6 gap-0 rounded-2xl bg-muted/45 py-0 shadow-none ring-[var(--color-border-subtle)]">
-          <CardHeader className="px-6 pb-5 pt-6 sm:px-8">
-            <CardTitle className="flex items-center gap-2 text-xl font-bold sm:text-2xl">
-              <LogIn aria-hidden className="size-6 text-primary" />
-              {en.auth.title}
+      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+        <header className="flex justify-center pb-2">
+          <AuthBrand />
+        </header>
+
+        <Card className="border-border shadow-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-medium tracking-tight">
+              {en.auth.welcome}
             </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              {en.auth.intro}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
-            <form onSubmit={onSubmit} noValidate className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="identifier">
-                    {en.auth.identifier}{" "}
-                    <span aria-hidden className="text-destructive">
-                      *
-                    </span>
-                  </Label>
-                  <Input
-                    id="identifier"
-                    autoComplete="username"
-                    placeholder={en.auth.identifierPlaceholder}
-                    aria-invalid={Boolean(errors.identifier)}
-                    aria-describedby={
-                      errors.identifier ? "identifier-error" : undefined
-                    }
-                    {...register("identifier")}
-                  />
-                  {errors.identifier ? (
-                    <p
-                      id="identifier-error"
-                      role="alert"
-                      className="text-sm font-medium text-destructive"
-                    >
-                      {errors.identifier.message}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
+          <CardContent className="grid gap-4">
+            <form onSubmit={onSubmit} noValidate className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="identifier">
+                  {en.auth.identifier}{" "}
+                  <span aria-hidden className="text-destructive">
+                    *
+                  </span>
+                </Label>
+                <Input
+                  id="identifier"
+                  autoComplete="username"
+                  placeholder={en.auth.identifierPlaceholder}
+                  aria-invalid={Boolean(errors.identifier)}
+                  aria-describedby={
+                    errors.identifier ? "identifier-error" : undefined
+                  }
+                  {...register("identifier")}
+                />
+                {errors.identifier ? (
+                  <p
+                    id="identifier-error"
+                    role="alert"
+                    className="text-sm font-medium text-destructive"
+                  >
+                    {errors.identifier.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
                   <Label htmlFor="password">
                     {en.auth.password}{" "}
                     <span aria-hidden className="text-destructive">
                       *
                     </span>
                   </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      className="pr-12"
-                      aria-invalid={Boolean(errors.password)}
-                      aria-describedby={
-                        errors.password ? "password-error" : undefined
-                      }
-                      {...register("password")}
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-lg text-muted-foreground hover:text-foreground"
-                      aria-label={
-                        showPassword
-                          ? en.auth.hidePassword
-                          : en.auth.showPassword
-                      }
-                      onClick={() => setShowPassword((value) => !value)}
-                    >
-                      {showPassword ? (
-                        <EyeOff aria-hidden />
-                      ) : (
-                        <Eye aria-hidden />
-                      )}
-                    </button>
-                  </div>
-                  {errors.password ? (
-                    <p
-                      id="password-error"
-                      role="alert"
-                      className="text-sm font-medium text-destructive"
-                    >
-                      {errors.password.message}
-                    </p>
-                  ) : null}
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {en.auth.forgotPassword}
+                  </Link>
                 </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    className="pr-10"
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={
+                      errors.password ? "password-error" : undefined
+                    }
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
+                    aria-label={
+                      showPassword ? en.auth.hidePassword : en.auth.showPassword
+                    }
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? (
+                      <EyeOff aria-hidden className="size-4" />
+                    ) : (
+                      <Eye aria-hidden className="size-4" />
+                    )}
+                  </button>
+                </div>
+                {errors.password ? (
+                  <p
+                    id="password-error"
+                    role="alert"
+                    className="text-sm font-medium text-destructive"
+                  >
+                    {errors.password.message}
+                  </p>
+                ) : null}
               </div>
-              <div className="flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center sm:gap-3">
+
+              <div className="flex items-center space-x-2">
                 <Controller
                   name="remember"
                   control={control}
                   render={({ field }) => (
-                    <Label className="flex min-h-11 cursor-pointer items-center gap-3 font-medium text-muted-foreground">
+                    <div className="flex items-center space-x-2">
                       <Checkbox
+                        id="remember"
                         checked={field.value}
                         onCheckedChange={(checked) =>
                           field.onChange(checked === true)
                         }
                       />
-                      {en.auth.remember}
-                    </Label>
+                      <Label
+                        htmlFor="remember"
+                        className="cursor-pointer text-sm font-normal text-muted-foreground"
+                      >
+                        {en.auth.remember}
+                      </Label>
+                    </div>
                   )}
                 />
-                <Link
-                  to="/forgot-password"
-                  className="flex min-h-11 items-center font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  {en.auth.forgotPassword}
-                </Link>
               </div>
+
               {serverError ? (
                 <Alert variant="destructive">
                   <Info aria-hidden />
@@ -220,6 +232,7 @@ export function LoginRoute() {
                   <AlertDescription>{serverError}</AlertDescription>
                 </Alert>
               ) : null}
+
               <Button
                 type="submit"
                 disabled={loginMutation.isPending}
@@ -227,27 +240,29 @@ export function LoginRoute() {
               >
                 {loginMutation.isPending ? en.auth.submitting : en.auth.submit}
               </Button>
-              <div className="flex items-center gap-3" aria-hidden>
-                <Separator className="flex-1" />
-                <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+
+              <div className="relative my-1 flex items-center justify-center">
+                <Separator className="w-full" />
+                <span className="absolute bg-card px-2 text-xs uppercase text-muted-foreground">
                   {en.auth.quickSignIn}
                 </span>
-                <Separator className="flex-1" />
               </div>
+
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full gap-2"
                 onClick={showGoogleDemo}
               >
                 <GoogleIcon />
                 Continue with Google
               </Button>
             </form>
-            <div className="mt-6 flex items-start gap-2 border-t border-[var(--color-border-subtle)] pt-5 text-sm leading-relaxed text-muted-foreground">
+
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
               <Info
                 aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-[var(--color-secondary)]"
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
               />
               <p>{en.auth.accountNotice}</p>
             </div>

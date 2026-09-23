@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { BrandIdentity } from "@/components/BrandIdentity";
+import { Badge } from "@/shared/ui/primitives/badge";
 
 interface AuthShellProps {
   children: ReactNode;
@@ -40,18 +41,18 @@ export function AuthShell({
       <SkipLink />
       <main
         id="main"
-        className="flex min-h-dvh items-center justify-center overflow-x-hidden bg-background px-4 py-6 sm:px-6 lg:px-10 lg:py-10"
+        className="flex min-h-screen items-center justify-center overflow-x-hidden bg-muted/40 p-4 md:p-8 lg:p-10"
       >
         <div
           className={cn(
-            "grid min-w-0 w-full max-w-7xl overflow-hidden rounded-[var(--radius-card)] bg-card shadow-[var(--shadow-card)] ring-1 ring-[var(--color-border-subtle)] lg:grid-cols-12",
+            "grid w-full max-w-6xl overflow-hidden rounded-2xl border border-border bg-card shadow lg:grid-cols-12",
             className,
           )}
         >
-          <section className="order-1 flex min-w-0 min-h-[660px] flex-col justify-center bg-card p-6 sm:p-10 lg:order-2 lg:col-span-7 lg:p-14">
+          <section className="order-1 flex min-w-0 flex-col justify-center bg-card p-6 sm:p-10 lg:order-2 lg:col-span-7 lg:p-12">
             {children}
           </section>
-          <aside className="relative order-2 min-w-0 min-h-72 overflow-hidden bg-foreground p-6 text-[var(--color-surface)] sm:p-8 lg:order-1 lg:col-span-5 lg:min-h-[720px] lg:p-10">
+          <aside className="relative order-2 flex min-w-0 min-h-[360px] flex-col justify-between overflow-hidden bg-slate-950 p-6 text-white sm:p-8 lg:order-1 lg:col-span-5 lg:min-h-[640px] lg:p-10">
             <img
               src={campusImage}
               alt={campusImageAlt}
@@ -62,42 +63,42 @@ export function AuthShell({
             />
             <div
               className={cn(
-                "absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,.55)_0%,rgba(15,23,42,.95)_100%)]",
+                "absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/40",
                 imageOverlayClassName,
               )}
             />
-            <div className="relative flex h-full flex-col justify-between gap-12 [text-shadow:var(--shadow-image-text)]">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-surface)]">
+            <div className="relative flex h-full flex-col justify-between gap-8 text-white">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                 Hanoi • Ho Chi Minh City • Da Nang • Can Tho • Quy Nhon
               </p>
-              <div className="mt-auto max-w-lg">
+              <div className="mt-auto max-w-lg space-y-4">
                 {badge ? (
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-md bg-[var(--color-primary-brand)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[var(--color-surface)]">
-                    <ShieldCheck aria-hidden className="size-4" />
-                    {badge}
-                  </div>
+                  <Badge className="gap-1.5 bg-primary/90 text-primary-foreground backdrop-blur-sm">
+                    <ShieldCheck aria-hidden className="size-3.5" />
+                    <span>{badge}</span>
+                  </Badge>
                 ) : null}
                 <h2
                   className={cn(
-                    "min-w-0 max-w-md break-words text-3xl font-bold leading-tight tracking-[-0.025em] text-[var(--color-surface)] sm:text-4xl",
+                    "text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl",
                     heroTitleClassName,
                   )}
                 >
                   {heroTitle}
                 </h2>
-                <p className="mt-5 max-w-md text-base leading-relaxed text-[var(--color-surface)]/90">
+                <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
                   {heroBody}
                 </p>
-                <dl className="mt-8 grid min-w-0 grid-cols-1 gap-3 border-t border-[var(--color-surface)]/20 pt-6 min-[360px]:grid-cols-3">
+                <dl className="grid grid-cols-1 gap-3 border-t border-white/15 pt-6 sm:grid-cols-3">
                   {highlights.map((item) => (
                     <div
-                      className="min-w-0 rounded-lg border border-[var(--color-surface)]/15 bg-[var(--color-surface)]/10 p-3 shadow-sm backdrop-blur-sm"
+                      className="rounded-xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-md"
                       key={item.value}
                     >
-                      <dt className="whitespace-nowrap text-[0.95rem] font-extrabold tracking-[-0.03em] text-[var(--color-action-hover)] sm:text-base">
+                      <dt className="text-sm font-bold tracking-tight text-amber-400 sm:text-base">
                         {item.value}
                       </dt>
-                      <dd className="mt-1 text-[0.68rem] font-semibold leading-snug text-[var(--color-surface)] sm:text-xs">
+                      <dd className="mt-1 text-xs text-slate-300">
                         {item.label}
                         <span className="sr-only">
                           , THE Impact Ratings 2026
@@ -121,22 +122,22 @@ export function AuthBrand() {
 
 export function GoogleIcon() {
   return (
-    <svg aria-hidden viewBox="0 0 24 24" className="size-5">
+    <svg aria-hidden viewBox="0 0 24 24" className="size-4 shrink-0">
       <path
-        fill="var(--color-secondary)"
-        d="M22.6 12.2c0-.7-.1-1.5-.2-2.2H12v4.3h5.9a5 5 0 0 1-2.2 3.3v2.8h3.6c2.1-2 3.3-4.8 3.3-8.2Z"
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       />
       <path
-        fill="var(--color-success)"
-        d="M12 23c3 0 5.5-1 7.3-2.6l-3.6-2.8c-1 .7-2.2 1.1-3.7 1.1a6.5 6.5 0 0 1-6.2-4.5H2.2V17A11 11 0 0 0 12 23Z"
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
       />
       <path
-        fill="var(--color-warning)"
-        d="M5.8 14.2a6.6 6.6 0 0 1 0-4.4V7H2.2a11 11 0 0 0 0 10l3.6-2.8Z"
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
       />
       <path
-        fill="var(--color-error)"
-        d="M12 5.3c1.6 0 3.1.6 4.2 1.6l3.2-3.1A10.7 10.7 0 0 0 12 1 11 11 0 0 0 2.2 7l3.6 2.8A6.5 6.5 0 0 1 12 5.3Z"
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
       />
     </svg>
   );

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "@/shared/ui/cn"
+import { cn } from "cn"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Button } from "@/shared/ui/primitives/button"
@@ -113,7 +113,7 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("font-medium text-foreground", className)}
+      className={cn("font-heading font-medium text-foreground", className)}
       {...props}
     />
   )

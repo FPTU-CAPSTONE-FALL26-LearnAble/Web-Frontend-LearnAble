@@ -28,7 +28,7 @@ export function ForgotPasswordRoute() {
   const showGoogleDemo = () => { setShowDemoNotice(true); setShowUnavailable(false); announce(en.auth.demoMessage); };
 
   return (
-    <AuthShell campusImage="/assets/auth/campus-recovery-enhanced.png" imageOverlayClassName="bg-[image:var(--auth-login-image-overlay)]" heroTitle="Recover access to your learning account safely." heroBody="Protecting access to exam results, course materials, and accessibility tools across FPT University.">
+    <AuthShell campusImage="/assets/auth/campus-recovery-enhanced.png" heroTitle="Recover access to your learning account safely." heroBody="Protecting access to exam results, course materials, and accessibility tools across FPT University.">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-border-subtle)] pb-7"><AuthBrand /><Link to="/login" className="inline-flex min-h-11 items-center gap-2 font-semibold text-muted-foreground hover:text-primary"><ArrowLeft aria-hidden className="size-4" /> {en.forgotPassword.backToLogin}</Link></header>
       <div className="mx-auto my-auto w-full max-w-2xl py-8">
         <div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-full bg-[var(--color-selected-bg)] text-primary"><KeyRound aria-hidden className="size-5" /></span><h1 tabIndex={-1} className="text-3xl font-bold tracking-[-0.025em] text-foreground outline-none">{en.forgotPassword.title}</h1></div>

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@/shared/ui/cn"
+import { cn } from "cn"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/shared/ui/primitives/button"
@@ -127,7 +127,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("leading-none font-medium", className)}
+      className={cn("font-heading leading-none font-medium", className)}
       {...props}
     />
   )
