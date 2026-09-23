@@ -27,7 +27,7 @@ Users sign in with institution-managed accounts and may use the product on perso
 
 ## Brand Commitments
 
-LearnAble combines FPT University's institutional identity with a supportive, modern, high-legibility learning experience. FPT orange is the primary action color; deep navy, sky blue, teal, and quiet slate surfaces support it.
+LearnAble combines FPT University's institutional identity with a supportive, modern, high-legibility learning experience ("The Academic Workbench"). The interface uses a single normalized palette: white surfaces, navy/slate text hierarchy, FPT orange decisive actions, blue focus/information, green success, yellow warning, and red error. Decorative gradients, glass effects, and non-standard colors are strictly prohibited.
 
 ## Evidence on Hand
 

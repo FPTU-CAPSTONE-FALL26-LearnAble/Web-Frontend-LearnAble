@@ -8,9 +8,8 @@ of truth for the UI shared with `DesktopApplication-Frontend-Learnable`.
 Before changing code:
 
 1. Read `DESIGN.md` for product and accessibility rules.
-2. Read `UI_SYNC.md` before touching anything under `src/shared/`.
-3. Check `git status --short`; preserve unrelated work.
-4. Search for existing patterns before adding a component or dependency.
+2. Check `git status --short`; preserve unrelated work.
+3. Search for existing patterns before adding a component or dependency.
 
 ## Architecture and ownership
 
