@@ -21,6 +21,7 @@ const unavailable = "Not available";
 const text = (value: string | null | undefined) => value ?? unavailable;
 
 /** Server enums. Keep in sync with `components.schemas` of the OpenAPI document. */
+export const courseSectionStatuses = ["Open", "Closed", "Cancelled"] as const;
 export const userRoles = ["Student", "Lecturer", "Examiner", "Admin"] as const;
 export const userStatuses = ["Active", "Inactive"] as const;
 export const semesterStatuses = ["Planned", "Ongoing", "Closed"] as const;
@@ -210,6 +211,69 @@ export const lecturerProfileSchema = z
     academicRank: text(row.academicRank),
   }));
 
+export const courseSectionSchema = z
+  .object({
+    sectionId: z.string(),
+    subjectId: z.string(),
+    semesterId: z.string(),
+    // Paired with `lecturerRole` exactly as profiles pair `userId`/`userRole`,
+    // so this is the lecturer's user id, not a lecturer-profile id.
+    lecturerId: z.string().nullable(),
+    lecturerRole: z.string().nullable(),
+    sectionCode: z.string().nullable(),
+    capacity: z.number().nullable(),
+    status: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .transform((row) => ({
+    ...row,
+    sectionCode: text(row.sectionCode),
+    status: text(row.status),
+  }));
+
+export const syllabusSchema = z
+  .object({
+    syllabusId: z.string(),
+    subjectId: z.string(),
+    createdBy: z.string().nullable(),
+    authorRole: z.string().nullable(),
+    syllabusCode: z.string().nullable(),
+    syllabusName: z.string().nullable(),
+    version: z.string().nullable(),
+    isActive: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .transform((row) => ({
+    ...row,
+    syllabusCode: text(row.syllabusCode),
+    syllabusName: text(row.syllabusName),
+    version: text(row.version),
+  }));
+
+/** Fuller than `catalog.ts`'s `topicSchema`, which the lecturer selectors use. */
+export const adminTopicSchema = z
+  .object({
+    topicId: z.string(),
+    subjectId: z.string(),
+    syllabusId: z.string().nullable(),
+    topicCode: z.string().nullable(),
+    topicName: z.string().nullable(),
+    description: z.string().nullable(),
+    displayOrder: z.number(),
+    isActive: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .transform((row) => ({
+    ...row,
+    topicCode: text(row.topicCode),
+    topicName: text(row.topicName),
+  }));
+
+export type CourseSection = z.output<typeof courseSectionSchema>;
+export type Syllabus = z.output<typeof syllabusSchema>;
+export type AdminTopic = z.output<typeof adminTopicSchema>;
 export type Department = z.output<typeof departmentSchema>;
 export type Major = z.output<typeof majorSchema>;
 export type Specialization = z.output<typeof specializationSchema>;
@@ -357,6 +421,41 @@ export type UpdateCurriculumBody = {
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
   totalCredits?: number | null;
+};
+export type CreateCourseSectionBody = {
+  subjectId: string;
+  semesterId: string;
+  lecturerId?: string | null;
+  sectionCode: string;
+  capacity?: number | null;
+};
+/** The API accepts only the assignment and the capacity after creation. */
+export type UpdateCourseSectionBody = {
+  lecturerId?: string | null;
+  capacity?: number | null;
+};
+export type CreateSyllabusBody = {
+  subjectId: string;
+  syllabusCode: string;
+  syllabusName: string;
+  version: string;
+};
+export type UpdateSyllabusBody = {
+  syllabusName: string;
+  version: string;
+};
+export type CreateTopicBody = {
+  subjectId: string;
+  syllabusId?: string | null;
+  topicCode: string;
+  topicName: string;
+  description?: string | null;
+  displayOrder: number;
+};
+export type UpdateTopicBody = {
+  topicName: string;
+  description?: string | null;
+  displayOrder: number;
 };
 export type CreateUserBody = {
   fullName: string;
@@ -508,6 +607,60 @@ export const approveCurriculum = (id: string) =>
   write(`Curriculums/${id}/approve`, "PATCH");
 export const archiveCurriculum = (id: string) =>
   write(`Curriculums/${id}/archive`, "PATCH");
+
+/* ----------------------------------------------------------- CourseSections */
+
+export const getCourseSections = (filters: ReadFilters = {}) =>
+  readPage<CourseSection>("CourseSections", courseSectionSchema, {
+    PageNumber: 1,
+    PageSize: 10,
+    SortBy: "sectionCode",
+    ...filters,
+  });
+export const createCourseSection = (body: CreateCourseSectionBody) =>
+  write("CourseSections", "POST", body);
+export const updateCourseSection = (
+  id: string,
+  body: UpdateCourseSectionBody,
+) => write(`CourseSections/${id}`, "PUT", body);
+export const openCourseSection = (id: string) =>
+  write(`CourseSections/${id}/open`, "PATCH");
+export const closeCourseSection = (id: string) =>
+  write(`CourseSections/${id}/close`, "PATCH");
+export const cancelCourseSection = (id: string) =>
+  write(`CourseSections/${id}/cancel`, "PATCH");
+
+/* ------------------------------------------------------------------ Syllabi */
+
+export const getSyllabi = (filters: ReadFilters = {}) =>
+  readPage<Syllabus>("Syllabi", syllabusSchema, {
+    PageNumber: 1,
+    PageSize: 10,
+    SortBy: "syllabusCode",
+    ...filters,
+  });
+export const createSyllabus = (body: CreateSyllabusBody) =>
+  write("Syllabi", "POST", body);
+export const updateSyllabus = (id: string, body: UpdateSyllabusBody) =>
+  write(`Syllabi/${id}`, "PUT", body);
+export const setSyllabusActive = (id: string, active: boolean) =>
+  write(`Syllabi/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
+
+/* ------------------------------------------------------------------- Topics */
+
+export const getAdminTopics = (filters: ReadFilters = {}) =>
+  readPage<AdminTopic>("Topics", adminTopicSchema, {
+    PageNumber: 1,
+    PageSize: 10,
+    SortBy: "displayOrder",
+    ...filters,
+  });
+export const createTopic = (body: CreateTopicBody) =>
+  write("Topics", "POST", body);
+export const updateTopic = (id: string, body: UpdateTopicBody) =>
+  write(`Topics/${id}`, "PUT", body);
+export const setTopicActive = (id: string, active: boolean) =>
+  write(`Topics/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
 
 /* -------------------------------------------------------------------- Users */
 

@@ -1,10 +1,13 @@
 import {
+  BookMarked,
   Building2,
   CalendarRange,
   ChevronDown,
   GraduationCap,
+  Layers,
   LayoutDashboard,
   LibraryBig,
+  ListTree,
   LogOut,
   Network,
   ScrollText,
@@ -52,8 +55,22 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
       icon: LibraryBig,
       items: [
         { label: "Subjects", path: "/admin/subjects", icon: LibraryBig },
-        { label: "Semesters", path: "/admin/semesters", icon: CalendarRange },
+        { label: "Syllabi", path: "/admin/syllabi", icon: BookMarked },
+        { label: "Topics", path: "/admin/topics", icon: ListTree },
         { label: "Curriculums", path: "/admin/curriculums", icon: ScrollText },
+      ],
+    },
+    {
+      label: "Scheduling",
+      id: "scheduling",
+      icon: CalendarRange,
+      items: [
+        { label: "Semesters", path: "/admin/semesters", icon: CalendarRange },
+        {
+          label: "Course Sections",
+          path: "/admin/course-sections",
+          icon: Layers,
+        },
       ],
     },
     {

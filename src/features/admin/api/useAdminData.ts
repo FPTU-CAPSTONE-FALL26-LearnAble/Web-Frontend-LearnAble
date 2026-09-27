@@ -2,16 +2,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { ApiFailure } from "@/api/client";
 import {
+  getAdminSemesters,
+  getAdminSubjects,
   getAdminUsers,
   getCurriculums,
   getDepartments,
   getMajors,
   getSpecializations,
+  getSyllabi,
+  type AdminSemester,
+  type AdminSubject,
   type AdminUser,
   type Curriculum,
   type Department,
   type Major,
   type Specialization,
+  type Syllabus,
   type UserRole,
 } from "@/api/admin";
 import { describeError } from "@/app/providers";
@@ -119,6 +125,34 @@ export function useCurriculumOptions(majorId?: string) {
   return query;
 }
 
+export function useSubjectOptions() {
+  const query = useQuery({
+    queryKey: adminKeys.list("subjects", ["options"]),
+    queryFn: () => getAdminSubjects({ PageSize: 200 }),
+  });
+  useExpiredAdminSession(query.error);
+  return query;
+}
+
+export function useSemesterOptions() {
+  const query = useQuery({
+    queryKey: adminKeys.list("semesters", ["options"]),
+    queryFn: () => getAdminSemesters({ PageSize: 200 }),
+  });
+  useExpiredAdminSession(query.error);
+  return query;
+}
+
+export function useSyllabusOptions(subjectId?: string) {
+  const query = useQuery({
+    queryKey: adminKeys.list("syllabi", ["options", subjectId ?? "all"]),
+    queryFn: () =>
+      getSyllabi({ PageSize: 200, SubjectId: subjectId || undefined }),
+  });
+  useExpiredAdminSession(query.error);
+  return query;
+}
+
 /**
  * Accounts eligible for a profile. Filtered by role so a student profile cannot
  * be attached to a lecturer account by accident.
@@ -155,4 +189,16 @@ export const specializationLabel = (
 export const curriculumLabel = (rows: Curriculum[], id?: string | null) => {
   const row = rows.find((item) => item.curriculumId === id);
   return row ? `${row.curriculumCode} · ${row.version}` : null;
+};
+export const subjectLabel = (rows: AdminSubject[], id?: string | null) => {
+  const row = rows.find((item) => item.subjectId === id);
+  return row ? `${row.subjectCode} · ${row.subjectNameEn}` : null;
+};
+export const semesterLabel = (rows: AdminSemester[], id?: string | null) => {
+  const row = rows.find((item) => item.semesterId === id);
+  return row ? `${row.semesterCode} · ${row.semesterName}` : null;
+};
+export const syllabusLabel = (rows: Syllabus[], id?: string | null) => {
+  const row = rows.find((item) => item.syllabusId === id);
+  return row ? `${row.syllabusCode} · ${row.version}` : null;
 };

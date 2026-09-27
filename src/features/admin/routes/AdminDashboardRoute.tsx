@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
   ArrowRight,
+  BookMarked,
   Building2,
   CalendarRange,
-  CircleDot,
   GraduationCap,
+  Layers,
   LibraryBig,
+  ListTree,
   Network,
   ScrollText,
   UserCog,
@@ -16,13 +18,16 @@ import {
 import {
   getAdminSemesters,
   getAdminSubjects,
+  getAdminTopics,
   getAdminUsers,
+  getCourseSections,
   getCurriculums,
   getDepartments,
   getLecturerProfiles,
   getMajors,
   getSpecializations,
   getStudentProfiles,
+  getSyllabi,
 } from "@/api/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -84,6 +89,27 @@ const countQueries = [
     path: "/admin/subjects",
     icon: LibraryBig,
     read: () => getAdminSubjects({ PageSize: 1 }),
+  },
+  {
+    key: "syllabi",
+    label: "Syllabi",
+    path: "/admin/syllabi",
+    icon: BookMarked,
+    read: () => getSyllabi({ PageSize: 1 }),
+  },
+  {
+    key: "topics",
+    label: "Topics",
+    path: "/admin/topics",
+    icon: ListTree,
+    read: () => getAdminTopics({ PageSize: 1 }),
+  },
+  {
+    key: "courseSections",
+    label: "Course sections",
+    path: "/admin/course-sections",
+    icon: Layers,
+    read: () => getCourseSections({ PageSize: 1 }),
   },
   {
     key: "curriculums",
@@ -332,11 +358,6 @@ export function AdminDashboardRoute() {
         })}
       </section>
 
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
-        <CircleDot aria-hidden className="mt-1 size-4 shrink-0" />
-        Course sections, syllabi and topics exist in the API but do not have an
-        admin surface yet.
-      </p>
     </div>
   );
 }

@@ -33,6 +33,9 @@ import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SpecializationsRoute } from "@/features/admin/routes/SpecializationsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
+import { SyllabiRoute } from "@/features/admin/routes/SyllabiRoute";
+import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
+import { CourseSectionsRoute } from "@/features/admin/routes/CourseSectionsRoute";
 import { SemestersRoute } from "@/features/admin/routes/SemestersRoute";
 import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
 import { UsersRoute } from "@/features/admin/routes/UsersRoute";
@@ -150,7 +153,13 @@ export const router = createBrowserRouter([
                 element: <SpecializationsRoute />,
               },
               { path: "/admin/subjects", element: <SubjectsRoute /> },
+              { path: "/admin/syllabi", element: <SyllabiRoute /> },
+              { path: "/admin/topics", element: <TopicsRoute /> },
               { path: "/admin/semesters", element: <SemestersRoute /> },
+              {
+                path: "/admin/course-sections",
+                element: <CourseSectionsRoute />,
+              },
               { path: "/admin/curriculums", element: <CurriculumsRoute /> },
               { path: "/admin/users", element: <UsersRoute /> },
               {
