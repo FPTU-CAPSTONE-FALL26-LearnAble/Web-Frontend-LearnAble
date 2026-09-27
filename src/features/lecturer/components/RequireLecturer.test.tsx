@@ -20,6 +20,7 @@ function renderGuard(role: string) {
         </Route>
         <Route path="/practice" element={<p>Student area</p>} />
         <Route path="/examiner/dashboard" element={<p>Examiner area</p>} />
+        <Route path="/admin/dashboard" element={<p>Admin area</p>} />
         <Route path="/login" element={<p>Login page</p>} />
       </Routes>
     </MemoryRouter>,
@@ -42,8 +43,13 @@ describe("RequireLecturer", () => {
     expect(screen.getByText("Examiner area")).toBeInTheDocument();
   });
 
-  it("clears unsupported roles instead of treating them as students", () => {
+  it("sends admins to their own workspace", () => {
     renderGuard("Admin");
+    expect(screen.getByText("Admin area")).toBeInTheDocument();
+  });
+
+  it("clears unsupported roles instead of treating them as students", () => {
+    renderGuard("Registrar");
     expect(screen.getByText("Login page")).toBeInTheDocument();
   });
 });

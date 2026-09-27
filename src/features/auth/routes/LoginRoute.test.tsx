@@ -37,7 +37,15 @@ describe("LoginRoute", () => {
     expect(getPostLoginDestination("Student", "/examiner/dashboard")).toBe(
       "/practice",
     );
-    expect(getPostLoginDestination("Admin")).toBeNull();
+    expect(getPostLoginDestination("Admin")).toBe("/admin/dashboard");
+    expect(getPostLoginDestination("Admin", "/admin/users")).toBe(
+      "/admin/users",
+    );
+    expect(getPostLoginDestination("Admin", "/lecturer/dashboard")).toBe(
+      "/admin/dashboard",
+    );
+    expect(getPostLoginDestination("Student", "/admin/users")).toBe("/practice");
+    expect(getPostLoginDestination("Registrar")).toBeNull();
   });
   it("validates required fields and toggles password visibility", async () => {
     const user = userEvent.setup();

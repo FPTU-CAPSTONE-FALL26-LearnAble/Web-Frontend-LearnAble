@@ -26,6 +26,21 @@ import { UploadMaterialRoute } from "@/features/lecturer/routes/UploadMaterialRo
 import { ExamScheduleRoute } from "@/features/lecturer/routes/ExamScheduleRoute";
 import { AttendanceRoute } from "@/features/lecturer/routes/AttendanceRoute";
 import { LecturerProfileRoute } from "@/features/lecturer/routes/LecturerProfileRoute";
+import { AdminLayout } from "@/features/admin/components/AdminLayout";
+import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
+import { AdminDashboardRoute } from "@/features/admin/routes/AdminDashboardRoute";
+import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
+import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
+import { SpecializationsRoute } from "@/features/admin/routes/SpecializationsRoute";
+import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
+import { SyllabiRoute } from "@/features/admin/routes/SyllabiRoute";
+import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
+import { CourseSectionsRoute } from "@/features/admin/routes/CourseSectionsRoute";
+import { SemestersRoute } from "@/features/admin/routes/SemestersRoute";
+import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
+import { UsersRoute } from "@/features/admin/routes/UsersRoute";
+import { StudentProfilesRoute } from "@/features/admin/routes/StudentProfilesRoute";
+import { LecturerProfilesRoute } from "@/features/admin/routes/LecturerProfilesRoute";
 import { ExaminerLayout } from "@/features/examiner/components/ExaminerLayout";
 import { RequireExaminer } from "@/features/examiner/components/RequireExaminer";
 import {
@@ -119,6 +134,42 @@ export const router = createBrowserRouter([
                 element: <AttendanceRoute />,
               },
               { path: "/lecturer/profile", element: <LecturerProfileRoute /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RequireAdmin />,
+        children: [
+          {
+            element: <AdminLayout />,
+            children: [
+              { path: "/admin", element: <Navigate to="/admin/dashboard" replace /> },
+              { path: "/admin/dashboard", element: <AdminDashboardRoute /> },
+              { path: "/admin/departments", element: <DepartmentsRoute /> },
+              { path: "/admin/majors", element: <MajorsRoute /> },
+              {
+                path: "/admin/specializations",
+                element: <SpecializationsRoute />,
+              },
+              { path: "/admin/subjects", element: <SubjectsRoute /> },
+              { path: "/admin/syllabi", element: <SyllabiRoute /> },
+              { path: "/admin/topics", element: <TopicsRoute /> },
+              { path: "/admin/semesters", element: <SemestersRoute /> },
+              {
+                path: "/admin/course-sections",
+                element: <CourseSectionsRoute />,
+              },
+              { path: "/admin/curriculums", element: <CurriculumsRoute /> },
+              { path: "/admin/users", element: <UsersRoute /> },
+              {
+                path: "/admin/student-profiles",
+                element: <StudentProfilesRoute />,
+              },
+              {
+                path: "/admin/lecturer-profiles",
+                element: <LecturerProfilesRoute />,
+              },
             ],
           },
         ],
