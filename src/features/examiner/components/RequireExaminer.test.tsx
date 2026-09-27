@@ -12,6 +12,7 @@ function renderGuard() {
           <Route path="/examiner/dashboard" element={<p>Examiner area</p>} />
         </Route>
         <Route path="/lecturer/dashboard" element={<p>Lecturer area</p>} />
+        <Route path="/admin/dashboard" element={<p>Admin area</p>} />
         <Route path="/practice" element={<p>Student area</p>} />
         <Route path="/login" element={<p>Login page</p>} />
       </Routes>
@@ -46,13 +47,26 @@ describe("RequireExaminer", () => {
     expect(screen.getByText("Lecturer area")).toBeInTheDocument();
   });
 
-  it("clears unsupported roles instead of treating them as students", () => {
+  it("sends admins to their own workspace", () => {
     useAuthStore.setState({
       user: {
         id: "a1",
         fullName: "Admin One",
         email: "admin@fpt.edu.vn",
         role: "Admin",
+      },
+    });
+    renderGuard();
+    expect(screen.getByText("Admin area")).toBeInTheDocument();
+  });
+
+  it("clears unsupported roles instead of treating them as students", () => {
+    useAuthStore.setState({
+      user: {
+        id: "r1",
+        fullName: "Registrar One",
+        email: "registrar@fpt.edu.vn",
+        role: "Registrar",
       },
     });
     renderGuard();

@@ -1,9 +1,10 @@
-export type SupportedRole = "student" | "lecturer" | "examiner";
+export type SupportedRole = "student" | "lecturer" | "examiner" | "admin";
 
 const defaultDestination: Record<SupportedRole, string> = {
   student: "/practice",
   lecturer: "/lecturer/dashboard",
   examiner: "/examiner/dashboard",
+  admin: "/admin/dashboard",
 };
 
 const studentRoutes = [
@@ -20,7 +21,8 @@ export function normalizeSupportedRole(
   const normalized = role?.trim().toLowerCase();
   return normalized === "student" ||
     normalized === "lecturer" ||
-    normalized === "examiner"
+    normalized === "examiner" ||
+    normalized === "admin"
     ? normalized
     : null;
 }
@@ -28,6 +30,7 @@ export function normalizeSupportedRole(
 export function isPathAllowedForRole(role: SupportedRole, path: string) {
   if (role === "lecturer") return path.startsWith("/lecturer/");
   if (role === "examiner") return path.startsWith("/examiner/");
+  if (role === "admin") return path.startsWith("/admin/");
   return studentRoutes.some(
     (route) => path === route || path.startsWith(`${route}/`),
   );

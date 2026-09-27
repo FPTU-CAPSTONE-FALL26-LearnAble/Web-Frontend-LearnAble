@@ -1,0 +1,74 @@
+/* Admin workspace shell. Every solid colour resolves to an approved base token. */
+.admin-shell {
+  --admin-navy: var(--color-text);
+  --admin-orange: var(--color-action);
+  --admin-blue: var(--color-secondary);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.admin-shell ::selection {
+  color: var(--color-selected-text);
+  background: color-mix(in srgb, var(--color-action) 24%, var(--color-bg));
+}
+
+.admin-shell [data-slot="card"] {
+  border-color: var(--color-border-subtle);
+}
+
+/* Panels that own a table or a form carry the stronger stroke. */
+.admin-shell .admin-panel {
+  border: 1px solid color-mix(in srgb, var(--color-border) 62%, #ffffff);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.admin-shell .admin-kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.admin-shell .summary-icon svg { color: inherit; }
+.admin-shell .text-secondary { color: var(--color-secondary); }
+.admin-shell .border-secondary { border-color: var(--color-secondary); }
+
+.admin-shell [data-slot="table-container"]:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: -3px;
+}
+
+/* Mobile needs a visible horizontal-scroll affordance on dense tables. */
+@media (max-width: 767px) {
+  .admin-shell [data-slot="table-container"] {
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-action) var(--color-border-subtle);
+    box-shadow: inset -18px 0 16px -20px #0f172a;
+  }
+  .admin-shell [data-slot="table-container"]::-webkit-scrollbar { height: 10px; }
+  .admin-shell [data-slot="table-container"]::-webkit-scrollbar-track { background: var(--color-border-subtle); }
+  .admin-shell [data-slot="table-container"]::-webkit-scrollbar-thumb {
+    background: var(--color-action);
+    border-radius: 999px;
+  }
+}
+
+.admin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.admin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
