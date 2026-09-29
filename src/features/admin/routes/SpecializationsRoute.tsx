@@ -8,14 +8,14 @@ import {
   updateSpecialization,
   type Specialization,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -167,8 +167,7 @@ export function SpecializationsRoute() {
       {!majors.isPending && !majors.error && !majorRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Create a major first — every specialization must belong to one.
         </p>

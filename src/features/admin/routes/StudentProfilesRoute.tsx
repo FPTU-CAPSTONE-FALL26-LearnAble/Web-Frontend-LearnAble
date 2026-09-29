@@ -11,14 +11,14 @@ import {
   type EnrollmentStatus,
   type StudentProfile,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -125,8 +125,7 @@ export function StudentProfilesRoute() {
     queryFn: () =>
       getStudentProfiles({
         MajorId: major === "all" ? undefined : major,
-        SpecializationId:
-          specialization === "all" ? undefined : specialization,
+        SpecializationId: specialization === "all" ? undefined : specialization,
         CurriculumId: curriculum === "all" ? undefined : curriculum,
         EnrollmentStatus: enrollment === "all" ? undefined : enrollment,
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
@@ -224,8 +223,7 @@ export function StudentProfilesRoute() {
     rows.filter((row) => row.enrollmentStatus === value).length;
   const referencePending =
     students.isPending || majors.isPending || allCurriculums.isPending;
-  const referenceError =
-    students.error || majors.error || allCurriculums.error;
+  const referenceError = students.error || majors.error || allCurriculums.error;
 
   return (
     <div className="space-y-6">
@@ -248,8 +246,7 @@ export function StudentProfilesRoute() {
       {!referencePending && !referenceError && !studentRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Create a user account with the Student role first — a profile attaches
           to an existing account.

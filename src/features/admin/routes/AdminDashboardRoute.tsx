@@ -29,16 +29,16 @@ import {
   getStudentProfiles,
   getSyllabi,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Table } from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
+import { Table } from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -261,8 +261,8 @@ export function AdminDashboardRoute() {
         ))}
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <h2 className="text-lg font-bold">Most recent semesters</h2>
           <Button asChild variant="ghost">
             <Link to="/admin/semesters">
@@ -334,13 +334,7 @@ export function AdminDashboardRoute() {
           return (
             <Card key={item.key} className="shadow-none">
               <CardContent className="flex min-h-24 items-center gap-4 pt-6">
-                <span
-                  className="summary-icon flex size-11 shrink-0 items-center justify-center rounded-lg"
-                  style={{
-                    background: "var(--color-info-bg)",
-                    color: "var(--color-info-text)",
-                  }}
-                >
+                <span className="summary-icon flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
                   <Icon aria-hidden className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -357,7 +351,6 @@ export function AdminDashboardRoute() {
           );
         })}
       </section>
-
     </div>
   );
 }

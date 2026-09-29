@@ -11,14 +11,14 @@ import {
   updateCourseSection,
   type CourseSection,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -232,8 +232,7 @@ export function CourseSectionsRoute() {
       {!referencePending && !referenceError && !canCreate && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           A section needs both a subject and a semester. Create the missing one
           first.
@@ -487,7 +486,9 @@ export function CourseSectionsRoute() {
             value: row.subjectId,
             label: `${row.subjectCode} · ${row.subjectNameEn}`,
           }))}
-          onChange={(value) => setDraft((old) => ({ ...old, subjectId: value }))}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, subjectId: value }))
+          }
         />
         <ChoiceField
           label="Semester of section"
@@ -564,7 +565,9 @@ export function CourseSectionsRoute() {
               ? `${transition?.row.sectionCode} will stop accepting enrolment. Students already enrolled keep their place.`
               : `${transition?.row.sectionCode} will be cancelled. A cancelled section cannot be reopened from this workspace.`
         }
-        confirmLabel={transition ? transitionCopy[transition.action].confirm : ""}
+        confirmLabel={
+          transition ? transitionCopy[transition.action].confirm : ""
+        }
         onConfirm={() =>
           transition &&
           move.mutate({

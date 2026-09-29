@@ -8,14 +8,14 @@ import {
   updateSyllabus,
   type Syllabus,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -177,8 +177,7 @@ export function SyllabiRoute() {
       {!subjects.isPending && !subjects.error && !subjectRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Create a subject first — every syllabus belongs to one.
         </p>
@@ -313,7 +312,9 @@ export function SyllabiRoute() {
               </TableCell>
               <TableCell className="min-w-44 whitespace-normal">
                 {userLabel(lecturerRows, row.createdBy) ??
-                  (row.authorRole ? `${row.authorRole} account` : "Not available")}
+                  (row.authorRole
+                    ? `${row.authorRole} account`
+                    : "Not available")}
               </TableCell>
               <TableCell>
                 <StatusBadge
@@ -383,7 +384,9 @@ export function SyllabiRoute() {
             value: row.subjectId,
             label: `${row.subjectCode} · ${row.subjectNameEn}`,
           }))}
-          onChange={(value) => setDraft((old) => ({ ...old, subjectId: value }))}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, subjectId: value }))
+          }
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
@@ -402,7 +405,9 @@ export function SyllabiRoute() {
           <TextField
             label="Syllabus version"
             value={draft.version}
-            onChange={(value) => setDraft((old) => ({ ...old, version: value }))}
+            onChange={(value) =>
+              setDraft((old) => ({ ...old, version: value }))
+            }
             error={
               errors.some((e) => e.startsWith("Version"))
                 ? "Version is required."

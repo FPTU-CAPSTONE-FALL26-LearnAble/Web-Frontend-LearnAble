@@ -8,14 +8,14 @@ import {
   updateDepartment,
   type Department,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   StatusBadge,
@@ -37,8 +37,16 @@ import {
   formatDate,
 } from "../components/AdminSurfaces";
 
-type Draft = { departmentCode: string; departmentName: string; description: string };
-const emptyDraft: Draft = { departmentCode: "", departmentName: "", description: "" };
+type Draft = {
+  departmentCode: string;
+  departmentName: string;
+  description: string;
+};
+const emptyDraft: Draft = {
+  departmentCode: "",
+  departmentName: "",
+  description: "",
+};
 
 export function DepartmentsRoute() {
   useRouteAnnouncer("Departments · LearnAble Admin", "Departments");

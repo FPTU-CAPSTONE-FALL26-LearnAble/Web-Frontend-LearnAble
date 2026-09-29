@@ -8,14 +8,14 @@ import {
   updateTopic,
   type AdminTopic,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -78,7 +78,9 @@ export function TopicsRoute() {
   const subjects = useSubjectOptions();
   const allSyllabi = useSyllabusOptions();
   // The create form narrows its syllabus options to the chosen subject.
-  const draftSyllabi = useSyllabusOptions(creating ? draft.subjectId : undefined);
+  const draftSyllabi = useSyllabusOptions(
+    creating ? draft.subjectId : undefined,
+  );
   const subjectRows = subjects.data?.items ?? [];
   const syllabusRows = allSyllabi.data?.items ?? [];
 
@@ -190,8 +192,7 @@ export function TopicsRoute() {
       {!subjects.isPending && !subjects.error && !subjectRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Create a subject first — every topic belongs to one.
         </p>
@@ -463,7 +464,9 @@ export function TopicsRoute() {
         <TextField
           label="Topic name"
           value={draft.topicName}
-          onChange={(value) => setDraft((old) => ({ ...old, topicName: value }))}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, topicName: value }))
+          }
           error={
             errors.some((e) => e.startsWith("Topic name"))
               ? "Topic name is required."

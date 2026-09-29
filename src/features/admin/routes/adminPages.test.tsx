@@ -175,7 +175,8 @@ describe("Admin workspaces", { timeout: 30000 }, () => {
     view(<DepartmentsRoute />);
     expect(await screen.findByText("Artificial Intelligence")).toBeInTheDocument();
     const badge = screen.getByText("Inactive");
-    expect(badge).toHaveStyle({ background: "var(--color-neutral-status-bg)" });
+    expect(badge).toHaveClass("bg-muted");
+    expect(badge).not.toHaveClass("bg-success");
   });
 
   it("validates a new department locally before calling the API", async () => {

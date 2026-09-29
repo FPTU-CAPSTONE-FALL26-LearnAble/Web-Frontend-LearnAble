@@ -19,10 +19,10 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
 import type { User } from "@/api/auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/shared/ui/primitives/button";
+import { Separator } from "@/shared/ui/primitives/separator";
 import { cn } from "@/lib/utils";
 
 type Item = { label: string; path: string; icon: LucideIcon };
@@ -99,8 +99,8 @@ const itemClasses = (active: boolean, nested: boolean) =>
     "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition-colors",
     nested ? "py-2" : "py-2.5",
     active
-      ? "border-[var(--color-action)] bg-[var(--color-selected-bg)] text-[var(--color-text)]"
-      : "border-transparent text-muted-foreground hover:bg-[var(--color-selected-bg)] hover:text-foreground",
+      ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+      : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
   );
 
 function NavGroup({
@@ -113,7 +113,8 @@ function NavGroup({
   onNavigate?: () => void;
 }) {
   const groupActive = group.items.some(
-    (item) => item.path === activePath || activePath.startsWith(`${item.path}/`),
+    (item) =>
+      item.path === activePath || activePath.startsWith(`${item.path}/`),
   );
   const [open, setOpen] = useState(groupActive);
   // A descendant becoming active must always reveal its group.
@@ -143,7 +144,7 @@ function NavGroup({
       {open ? (
         <div
           id={`admin-nav-${group.id}`}
-          className="ml-5 mt-1 space-y-1 border-l border-[var(--color-border-subtle)] pl-3"
+          className="ml-5 mt-1 space-y-1 border-l border-border pl-3"
         >
           {group.items.map((item) => {
             const Icon = item.icon;
@@ -187,12 +188,12 @@ export function AdminSidebar({
   const DashboardIcon = adminNavigation.dashboard.icon;
   return (
     <div className="admin-scroll flex h-full flex-col overflow-y-auto bg-white px-4 py-4">
-      <div className="border-b border-[var(--color-border-subtle)] px-1 pb-4">
+      <div className="border-b border-border px-1 pb-4">
         <BrandIdentity lecturer roleLabel={user.role || "Admin"} />
       </div>
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-[var(--color-border-subtle)] p-3">
+      <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
         <Avatar size="lg">
-          <AvatarFallback className="bg-[var(--color-text)] font-bold text-white">
+          <AvatarFallback className="bg-foreground font-bold text-background">
             {initials}
           </AvatarFallback>
         </Avatar>

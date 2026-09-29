@@ -8,14 +8,14 @@ import {
   updateLecturerProfile,
   type LecturerProfile,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -122,8 +122,7 @@ export function LecturerProfilesRoute() {
   const update = useAdminWrite({
     resource: "lecturerProfiles",
     action: "Update lecturer profile",
-    mutationFn: () =>
-      updateLecturerProfile(editing!.lecturerProfileId, body()),
+    mutationFn: () => updateLecturerProfile(editing!.lecturerProfileId, body()),
     onSuccess: closeForm,
   });
   const remove = useAdminWrite<string>({
@@ -172,11 +171,10 @@ export function LecturerProfilesRoute() {
       {!referencePending && !referenceError && !lecturerRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
-          Create a user account with the Lecturer role first — a profile attaches
-          to an existing account.
+          Create a user account with the Lecturer role first — a profile
+          attaches to an existing account.
         </p>
       )}
 

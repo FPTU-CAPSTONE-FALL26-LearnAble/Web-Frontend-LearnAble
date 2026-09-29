@@ -11,14 +11,14 @@ import {
   type AdminUser,
   type UserRole,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   StatusBadge,
@@ -379,7 +379,9 @@ export function UsersRoute() {
             label="User code"
             value={draft.userCode}
             disabled={!creating}
-            onChange={(value) => setDraft((old) => ({ ...old, userCode: value }))}
+            onChange={(value) =>
+              setDraft((old) => ({ ...old, userCode: value }))
+            }
             error={
               errors.some((e) => e.startsWith("User code"))
                 ? "User code is required."
