@@ -1,8 +1,15 @@
 import { useEffect } from "react";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
-import { SelectField, SelectItem } from "@/shared/ui/primitives/Select";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/RadioGroup";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/primitives/select";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Label } from "@/shared/ui/primitives/label";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
@@ -77,24 +84,36 @@ export function AccessibilitySettingsRoute() {
             </a>
           </div>
         ) : (
-          <SelectField
-            label={vi.a11ySettings.ttsVoice}
-            value={selectedVoice?.voiceURI}
-            onValueChange={setVoiceUri}
-          >
-            {voices.map((v) => (
-              <SelectItem key={v.voiceURI} value={v.voiceURI}>
-                {v.name}
-              </SelectItem>
-            ))}
-          </SelectField>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="tts-voice-select">{vi.a11ySettings.ttsVoice}</Label>
+            <Select
+              value={selectedVoice?.voiceURI}
+              onValueChange={setVoiceUri}
+            >
+              <SelectTrigger id="tts-voice-select">
+                <SelectValue placeholder={vi.a11ySettings.ttsVoice} />
+              </SelectTrigger>
+              <SelectContent>
+                {voices.map((v) => (
+                  <SelectItem key={v.voiceURI} value={v.voiceURI}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 font-medium">{vi.a11ySettings.ttsRate}</legend>
           <RadioGroup value={String(rate)} onValueChange={(v) => setRate(Number(v))}>
             {RATES.map((r) => (
-              <RadioGroupItem key={r} value={r} label={vi.a11ySettings.ttsRateValue(r)} />
+              <div key={r} className="flex min-h-[44px] items-center gap-3">
+                <RadioGroupItem id={`rate-${r}`} value={r} />
+                <Label htmlFor={`rate-${r}`} className="cursor-pointer">
+                  {vi.a11ySettings.ttsRateValue(r)}
+                </Label>
+              </div>
             ))}
           </RadioGroup>
         </fieldset>

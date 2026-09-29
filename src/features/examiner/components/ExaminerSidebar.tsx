@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router";
 import type { User } from "@/api/auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
+import { Button } from "@/shared/ui/primitives/button";
+import { Separator } from "@/shared/ui/primitives/separator";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { cn } from "@/lib/utils";
 

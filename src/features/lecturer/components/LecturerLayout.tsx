@@ -1,17 +1,17 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/shared/ui/primitives/sheet";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { lecturerDashboardFixture } from "@/features/lecturer/data/dashboardFixture";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { LecturerSidebar } from "./LecturerSidebar";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import "./lecturer-theme.css";

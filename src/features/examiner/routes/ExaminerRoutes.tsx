@@ -20,20 +20,20 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Progress } from "@/shared/ui/primitives/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/shared/ui/primitives/select";
+import { Textarea } from "@/shared/ui/primitives/textarea";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   getQuestion,
@@ -44,8 +44,14 @@ import {
 } from "@/api/catalog";
 import { useExpiredSession } from "@/features/lecturer/api/useLecturerData";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
-import { toast } from "@/shared/ui/primitives/Toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
+import { toast } from "@/shared/ui/primitives/toast";
 import { candidates, examPapers, incidents, rooms } from "../data/fixtures";
 
 const unavailable = (label: string) =>
@@ -1061,7 +1067,6 @@ export function QuestionSelectionRoute() {
                       </p>
                     </div>
                     <Button
-                      size="sm"
                       variant="outline"
                       type="button"
                       onClick={(event) => {
@@ -1152,11 +1157,11 @@ export function QuestionSelectionRoute() {
           if (!open) setPreviewId(undefined);
         }}
       >
-        <DialogContent
-          title="Question preview"
-          description="Live question detail from LearnAble API."
-          closeLabel="Close question preview"
-        >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Question preview</DialogTitle>
+            <DialogDescription>Live question detail from LearnAble API.</DialogDescription>
+          </DialogHeader>
           <ApiState
             pending={preview.isPending}
             error={preview.error}

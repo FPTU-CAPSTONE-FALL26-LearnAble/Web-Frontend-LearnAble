@@ -59,6 +59,9 @@ import {
   ScheduleReadinessRoute,
   ScheduleRoomsRoute,
 } from "@/features/examiner/routes/ExaminerRoutes";
+import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
+import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
+import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
 
 function LegacyParameterizedRedirect({
   destination,
@@ -78,6 +81,10 @@ function LegacyParameterizedRedirect({
 }
 
 export const router = createBrowserRouter([
+  { path: "/demo/components", element: <ComponentDemoRoute /> },
+  { path: "/demo/result", element: <ResultReceiptDemoRoute /> },
+  { path: "/demo/exam", element: <ExamDemoRoute /> },
+  { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   { path: "/login", element: <LoginRoute /> },
   { path: "/forgot-password", element: <ForgotPasswordRoute /> },
   { path: "/dang-nhap", element: <Navigate to="/login" replace /> },

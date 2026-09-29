@@ -9,11 +9,17 @@ import {
   TriangleAlert,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Input } from "@/shared/ui/primitives/input";
+import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
 import { ExamOverview } from "../components/ExamOverview";
 import {
   Breadcrumb,
@@ -306,7 +312,6 @@ export function AttendanceRoute() {
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Button
-                            size="sm"
                             variant="outline"
                             className="border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-error-text)] hover:bg-[var(--color-success)] hover:opacity-90"
                             onClick={() =>
@@ -316,7 +321,6 @@ export function AttendanceRoute() {
                             Present
                           </Button>
                           <Button
-                            size="sm"
                             variant="outline"
                             className="border-[var(--color-error)] bg-[var(--color-error)] text-[var(--color-error-text)] hover:bg-[var(--color-error)] hover:opacity-90"
                             onClick={() => notConnected(`Mark ${seat.name} absent`)}
@@ -344,11 +348,13 @@ export function AttendanceRoute() {
                 }}
               >
                 {photoSeat && (
-                  <DialogContent
-                    title={photoSeat.name}
-                    description={`Student photo · ${photoSeat.studentId} · Seat ${photoSeat.seatLocation}`}
-                    className="w-[min(92vw,440px)]"
-                  >
+                  <DialogContent className="w-[min(92vw,440px)]">
+                    <DialogHeader>
+                      <DialogTitle>{photoSeat.name}</DialogTitle>
+                      <DialogDescription>
+                        {`Student photo · ${photoSeat.studentId} · Seat ${photoSeat.seatLocation}`}
+                      </DialogDescription>
+                    </DialogHeader>
                     <Avatar className="mx-auto h-[min(58vh,440px)] w-full max-w-80 rounded-xl border border-[var(--color-border)] after:rounded-xl">
                       <AvatarFallback className="rounded-xl bg-[var(--color-info-bg)] text-6xl font-extrabold text-[var(--color-secondary)]">
                         {initials(photoSeat.name)}

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Button } from "@/shared/ui/primitives/Button";
-import { Card } from "@/shared/ui/primitives/Card";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card } from "@/shared/ui/primitives/card";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { cn } from "@/shared/ui/cn";

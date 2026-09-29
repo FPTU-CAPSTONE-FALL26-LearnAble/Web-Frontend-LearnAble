@@ -14,11 +14,11 @@ import {
   Users,
   TriangleAlert,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Progress } from "@/shared/ui/primitives/progress";
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   lecturerDashboardFixture as data,
