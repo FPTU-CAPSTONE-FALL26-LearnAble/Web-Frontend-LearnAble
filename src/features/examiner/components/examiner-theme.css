@@ -1,22 +1,22 @@
 .examiner-shell .examiner-panel {
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--color-surface);
+  background: var(--card);
 }
 .examiner-shell .examiner-major {
-  border: 1px solid color-mix(in srgb, var(--color-border) 64%, var(--color-bg));
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--color-surface);
+  background: var(--card);
 }
 .examiner-shell .examiner-kicker {
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--muted-foreground);
 }
 .examiner-shell .examiner-scroll {
-  scrollbar-color: var(--color-border) white;
+  scrollbar-color: var(--border) transparent;
   scrollbar-width: thin;
 }
 @media (prefers-reduced-motion: reduce) {

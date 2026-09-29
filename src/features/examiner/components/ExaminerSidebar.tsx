@@ -46,12 +46,12 @@ export function ExaminerSidebar({
       .toUpperCase() || "EX";
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-white px-4 py-4">
-      <div className="border-b border-[var(--color-border-subtle)] px-1 pb-4">
+      <div className="border-b border-border px-1 pb-4">
         <BrandIdentity lecturer roleLabel={user.role || "Examiner"} />
       </div>
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-[var(--color-border-subtle)] p-3">
+      <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
         <Avatar size="lg">
-          <AvatarFallback className="bg-[var(--color-text)] text-white">
+          <AvatarFallback className="bg-foreground text-background font-extrabold">
             {initials}
           </AvatarFallback>
         </Avatar>
@@ -73,8 +73,8 @@ export function ExaminerSidebar({
                 isActive ||
                   (path !== "/examiner/dashboard" &&
                     location.pathname.startsWith(path))
-                  ? "border-[var(--color-action)] bg-[color-mix(in_srgb,var(--color-action)_9%,white)] text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-[color-mix(in_srgb,var(--color-action)_6%,white)] hover:text-foreground",
+                  ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "border-transparent text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
               )
             }
           >
@@ -85,12 +85,9 @@ export function ExaminerSidebar({
         <button
           type="button"
           onClick={() => onUnavailable("Emergency workspace")}
-          className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-bold text-muted-foreground hover:bg-[color-mix(in_srgb,var(--color-error)_8%,white)] hover:text-foreground"
+          className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-left text-sm font-bold text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive"
         >
-          <AlertTriangle
-            className="size-5 text-[var(--color-error)]"
-            aria-hidden
-          />
+          <AlertTriangle className="size-5 text-destructive" aria-hidden />
           Emergency
         </button>
       </nav>

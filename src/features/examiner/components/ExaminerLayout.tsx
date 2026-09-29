@@ -35,10 +35,10 @@ export function ExaminerLayout() {
   return (
     <div className="examiner-shell min-h-screen bg-white lg:flex">
       <SkipLink />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-[var(--color-border-subtle)] lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
         <ExaminerSidebar {...props} />
       </aside>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border-subtle)] bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
         <Button
           size="icon"
           variant="outline"
