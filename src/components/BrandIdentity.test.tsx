@@ -8,12 +8,12 @@ describe("BrandIdentity", () => {
 
     const logo = screen.getByAltText("FPT University");
     expect(logo).toHaveClass("object-contain");
-    expect(screen.getByText("LearnAble")).toHaveClass("text-[var(--color-action)]");
+    expect(screen.getByText("LearnAble")).toHaveClass("text-primary");
     expect(
       screen.getByText("LearnAble").parentElement?.previousElementSibling,
-    ).toHaveClass("h-10", "w-px", "bg-[var(--color-text)]");
+    ).toHaveClass("h-10", "w-px", "bg-foreground");
     expect(screen.getByText("LearnAble").parentElement).not.toHaveClass(
-      "bg-[var(--color-text)]",
+      "bg-foreground",
     );
     expect(screen.getByText("Examiner")).toBeInTheDocument();
   });
@@ -23,6 +23,6 @@ describe("BrandIdentity", () => {
     expect(screen.getByText("Accessible learning")).toBeInTheDocument();
     expect(
       screen.getByText("LearnAble").parentElement?.previousElementSibling,
-    ).toHaveClass("h-12", "w-[2px]", "bg-[var(--color-text)]");
+    ).toHaveClass("h-12", "w-[2px]", "bg-foreground");
   });
 });

@@ -1,13 +1,13 @@
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/shared/ui/primitives/label";
+import { Input } from "@/shared/ui/primitives/input";
+import { Textarea } from "@/shared/ui/primitives/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/ui/primitives/select";
 import { useId } from "react";
 export function ChoiceField({
   label,

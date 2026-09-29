@@ -36,7 +36,7 @@ export function BrandIdentity({
       <span
         aria-hidden="true"
         className={cn(
-          "shrink-0 self-center bg-[var(--color-text)]",
+          "shrink-0 self-center bg-foreground",
           lecturer
             ? compact
               ? "h-8 w-px"
@@ -47,7 +47,7 @@ export function BrandIdentity({
       <div className={cn("min-w-0", lecturer && "text-left")}>
         <p
           className={cn(
-            "font-extrabold tracking-tight text-[var(--color-action)]",
+            "font-extrabold tracking-tight text-primary",
             lecturer
               ? compact
                 ? "text-base leading-none"

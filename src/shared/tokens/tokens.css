@@ -10,7 +10,7 @@
  */
 
 @theme default inline {
-  --color-brand-50: oklch(96.146% 0.059 60.999);
+  --color-brand-50: oklch(95.886% 0.02615 61.9);
   --color-brand-100: oklch(92.01% 0.07747 52.892);
   --color-brand-200: oklch(81.758% 0.13352 45.306);
   --color-brand-300: oklch(74.696% 0.17496 41.756);
@@ -60,8 +60,8 @@
   --sidebar-foreground: var(--color-slate-950);
   --sidebar-primary: var(--color-brand-600);
   --sidebar-primary-foreground: var(--color-brand-50);
-  --sidebar-accent: var(--color-slate-100);
-  --sidebar-accent-foreground: var(--color-slate-900);
+  --sidebar-accent: var(--color-brand-50);
+  --sidebar-accent-foreground: var(--color-brand-950);
   --sidebar-border: var(--color-slate-200);
   --sidebar-ring: var(--color-brand-600);
 }
