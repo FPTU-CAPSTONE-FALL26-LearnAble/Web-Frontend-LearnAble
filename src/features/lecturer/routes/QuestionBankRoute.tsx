@@ -300,17 +300,14 @@ export function QuestionBankRoute({
           </Button>
         </div>
       )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-        <div className="border-b border-[var(--color-border-subtle)] p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+        <div className="border-b border-border p-5">
           <h2 className="text-lg font-bold">{view.title}</h2>
           <p role="status" className="mt-1 text-sm text-muted-foreground">
             Showing {rows.length} of {filtered.length} questions
           </p>
         </div>
-        <Table
-          aria-label={`${view.title} table`}
-          className="min-w-[1120px]"
-        >
+        <Table aria-label={`${view.title} table`} className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
               <TableHead>

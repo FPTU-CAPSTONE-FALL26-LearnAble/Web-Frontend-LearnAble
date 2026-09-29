@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   CheckCheck,
@@ -9,7 +9,12 @@ import {
   TriangleAlert,
   Users,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/shared/ui/primitives/card";
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
@@ -56,40 +61,16 @@ const statusTone = (status: ExamSeat["status"]) =>
           : "danger";
 const seatTone = (status: ExamSeat["status"]) =>
   status === "Present"
-    ? "border-[var(--color-success)] bg-white"
+    ? "border-success-foreground/40 bg-card"
     : status === "Not checked in"
-      ? "border-[var(--color-border)] bg-[var(--color-neutral-status-bg)]"
+      ? "border-border bg-muted"
       : status === "Started"
-        ? "border-[var(--color-secondary)] bg-[var(--color-info-bg)]"
+        ? "border-secondary-foreground/40 bg-secondary"
         : status === "Submitted"
-          ? "border-[var(--color-success)] bg-[var(--color-success-bg)]"
-        : status === "Incident"
-          ? "border-[var(--color-warning)] bg-[var(--color-warning-bg)]"
-          : "border-[var(--color-error)] bg-[var(--color-danger-bg)]";
-const filterStyle = (value: Filter, selected: boolean): CSSProperties | undefined => {
-  if (value === "All") return undefined;
-  const tone = statusTone(value);
-  const color = {
-    success: "var(--color-success)",
-    neutral: "var(--color-border)",
-    info: "var(--color-secondary)",
-    warning: "var(--color-warning)",
-    danger: "var(--color-error)",
-  }[tone];
-  return {
-    borderColor: color,
-    background: selected
-      ? color
-      : tone === "neutral"
-        ? "var(--color-neutral-status-bg)"
-        : `var(--color-${tone}-bg)`,
-    color: selected
-      ? tone === "warning"
-        ? "var(--color-text)"
-        : "var(--color-secondary-text)"
-      : "var(--color-text)",
-  };
-};
+          ? "border-success-foreground/40 bg-success text-success-foreground"
+          : status === "Incident"
+            ? "border-warning-foreground/40 bg-warning text-warning-foreground"
+            : "border-destructive/40 bg-destructive/15 text-destructive";
 const initials = (name: string) =>
   name
     .split(" ")
@@ -122,7 +103,9 @@ export function AttendanceRoute() {
       </div>
     );
   const seats = seatsForExam(exam);
-  const present = seats.filter((seat) => seat.status !== "Not checked in").length;
+  const present = seats.filter(
+    (seat) => seat.status !== "Not checked in",
+  ).length;
   const visible = seats.filter((seat) => matches(seat, filter));
   const list = seats.filter(
     (seat) =>
@@ -151,7 +134,7 @@ export function AttendanceRoute() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <ExamOverview exam={exam} attendance />
-          <Card className="border-[var(--color-border-subtle)] shadow-none">
+          <Card className="border-border shadow-none">
             <CardHeader>
               <CardTitle className="text-base">Seat status filters</CardTitle>
             </CardHeader>
@@ -169,13 +152,11 @@ export function AttendanceRoute() {
               ).map((value) => (
                 <Button
                   key={value}
-                  variant={value === "All" && value === filter ? "default" : "outline"}
-                  style={filterStyle(value, value === filter)}
+                  variant={filter === value ? "default" : "outline"}
                   aria-pressed={filter === value}
                   onClick={() => setFilter(value)}
                 >
-                  {value} ({seats.filter((seat) => matches(seat, value)).length}
-                  )
+                  {value} ({seats.filter((seat) => matches(seat, value)).length})
                 </Button>
               ))}
             </CardContent>
@@ -216,7 +197,10 @@ export function AttendanceRoute() {
                       <span className="text-[11px] text-muted-foreground">
                         {seat.studentId}
                       </span>
-                      <StatusBadge value={seat.status} tone={statusTone(seat.status)} />
+                      <StatusBadge
+                        value={seat.status}
+                        tone={statusTone(seat.status)}
+                      />
                       <span className="text-[11px] text-muted-foreground">
                         {seat.checkIn}
                       </span>
@@ -275,37 +259,45 @@ export function AttendanceRoute() {
                 {list.map((seat) => (
                   <article
                     key={seat.number}
-                    className={`rounded-xl border p-4 ${selected === seat.number ? "border-secondary ring-1 ring-secondary" : "border-[var(--color-border-subtle)]"}`}
+                    className={`rounded-xl border p-4 ${selected === seat.number ? "border-secondary ring-1 ring-secondary" : "border-border"}`}
                   >
                     <div className="flex items-stretch gap-4">
                       <button
                         type="button"
                         aria-label={`View ${seat.name} student photo`}
-                        className="group/photo relative min-h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-[var(--color-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2"
+                        className="group/photo relative min-h-36 w-28 shrink-0 overflow-hidden rounded-xl border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         onClick={() => setPhotoSeat(seat)}
                       >
                         <Avatar className="size-full rounded-xl after:rounded-xl">
                           <AvatarFallback
                             role="img"
                             aria-label={`${seat.name} student avatar`}
-                            className="rounded-xl bg-[var(--color-info-bg)] text-2xl font-extrabold text-[var(--color-secondary)]"
+                            className="rounded-xl bg-secondary text-2xl font-extrabold text-secondary-foreground"
                           >
                             {initials(seat.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="absolute inset-x-0 bottom-0 bg-[var(--color-text)]/80 px-2 py-1.5 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover/photo:opacity-100 group-focus-visible/photo:opacity-100">
+                        <span className="absolute inset-x-0 bottom-0 bg-foreground/80 px-2 py-1.5 text-[10px] font-bold text-background opacity-0 transition-opacity group-hover/photo:opacity-100 group-focus-visible/photo:opacity-100">
                           View photo
                         </span>
                       </button>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h3 className="truncate text-sm font-bold" title={seat.name}>{seat.name}</h3>
+                            <h3
+                              className="truncate text-sm font-bold"
+                              title={seat.name}
+                            >
+                              {seat.name}
+                            </h3>
                             <p className="mt-1 text-xs text-muted-foreground">
                               Seat {seat.seatLocation} · {seat.studentId}
                             </p>
                           </div>
-                          <StatusBadge value={seat.status} tone={statusTone(seat.status)} />
+                          <StatusBadge
+                            value={seat.status}
+                            tone={statusTone(seat.status)}
+                          />
                         </div>
                         <p className="mt-2 text-xs font-semibold text-muted-foreground">
                           CCCD: {seat.citizenId}
@@ -313,7 +305,7 @@ export function AttendanceRoute() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Button
                             variant="outline"
-                            className="border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-error-text)] hover:bg-[var(--color-success)] hover:opacity-90"
+                            className="border-success-foreground/40 bg-success text-success-foreground hover:bg-success/90"
                             onClick={() =>
                               notConnected(`Mark ${seat.name} present`)
                             }
@@ -322,8 +314,10 @@ export function AttendanceRoute() {
                           </Button>
                           <Button
                             variant="outline"
-                            className="border-[var(--color-error)] bg-[var(--color-error)] text-[var(--color-error-text)] hover:bg-[var(--color-error)] hover:opacity-90"
-                            onClick={() => notConnected(`Mark ${seat.name} absent`)}
+                            className="border-destructive/40 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() =>
+                              notConnected(`Mark ${seat.name} absent`)
+                            }
                           >
                             Absent
                           </Button>
@@ -355,8 +349,8 @@ export function AttendanceRoute() {
                         {`Student photo · ${photoSeat.studentId} · Seat ${photoSeat.seatLocation}`}
                       </DialogDescription>
                     </DialogHeader>
-                    <Avatar className="mx-auto h-[min(58vh,440px)] w-full max-w-80 rounded-xl border border-[var(--color-border)] after:rounded-xl">
-                      <AvatarFallback className="rounded-xl bg-[var(--color-info-bg)] text-6xl font-extrabold text-[var(--color-secondary)]">
+                    <Avatar className="mx-auto h-[min(58vh,440px)] w-full max-w-80 rounded-xl border border-border after:rounded-xl">
+                      <AvatarFallback className="rounded-xl bg-secondary text-6xl font-extrabold text-secondary-foreground">
                         {initials(photoSeat.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -369,7 +363,7 @@ export function AttendanceRoute() {
                   </DialogContent>
                 )}
               </Dialog>
-              <div className="mt-5 grid gap-3 border-t border-[var(--color-border-subtle)] pt-4">
+              <div className="mt-5 grid gap-3 border-t border-border pt-4">
                 <Button
                   onClick={() => notConnected("Mark all students present")}
                 >
@@ -388,7 +382,7 @@ export function AttendanceRoute() {
           </Card>
         </aside>
       </div>
-      <footer className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] bg-background py-4">
+      <footer className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background py-4">
         <p className="text-sm font-bold">
           {present}/{seats.length} students checked in
         </p>

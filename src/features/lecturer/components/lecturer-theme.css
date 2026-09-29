@@ -1,14 +1,14 @@
 .lecturer-shell ::selection {
-  color: var(--color-text);
-  background: color-mix(in srgb, var(--color-action) 24%, var(--color-bg));
+  color: var(--primary-foreground);
+  background: var(--primary);
 }
 
 .lecturer-shell .lecturer-major-card {
-  border-color: color-mix(in srgb, var(--color-border) 62%, var(--color-bg));
+  border-color: var(--border);
 }
 
 .lecturer-shell .lecturer-today-exam-card {
-  border-color: var(--color-action);
+  border-color: var(--primary);
 }
 
 .lecturer-shell .summary-icon svg {
@@ -22,18 +22,18 @@
 @media (max-width: 767px) {
   .lecturer-shell [data-slot="table-container"] {
     scrollbar-width: auto;
-    scrollbar-color: var(--color-action) var(--color-border-subtle);
+    scrollbar-color: var(--primary) var(--border);
     box-shadow: inset -18px 0 16px -20px #0f172a;
   }
   .lecturer-shell [data-slot="table-container"]::-webkit-scrollbar { height: 10px; }
-  .lecturer-shell [data-slot="table-container"]::-webkit-scrollbar-track { background: #e2e8f0; }
-  .lecturer-shell [data-slot="table-container"]::-webkit-scrollbar-thumb { background: var(--color-action); border-radius: 999px; }
+  .lecturer-shell [data-slot="table-container"]::-webkit-scrollbar-track { background: var(--border); }
+  .lecturer-shell [data-slot="table-container"]::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 999px; }
 }
 
 .lecturer-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .lecturer-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-.lecturer-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 999px; }
+.lecturer-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }

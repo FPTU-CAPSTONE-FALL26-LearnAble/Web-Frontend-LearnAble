@@ -83,8 +83,8 @@ export function LecturerSidebar({
           const classes = cn(
             "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
             active
-              ? "border-[var(--color-action)] bg-[var(--color-selected-bg)] text-[var(--color-text)]"
-              : "border-transparent text-muted-foreground hover:bg-[var(--color-panel)] hover:text-foreground",
+              ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+              : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
           );
           return (
             <NavLink
@@ -108,8 +108,8 @@ export function LecturerSidebar({
             className={cn(
               "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
               questionActive
-                ? "border-[var(--color-action)] bg-[var(--color-selected-bg)] text-[var(--color-text)]"
-                : "border-transparent text-muted-foreground hover:bg-[var(--color-panel)] hover:text-foreground",
+                ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
             )}
           >
             <FileQuestion aria-hidden className="size-5 shrink-0" />
@@ -125,7 +125,7 @@ export function LecturerSidebar({
           {questionsOpen ? (
             <div
               id="lecturer-question-navigation"
-              className="ml-5 mt-1 space-y-1 border-l border-[var(--color-border-subtle)] pl-3"
+              className="ml-5 mt-1 space-y-1 border-l border-border pl-3"
             >
               {[
                 {
@@ -149,8 +149,8 @@ export function LecturerSidebar({
                       cn(
                         "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
                         isActive
-                          ? "border-[var(--color-action)] bg-[var(--color-selected-bg)] text-foreground"
-                          : "border-transparent text-muted-foreground hover:bg-[var(--color-panel)] hover:text-foreground",
+                          ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
                       )
                     }
                   >
@@ -174,8 +174,8 @@ export function LecturerSidebar({
               className={cn(
                 "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
                 active
-                  ? "border-[var(--color-action)] bg-[var(--color-selected-bg)] text-[var(--color-text)]"
-                  : "border-transparent text-muted-foreground hover:bg-[var(--color-panel)] hover:text-foreground",
+                  ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
               )}
             >
               <Icon aria-hidden className="size-5 shrink-0" />
@@ -195,13 +195,13 @@ export function LecturerSidebar({
               cn(
                 "flex min-w-0 flex-1 items-center gap-3 rounded-lg border px-2 py-2 transition-colors",
                 isActive
-                  ? "border-[var(--color-action)] bg-[var(--color-selected-bg)]"
-                  : "border-transparent hover:bg-[var(--color-selected-bg)]",
+                  ? "border-sidebar-primary/30 bg-sidebar-accent"
+                  : "border-transparent hover:bg-sidebar-accent",
               )
             }
           >
             <Avatar size="lg">
-              <AvatarFallback className="bg-[var(--color-action)] font-bold text-[var(--color-action-text)]">
+              <AvatarFallback className="bg-primary font-bold text-primary-foreground">
                 {initials}
               </AvatarFallback>
             </Avatar>

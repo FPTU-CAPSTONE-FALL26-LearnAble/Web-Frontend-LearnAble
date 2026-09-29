@@ -3,7 +3,7 @@
   flex-direction: column;
   min-height: 100%;
   min-height: 0;
-  background: var(--color-bg);
+  background: var(--background);
 }
 .studio-body {
   flex: none;
@@ -13,10 +13,10 @@
 .studio-pane {
   min-width: 0;
   min-height: 0;
-  padding: var(--space-6);
+  padding: var(--spacing-06);
 }
 .studio-editor {
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--border);
 }
 .question-studio [data-slot="label"],
 .question-studio [data-slot="select-trigger"],
@@ -27,7 +27,7 @@
   width: 6px;
 }
 .studio-pane::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--border);
   border-radius: var(--radius-md);
 }
 @media (min-width: 1280px) {

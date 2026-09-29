@@ -259,8 +259,8 @@ export function LearningMaterialsRoute() {
           )}
         </div>
       )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <h2 className="text-lg font-bold">Your learning materials</h2>
           <p role="status" className="text-sm text-muted-foreground">
             Showing {rows.length} of {data.data?.totalCount ?? 0} materials
@@ -272,7 +272,10 @@ export function LearningMaterialsRoute() {
           retry={() => void data.refetch()}
         />
         {!data.isPending && !data.error && (
-          <Table aria-label="Learning materials table" className="min-w-[1120px]">
+          <Table
+            aria-label="Learning materials table"
+            className="min-w-[1120px]"
+          >
             <TableHeader>
               <TableRow>
                 <TableHead>

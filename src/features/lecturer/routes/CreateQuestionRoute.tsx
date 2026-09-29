@@ -18,7 +18,11 @@ import {
 import "../components/lecturer-studio.css";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent, CardHeader } from "@/shared/ui/primitives/card";
-import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/primitives/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/shared/ui/primitives/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -158,7 +162,7 @@ export function CreateQuestionRoute() {
   };
   return (
     <div className="question-studio">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-6 py-2">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-2">
         <nav
           aria-label="Breadcrumb"
           className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
@@ -229,7 +233,7 @@ export function CreateQuestionRoute() {
           aria-label="Question authoring canvas"
           className="studio-pane studio-editor gap-6 rounded-none py-6 shadow-none ring-0"
         >
-          <CardHeader className="border-b border-[var(--color-border-subtle)] px-0 pb-3">
+          <CardHeader className="border-b border-border px-0 pb-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
                 <PencilLine aria-hidden className="size-5 text-secondary" />
@@ -246,7 +250,7 @@ export function CreateQuestionRoute() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6 px-0">
-            <div className="grid gap-3 rounded-xl border border-[var(--color-border-subtle)] p-4 sm:grid-cols-3">
+            <div className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-3">
               <ChoiceField
                 label="Topic"
                 value={draft.topic}
@@ -329,7 +333,7 @@ export function CreateQuestionRoute() {
                 </h2>
               </div>
               <div
-                className="flex flex-wrap gap-1 rounded-t-xl border border-[var(--color-border-subtle)] p-1"
+                className="flex flex-wrap gap-1 rounded-t-xl border border-border p-1"
                 role="toolbar"
                 aria-label="Question content tools"
               >
@@ -366,7 +370,7 @@ export function CreateQuestionRoute() {
               </p>
             </div>
             <QuestionTypeForm draft={draft} onChange={update} onFile={onFile} />
-            <div className="border-t border-[var(--color-border-subtle)] pt-4">
+            <div className="border-t border-border pt-4">
               <TextField
                 label="Pedagogical explanation"
                 multiline
@@ -386,7 +390,7 @@ export function CreateQuestionRoute() {
           <QuestionPreview key={draft.type} draft={draft} image={files.image} />
         </ScrollRegion>
       </div>
-      <footer className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] bg-background px-6 py-3">
+      <footer className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-6 py-3">
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" asChild>
             <Link to={bankPath}>Cancel</Link>
