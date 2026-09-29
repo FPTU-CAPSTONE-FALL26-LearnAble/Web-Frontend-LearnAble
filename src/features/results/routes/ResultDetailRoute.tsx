@@ -33,17 +33,17 @@ export function ResultDetailRoute() {
   const r = resultQuery.data;
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {r.examName}
       </h1>
 
       <Card className="flex max-w-xl flex-col gap-4">
-        <p className="text-[length:var(--text-xl)] font-bold">
+        <p className="text-xl font-bold">
           {vi.results.score(r.score, r.maxScore)}
         </p>
         <ResultStatus status={r.status} />
         {r.status === "flagged" ? (
-          <p className="rounded-[var(--radius)] bg-[var(--color-warning-bg)] p-3 text-[var(--color-warning-text)]">
+          <p className="rounded-md border border-warning-foreground/30 bg-warning p-3 text-warning-foreground">
             {vi.results.flaggedNote}
           </p>
         ) : null}

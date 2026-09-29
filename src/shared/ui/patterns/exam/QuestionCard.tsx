@@ -33,7 +33,7 @@ export function QuestionCard({
   return (
     <Card aria-labelledby="question-heading" role="group" className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
-        <h2 id="question-heading" tabIndex={-1} className="text-[length:var(--text-xl)] font-bold text-[var(--color-text)]">
+        <h2 id="question-heading" tabIndex={-1} className="text-xl font-bold text-foreground">
           {vi.exam.question(index, total)}
         </h2>
         {onToggleFlag ? (
@@ -47,7 +47,7 @@ export function QuestionCard({
           </Button>
         ) : null}
       </div>
-      <p lang={stemLang} className="text-[length:var(--text-lg)] text-[var(--color-text)]">
+      <p lang={stemLang} className="text-lg text-foreground">
         {stem}
       </p>
       {children}

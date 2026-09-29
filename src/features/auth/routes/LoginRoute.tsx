@@ -101,7 +101,7 @@ export function LoginRoute() {
       campusImageAlt="Self Made Man statue at FPT University campus"
       campusImageClassName="object-[52%_center]"
       heroTitle="Future Forward – Global Ready"
-      heroTitleClassName="text-[length:var(--text-auth-hero)] sm:text-[length:var(--text-auth-hero)]"
+      heroTitleClassName="text-3xl sm:text-4xl"
       heroBody="A clear, accessible learning environment for FPT University students, lecturers, and staff across every campus."
     >
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">

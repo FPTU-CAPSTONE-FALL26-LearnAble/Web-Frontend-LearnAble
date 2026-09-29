@@ -60,11 +60,11 @@ export function ExamShell({
     <div className="flex min-h-dvh flex-col">
       <header
         role="banner"
-        className="flex flex-wrap items-center gap-4 border-b-2 border-[var(--color-border)] px-6 py-3"
+        className="flex flex-wrap items-center gap-4 border-b-2 border-border px-6 py-3"
       >
         <h1
           tabIndex={-1}
-          className="text-[length:var(--text-xl)] font-bold text-[var(--color-text)]"
+          className="text-xl font-bold text-foreground"
         >
           {title}
         </h1>
@@ -94,11 +94,11 @@ export function ExamShell({
                     aria-current={i === currentIndex ? "true" : undefined}
                     onClick={() => goTo(i)}
                     className={cn(
-                      "relative flex min-h-[52px] w-full min-w-[52px] items-center justify-center rounded-[var(--radius)] border-2 border-[var(--color-border)] text-[length:var(--text-lg)] font-bold transition-colors outline-none focus-visible:outline focus-visible:outline-[var(--focus-ring-width)] focus-visible:outline-offset-2",
+                      "relative flex min-h-[52px] w-full min-w-[52px] items-center justify-center rounded-md border-2 border-border text-lg font-bold transition-colors focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2",
                       q.answered &&
-                        "bg-[var(--color-selected-bg)] text-[var(--color-selected-text)] border-[var(--color-selected-text)]",
+                        "border-primary bg-primary/10 text-primary",
                       i === currentIndex &&
-                        "outline outline-[var(--focus-ring-width)] outline-offset-2",
+                        "outline-3 outline-primary outline-offset-2",
                     )}
                   >
                     {i + 1}
@@ -129,7 +129,7 @@ export function ExamShell({
 
       <footer
         role="contentinfo"
-        className="flex flex-wrap items-center gap-4 border-t-2 border-[var(--color-border)] px-6 py-3"
+        className="flex flex-wrap items-center gap-4 border-t-2 border-border px-6 py-3"
       >
         <Button
           size="lg"

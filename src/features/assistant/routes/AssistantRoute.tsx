@@ -54,7 +54,7 @@ export function AssistantRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.assistant.title}
       </h1>
 
@@ -64,7 +64,7 @@ export function AssistantRoute() {
             <Card
               className={cn(
                 msg.role === "user" &&
-                  "border-[var(--color-selected-text)] bg-[var(--color-selected-bg)]",
+                  "border-primary/50 bg-accent text-accent-foreground",
               )}
             >
               <p className="font-bold">
@@ -77,13 +77,13 @@ export function AssistantRoute() {
         ))}
         {askMutation.isPending ? (
           <li>
-            <p className="text-[var(--color-text-muted)]">{vi.assistant.sending}</p>
+            <p className="text-muted-foreground">{vi.assistant.sending}</p>
           </li>
         ) : null}
       </ul>
 
       {askMutation.isError ? (
-        <p role="alert" className="font-medium text-[var(--color-error)]">
+        <p role="alert" className="font-medium text-destructive">
           {vi.assistant.errFailed}
         </p>
       ) : null}
@@ -99,7 +99,7 @@ export function AssistantRoute() {
           onChange={(e) => setInput(e.target.value)}
           placeholder={vi.assistant.inputPlaceholder}
           rows={3}
-          className="rounded-[var(--radius)] border-2 border-[var(--color-border)] bg-[var(--color-bg)] p-3 text-[length:var(--text-body)]"
+          className="rounded-md border border-input bg-background p-3 text-base"
         />
         <Button type="submit" disabled={askMutation.isPending} className="self-start">
           {vi.assistant.send}
@@ -113,7 +113,7 @@ function ReplyMeta({ reply }: { reply: AssistantReply }) {
   if (!reply.grounded) {
     // RULE-14: câu trả lời không nguồn phải được đánh dấu rõ — icon + chữ, không chỉ màu.
     return (
-      <p className="mt-3 flex items-start gap-2 rounded-[var(--radius)] bg-[var(--color-warning-bg)] p-3 text-[var(--color-warning-text)]">
+      <p className="mt-3 flex items-start gap-2 rounded-md border border-warning-foreground/30 bg-warning p-3 text-warning-foreground">
         <TriangleAlert aria-hidden className="mt-1 size-5 shrink-0" />
         {vi.assistant.ungrounded}
       </p>

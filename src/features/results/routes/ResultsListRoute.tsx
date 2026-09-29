@@ -13,7 +13,7 @@ export function ResultsListRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.results.title}
       </h1>
 

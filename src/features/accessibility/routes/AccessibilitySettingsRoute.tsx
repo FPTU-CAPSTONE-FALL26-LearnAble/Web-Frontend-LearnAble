@@ -62,16 +62,16 @@ export function AccessibilitySettingsRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.a11ySettings.title}
       </h1>
-      <p className="max-w-prose text-[var(--color-text-muted)]">{vi.a11ySettings.intro}</p>
+      <p className="max-w-prose text-muted-foreground">{vi.a11ySettings.intro}</p>
 
       <Card className="flex max-w-2xl flex-col gap-5">
         <CardTitle>{vi.a11ySettings.ttsSection}</CardTitle>
 
         {voices.length === 0 ? (
-          <div className="rounded-[var(--radius)] bg-[var(--color-warning-bg)] p-4 text-[var(--color-warning-text)]">
+          <div className="rounded-md border border-warning-foreground/30 bg-warning p-4 text-warning-foreground">
             {/* Quyết định 7: KHÔNG âm thầm rơi về giọng tiếng Anh — nói thẳng. */}
             <p>{vi.a11ySettings.noViVoice}</p>
             <a

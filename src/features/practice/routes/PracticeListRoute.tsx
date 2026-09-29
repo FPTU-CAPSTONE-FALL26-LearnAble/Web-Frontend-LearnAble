@@ -12,10 +12,10 @@ export function PracticeListRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.practice.title}
       </h1>
-      <p className="max-w-prose text-[var(--color-text-muted)]">{vi.practice.localOnlyNote}</p>
+      <p className="max-w-prose text-muted-foreground">{vi.practice.localOnlyNote}</p>
 
       {setsQuery.isPending ? <p>{vi.common.loading}</p> : null}
       {setsQuery.isError ? (
@@ -31,7 +31,7 @@ export function PracticeListRoute() {
               <Card className="flex flex-wrap items-center gap-4">
                 <div className="flex-1">
                   <CardTitle>{set.title}</CardTitle>
-                  <p className="mt-1 text-[var(--color-text-muted)]">
+                  <p className="mt-1 text-muted-foreground">
                     {set.subject} — {vi.practice.questionsCount(set.questionCount)}
                   </p>
                 </div>

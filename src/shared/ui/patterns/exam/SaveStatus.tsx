@@ -5,13 +5,13 @@ import { vi } from "@/shared/strings/vi";
 export type SaveState = "saved" | "saving" | "offline" | "error";
 
 const config: Record<SaveState, { text: string; className: string }> = {
-  saved: { text: vi.exam.saveStatus.saved, className: "text-[var(--color-success)]" },
-  saving: { text: vi.exam.saveStatus.saving, className: "text-[var(--color-text-muted)]" },
+  saved: { text: vi.exam.saveStatus.saved, className: "text-success-foreground" },
+  saving: { text: vi.exam.saveStatus.saving, className: "text-muted-foreground" },
   offline: {
     text: vi.exam.saveStatus.offline,
-    className: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)]",
+    className: "bg-warning text-warning-foreground border border-warning-foreground/30",
   },
-  error: { text: vi.exam.saveStatus.error, className: "text-[var(--color-error)]" },
+  error: { text: vi.exam.saveStatus.error, className: "text-destructive" },
 };
 
 const icons: Record<SaveState, typeof Check> = {
@@ -32,7 +32,7 @@ export function SaveStatus({ state }: { state: SaveState }) {
   return (
     <p
       className={cn(
-        "flex items-center gap-2 rounded-[var(--radius)] px-3 py-1 font-medium",
+        "flex items-center gap-2 rounded-md px-3 py-1 font-medium",
         className,
       )}
     >
