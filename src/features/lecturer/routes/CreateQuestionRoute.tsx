@@ -49,7 +49,7 @@ import { useAcademicOptions } from "../api/useLecturerData";
 import { ReadState, ScrollRegion } from "../components/Workbench";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 
 export function CreateQuestionRoute() {
   const [searchParams] = useSearchParams();
@@ -132,8 +132,7 @@ export function CreateQuestionRoute() {
     setFiles(value);
   };
   const unavailable = (label: string) =>
-    toast({
-      title: "Feature not connected",
+    toast.info("Feature not connected", {
       description: `${label} is not connected yet. Your question has not been submitted.`,
     });
   const saveDraft = () => {

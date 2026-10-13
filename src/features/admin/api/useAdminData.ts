@@ -22,7 +22,7 @@ import {
 } from "@/api/admin";
 import { describeError } from "@/app/providers";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 
 /** Query keys are namespaced so one write invalidates exactly its resource. */
 export const adminKeys = {
@@ -69,14 +69,12 @@ export function useAdminWrite<TVariables = void>({
           queryKey: adminKeys.resource(name),
         });
       }
-      toast({ title: `${action} succeeded` });
+      toast.success(`${action} succeeded`);
       onSuccess?.();
     },
     onError: (error: unknown) =>
-      toast({
-        title: `${action} failed`,
+      toast.error(`${action} failed`, {
         description: `${describeError(error)} No change has been saved.`,
-        variant: "error",
       }),
   });
 }

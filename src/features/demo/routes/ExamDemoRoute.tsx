@@ -39,8 +39,7 @@ import { Separator } from "@/shared/ui/primitives/separator";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { announce } from "@/shared/a11y/announcer";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { toast } from "sonner";
-import { Toaster } from "@/shared/ui/primitives/sonner";
+import { toast } from "@/shared/ui/primitives/sonner";
 
 interface Question {
   id: number;
@@ -307,8 +306,6 @@ export function ExamDemoRoute() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-      <Toaster />
-
       {/* 1. TOP KIOSK TITLEBAR */}
       <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/90 px-4 py-2.5 backdrop-blur-md print:hidden sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">

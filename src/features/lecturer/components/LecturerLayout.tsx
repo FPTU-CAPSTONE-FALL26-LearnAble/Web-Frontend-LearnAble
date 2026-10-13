@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { lecturerDashboardFixture } from "@/features/lecturer/data/dashboardFixture";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 import { LecturerSidebar } from "./LecturerSidebar";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import "./lecturer-theme.css";
@@ -33,8 +33,7 @@ export function LecturerLayout() {
       navigate("/login", { replace: true });
     },
     onUnavailable: (label: string) =>
-      toast({
-        title: "Feature not connected",
+      toast.info("Feature not connected", {
         description: `${label} will be available when its backend workflow is connected.`,
       }),
   };

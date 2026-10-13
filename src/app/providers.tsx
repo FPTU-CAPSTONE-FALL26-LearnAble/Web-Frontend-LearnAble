@@ -1,7 +1,8 @@
 import { type ReactNode } from "react";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "@/shared/ui/primitives/sonner";
 import { LiveRegion } from "@/shared/a11y/LiveRegion";
-import { Toaster, toast } from "@/shared/ui/primitives/toast";
+import { Toaster } from "@/shared/ui/primitives/sonner";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 import { ApiFailure } from "@/api/client";
@@ -30,7 +31,7 @@ const queryClient = new QueryClient({
     onError: (error) => {
       const message = describeError(error);
       // Toast tự có aria-live — không gọi announce() song song để NVDA khỏi đọc hai lần.
-      toast({ title: vi.common.error, description: message, variant: "error" });
+      toast.error(vi.common.error, { description: message });
     },
   }),
   defaultOptions: {
