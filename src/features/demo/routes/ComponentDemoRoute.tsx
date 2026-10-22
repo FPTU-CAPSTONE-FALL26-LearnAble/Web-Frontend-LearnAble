@@ -177,8 +177,75 @@ export function ComponentDemoRoute() {
                 <Button size="sm">Small (sm)</Button>
                 <Button size="default">Default</Button>
                 <Button size="lg">Large (lg)</Button>
+                <Button size="xl">Extra large (xl)</Button>
+                <Button size="xl">
+                  <span
+                    data-icon="inline-start"
+                    className="material-symbols-outlined text-[20px] leading-none"
+                  >
+                    play_arrow
+                  </span>
+                  Start assessment
+                </Button>
+                <Button size="xl" variant="outline">
+                  Continue
+                  <span
+                    data-icon="inline-end"
+                    className="material-symbols-outlined text-[24px] leading-none"
+                  >
+                    arrow_forward
+                  </span>
+                </Button>
                 <Button size="icon" aria-label="Download attachment">
                   <DownloadIcon className="size-4" />
+                </Button>
+                <Button
+                  size="icon-xl"
+                  aria-label="Download attachment (extra large)"
+                >
+                  <DownloadIcon />
+                </Button>
+                <Button size="icon" variant="outline" aria-label="View details">
+                  <span className="material-symbols-outlined text-[20px] leading-none font-[500]">
+                    visibility
+                  </span>
+                </Button>
+                <Button size="icon" variant="secondary" aria-label="Edit item">
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    edit
+                  </span>
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Add item">
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    add
+                  </span>
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Favorite item">
+                  <span
+                    className="material-symbols-outlined text-[20px] leading-none"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    favorite
+                  </span>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Delete item"
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    delete
+                  </span>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="More actions"
+                  disabled
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    more_vert
+                  </span>
                 </Button>
                 <Button disabled>Disabled Action</Button>
                 <Button variant="outline" disabled>

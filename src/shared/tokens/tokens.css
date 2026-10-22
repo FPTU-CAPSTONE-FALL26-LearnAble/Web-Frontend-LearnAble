@@ -44,8 +44,9 @@
   --success: var(--color-green-100);
   --success-foreground: var(--color-green-900);
   --destructive: var(--color-red-600);
-  --border: var(--color-gray-300);
-  --input: var(--color-gray-200);
+  --border: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --checkbox: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --input: color-mix(in srgb, var(--foreground) 15%, transparent);
   --color-focus: var(--color-brand-600);
   --ring: var(--color-brand-600);
   --focus-ring-width: 4px;
@@ -87,8 +88,9 @@
   --success: var(--color-green-900);
   --success-foreground: var(--color-green-100);
   --destructive: var(--color-red-400);
-  --border: var(--color-gray-800);
-  --input: var(--color-gray-800);
+  --border: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --checkbox: color-mix(in srgb, var(--foreground) 20%, transparent);
+  --input: color-mix(in srgb, var(--foreground) 15%, transparent);
   --color-focus: var(--color-brand-100);
   --ring: var(--color-brand-100);
   --focus-ring-width: 4px;

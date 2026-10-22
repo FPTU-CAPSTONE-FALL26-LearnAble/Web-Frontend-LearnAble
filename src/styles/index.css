@@ -85,6 +85,7 @@ pre {
   --focus-ring-offset: var(--focus-ring-offset);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-checkbox: var(--checkbox);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-primary-hover: var(--primary-hover);
