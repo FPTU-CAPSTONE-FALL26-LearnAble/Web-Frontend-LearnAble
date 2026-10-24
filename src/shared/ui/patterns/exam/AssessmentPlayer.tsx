@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
+import { Menu } from "lucide-react";
+import { Button } from "@/shared/ui/primitives/button";
 import { Tabs, TabsContent } from "@/shared/ui/primitives/tabs";
+import { vi } from "@/shared/strings/vi";
 import {
   answerState,
   type Answer,
@@ -9,11 +12,12 @@ import {
   type PlayerView,
 } from "./assessment-player-types";
 import { AssessmentPlayerFooter } from "./AssessmentPlayerFooter";
-import { AssessmentPlayerHeader } from "./AssessmentPlayerHeader";
+import { AssessmentPlayerOverview } from "./AssessmentPlayerOverview";
 import {
   AssessmentPlayerOptions,
   type PlayerSetting,
 } from "./AssessmentPlayerOptions";
+import { AssessmentPlayerShell } from "./AssessmentPlayerShell";
 import { PlayerQuestion } from "./PlayerQuestion";
 import { QuestionContentsTable } from "./QuestionContentsTable";
 
@@ -78,27 +82,50 @@ export function AssessmentPlayer({
   };
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-secondary text-foreground antialiased">
-      <Tabs
-        value={filter}
-        onValueChange={(value) => setFilter(value as PlayerFilter)}
-        className="min-h-0 flex-1 gap-0"
+    <Tabs
+      value={filter}
+      onValueChange={(value) => setFilter(value as PlayerFilter)}
+      className="gap-0"
+    >
+      <AssessmentPlayerShell
+        candidate={candidate}
+        status={vi.exam.player.connected}
+        trailing={
+          <Button
+            variant="ghost"
+            size="icon-xl"
+            aria-label={vi.exam.player.openOptions}
+            aria-expanded={optionsOpen}
+            onClick={() => setOptionsOpen((open) => !open)}
+          >
+            <Menu aria-hidden />
+          </Button>
+        }
+        headerContent={
+          <AssessmentPlayerOverview
+            title={title}
+            answeredCount={answeredCount}
+            flaggedCount={flagged.length}
+            questionCount={questions.length}
+            view={view}
+            onStartOver={() => {
+              onStartOver();
+              goTo(0);
+            }}
+          />
+        }
+        footer={
+          <AssessmentPlayerFooter
+            answers={answers}
+            currentIndex={index}
+            flagged={flagged}
+            questions={questions}
+            view={view}
+            onGoTo={goTo}
+            onViewChange={setView}
+          />
+        }
       >
-        <AssessmentPlayerHeader
-          title={title}
-          candidate={candidate}
-          answeredCount={answeredCount}
-          flaggedCount={flagged.length}
-          questionCount={questions.length}
-          view={view}
-          optionsOpen={optionsOpen}
-          onOpenOptions={() => setOptionsOpen((open) => !open)}
-          onStartOver={() => {
-            onStartOver();
-            goTo(0);
-          }}
-        />
-
         <AssessmentPlayerOptions
           open={optionsOpen}
           onOpenChange={setOptionsOpen}
@@ -143,17 +170,7 @@ export function AssessmentPlayer({
             )}
           </div>
         </main>
-      </Tabs>
-
-      <AssessmentPlayerFooter
-        answers={answers}
-        currentIndex={index}
-        flagged={flagged}
-        questions={questions}
-        view={view}
-        onGoTo={goTo}
-        onViewChange={setView}
-      />
-    </div>
+      </AssessmentPlayerShell>
+    </Tabs>
   );
 }
