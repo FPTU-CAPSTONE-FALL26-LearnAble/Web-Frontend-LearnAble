@@ -25,13 +25,15 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 rounded-sm px-2 text-xs in-data-[slot=button-group]:rounded-sm has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 gap-1 rounded-sm px-2.5 in-data-[slot=button-group]:rounded-sm has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
         lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xl: "gap-2 p-4 text-base has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
+        // em: lớn theo cỡ chữ (desktop phóng thang chữ bằng --text-scale); 100% = 8px/16px/12px như cũ.
+        xl: "gap-[0.5em] p-[1em] text-base has-data-[icon=inline-end]:pr-[0.75em] has-data-[icon=inline-start]:pl-[0.75em]",
         icon: "size-9",
         "icon-xs":
           "size-6 rounded-sm in-data-[slot=button-group]:rounded-sm [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8 rounded-sm in-data-[slot=button-group]:rounded-sm",
         "icon-lg": "size-10",
-        "icon-xl": "p-4 [&_svg]:!size-6 [&_svg]:stroke-[2]",
+        "icon-xl":
+          "p-4 [&_svg]:!size-6 [&_svg]:stroke-[2] max-w-[4rem] max-h-[4rem]",
       },
     },
     defaultVariants: {
