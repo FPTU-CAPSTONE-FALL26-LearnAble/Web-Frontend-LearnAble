@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { useExamResults } from "@/features/results/api/useExamResults";
@@ -13,7 +13,7 @@ export function ResultsListRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.results.title}
       </h1>
 

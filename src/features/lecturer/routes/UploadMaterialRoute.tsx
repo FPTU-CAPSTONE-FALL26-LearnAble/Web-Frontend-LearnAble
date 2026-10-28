@@ -9,11 +9,20 @@ import {
   ScanText,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/shared/ui/primitives/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/shared/ui/primitives/alert";
 import { ChoiceField, TextField } from "../questions/QuestionFields";
 import { useAcademicOptions } from "../api/useLecturerData";
 import {
@@ -106,7 +115,7 @@ export function UploadMaterialRoute() {
       )}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
-          <Card className="border-[var(--color-border-subtle)] shadow-none">
+          <Card className="border-border shadow-none">
             <CardHeader>
               <CardTitle className="text-xl font-extrabold">
                 Material information & file
@@ -153,7 +162,7 @@ export function UploadMaterialRoute() {
           {file && (
             <section
               aria-label="Selected file"
-              className="rounded-2xl border border-[var(--color-border-subtle)] p-5"
+              className="rounded-2xl border border-border p-5"
             >
               <div className="flex items-start gap-3">
                 <FileText
@@ -201,7 +210,7 @@ export function UploadMaterialRoute() {
               </dl>
             </section>
           )}
-          <Card className="border-[var(--color-border-subtle)] shadow-none">
+          <Card className="border-border shadow-none">
             <CardHeader>
               <CardTitle className="text-xl font-extrabold">
                 Academic information
@@ -279,11 +288,8 @@ export function UploadMaterialRoute() {
             </CardContent>
           </Card>
         </div>
-        <aside
-          aria-label="Material processing"
-          className="min-w-0 space-y-5"
-        >
-          <Card className="border-[var(--color-border-subtle)] shadow-none">
+        <aside aria-label="Material processing" className="min-w-0 space-y-5">
+          <Card className="border-border shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <CloudUpload aria-hidden className="size-5 text-secondary" />
@@ -298,7 +304,7 @@ export function UploadMaterialRoute() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-[var(--color-border-subtle)] shadow-none">
+          <Card className="border-border shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ScanText aria-hidden className="size-5 text-secondary" />
@@ -321,7 +327,7 @@ export function UploadMaterialRoute() {
           </Card>
         </aside>
       </div>
-      <footer className="z-20 flex flex-wrap justify-end gap-3 border-t border-[var(--color-border-subtle)] bg-background py-4 xl:sticky xl:bottom-0">
+      <footer className="z-20 flex flex-wrap justify-end gap-3 border-t border-border bg-background py-4 xl:sticky xl:bottom-0">
         <Button
           variant="outline"
           onClick={() => notConnected("Save material draft")}

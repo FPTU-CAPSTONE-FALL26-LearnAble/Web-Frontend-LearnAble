@@ -1,12 +1,17 @@
 import { useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/shared/ui/primitives/card";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Textarea } from "@/shared/ui/primitives/textarea";
+import { Label } from "@/shared/ui/primitives/label";
 import type { QuestionDraft } from "./model";
 import { Monitor } from "lucide-react";
 export function QuestionPreview({
@@ -33,19 +38,19 @@ export function QuestionPreview({
   }
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] pb-3">
+      <div className="flex items-center gap-2 border-b border-border pb-3">
         <Monitor aria-hidden className="size-5 text-secondary" />
         <h2 className="text-sm font-bold uppercase tracking-wide">
           Live review
         </h2>
       </div>
-      <Card className="h-fit min-w-0 rounded-2xl border border-[var(--color-border-subtle)] shadow-sm ring-0">
+      <Card className="h-fit min-w-0 rounded-2xl border border-border shadow-sm ring-0">
         <CardHeader className="sr-only">
           <CardTitle>Live student preview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5 pt-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border-subtle)] pb-3">
-            <Badge className="bg-[var(--color-action)] text-[var(--color-action-text)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+            <Badge className="bg-primary text-primary-foreground">
               {draft.course} · New question
             </Badge>
             <span className="text-sm font-bold">
@@ -66,7 +71,7 @@ export function QuestionPreview({
                   {draft.options.map((o, i) => (
                     <Label
                       key={i}
-                      className={`flex min-h-14 items-start gap-3 rounded-xl border p-3 ${answer === String(i) ? "border-secondary text-secondary ring-1 ring-secondary" : "border-[var(--color-border-subtle)]"}`}
+                      className={`flex min-h-14 items-start gap-3 rounded-xl border p-3 ${answer === String(i) ? "border-secondary text-secondary ring-1 ring-secondary" : "border-border"}`}
                     >
                       <RadioGroupItem value={String(i)} className="mt-1" />
                       <span className="min-w-0 break-words">
@@ -92,7 +97,7 @@ export function QuestionPreview({
                 draft.options.map((o, i) => (
                   <Label
                     key={i}
-                    className="flex min-h-14 items-start gap-3 rounded-xl border border-[var(--color-border-subtle)] p-4"
+                    className="flex min-h-14 items-start gap-3 rounded-xl border border-border p-4"
                   >
                     <Checkbox aria-label={`Preview answer ${i + 1}`} />
                     <span className="min-w-0 break-words">
@@ -130,7 +135,7 @@ export function QuestionPreview({
           {draft.type === "code" && (
             <div className="space-y-3">
               <Badge variant="outline">{draft.language}</Badge>
-              <pre className="overflow-auto rounded-lg border border-[var(--color-border-subtle)] p-4 text-sm">
+              <pre className="overflow-auto rounded-lg border border-border p-4 text-sm">
                 <code>{draft.starterCode || "// Starter code"}</code>
               </pre>
               <p className="text-sm font-bold">Expected output</p>
@@ -145,7 +150,7 @@ export function QuestionPreview({
           {draft.type === "math" && (
             <div className="space-y-3">
               {draft.format === "MathML" ? (
-                <pre className="overflow-auto rounded-lg border border-[var(--color-border-subtle)] p-4 text-sm">
+                <pre className="overflow-auto rounded-lg border border-border p-4 text-sm">
                   <code>{draft.formula || "MathML source"}</code>
                 </pre>
               ) : (
@@ -185,7 +190,7 @@ export function QuestionPreview({
               </p>
             </div>
           )}
-          <p className="border-t border-[var(--color-border-subtle)] pt-4 text-xs text-muted-foreground">
+          <p className="border-t border-border pt-4 text-xs text-muted-foreground">
             Preview answers are not submitted or scored.
           </p>
         </CardContent>

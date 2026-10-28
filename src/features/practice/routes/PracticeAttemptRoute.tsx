@@ -1,11 +1,19 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { ExamShell } from "@/shared/ui/patterns/ExamShell";
-import { QuestionCard } from "@/shared/ui/patterns/QuestionCard";
-import { AnswerOptionList } from "@/shared/ui/patterns/AnswerOptionList";
-import { Button } from "@/shared/ui/primitives/Button";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/shared/ui/primitives/Dialog";
+import { ExamShell } from "@/shared/ui/patterns/exam/ExamShell";
+import { QuestionCard } from "@/shared/ui/patterns/exam/QuestionCard";
+import { AnswerOptionList } from "@/shared/ui/patterns/exam/AnswerOptionList";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/ui/primitives/dialog";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { usePracticeSet } from "@/features/practice/api/usePracticeSets";
@@ -85,10 +93,13 @@ function PracticeAttempt({ set }: { set: PracticeSet }) {
           <DialogTrigger asChild>
             <Button>{vi.practice.finish}</Button>
           </DialogTrigger>
-          <DialogContent
-            title={vi.exam.submitConfirmTitle}
-            description={vi.exam.submitConfirmBody(answeredCount, questions.length)}
-          >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{vi.exam.submitConfirmTitle}</DialogTitle>
+              <DialogDescription>
+                {vi.exam.submitConfirmBody(answeredCount, questions.length)}
+              </DialogDescription>
+            </DialogHeader>
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => setFinished(true)}>{vi.practice.finish}</Button>
               <DialogClose asChild>
@@ -141,10 +152,10 @@ function PracticeResult({
 
   return (
     <main id="main" className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.practice.resultTitle}
       </h1>
-      <p className="text-[length:var(--text-xl)] font-bold">
+      <p className="text-xl font-bold">
         {vi.practice.score(correctCount, set.questions.length)}
       </p>
 
@@ -158,7 +169,7 @@ function PracticeResult({
               <Card className="flex flex-col gap-3">
                 <CardTitle>
                   {vi.exam.question(i + 1, set.questions.length)} —{" "}
-                  <span className={isCorrect ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>
+                  <span className={isCorrect ? "text-success-foreground" : "text-destructive"}>
                     {isCorrect ? vi.practice.correct : vi.practice.incorrect}
                   </span>
                 </CardTitle>
@@ -172,7 +183,7 @@ function PracticeResult({
                     <strong>{vi.practice.correctAnswer}:</strong> {correct.letter}. {correct.text}
                   </p>
                 ) : null}
-                <p className="text-[var(--color-text-muted)]">
+                <p className="text-muted-foreground">
                   <strong>{vi.practice.explanation}:</strong> {q.explanation}
                 </p>
               </Card>

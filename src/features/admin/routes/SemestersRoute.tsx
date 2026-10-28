@@ -10,14 +10,14 @@ import {
   updateSemester,
   type AdminSemester,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   StatusBadge,
@@ -159,11 +159,7 @@ export function SemestersRoute() {
     if (!draft.academicYear.trim()) found.push("Academic year is required.");
     if (!draft.startDate) found.push("Start date is required.");
     if (!draft.endDate) found.push("End date is required.");
-    if (
-      draft.startDate &&
-      draft.endDate &&
-      draft.startDate >= draft.endDate
-    )
+    if (draft.startDate && draft.endDate && draft.startDate >= draft.endDate)
       found.push("End date must be after the start date.");
     setErrors(found);
     if (found.length) return;
@@ -424,7 +420,9 @@ export function SemestersRoute() {
             label="End date"
             type="date"
             value={draft.endDate}
-            onChange={(value) => setDraft((old) => ({ ...old, endDate: value }))}
+            onChange={(value) =>
+              setDraft((old) => ({ ...old, endDate: value }))
+            }
             error={
               errors.some((e) => e.startsWith("End date"))
                 ? "End date is required."

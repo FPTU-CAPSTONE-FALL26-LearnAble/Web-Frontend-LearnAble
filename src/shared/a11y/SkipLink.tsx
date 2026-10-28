@@ -8,7 +8,7 @@ export function SkipLink() {
   return (
     <a
       href="#main"
-      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:block focus:bg-[var(--color-primary)] focus:text-[var(--color-primary-text)] focus:px-4 focus:py-3 focus:rounded-[var(--radius)]"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:block focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-3 focus:rounded-md"
     >
       {vi.app.skipToMain}
     </a>

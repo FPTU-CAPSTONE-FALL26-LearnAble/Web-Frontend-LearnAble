@@ -10,14 +10,14 @@ import {
   updateCurriculum,
   type Curriculum,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -172,7 +172,9 @@ export function CurriculumsRoute() {
     const intakeValue = Number(draft.intakeYear);
     if (
       creating &&
-      (!draft.intakeYear || !Number.isInteger(intakeValue) || intakeValue < 1900)
+      (!draft.intakeYear ||
+        !Number.isInteger(intakeValue) ||
+        intakeValue < 1900)
     )
       found.push("Intake year must be a four-digit year.");
     if (
@@ -221,8 +223,7 @@ export function CurriculumsRoute() {
       {!majors.isPending && !majors.error && !majorRows.length && (
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Create a major first — every curriculum belongs to one.
         </p>
@@ -468,7 +469,9 @@ export function CurriculumsRoute() {
           <TextField
             label="Version"
             value={draft.version}
-            onChange={(value) => setDraft((old) => ({ ...old, version: value }))}
+            onChange={(value) =>
+              setDraft((old) => ({ ...old, version: value }))
+            }
             error={
               errors.some((e) => e.startsWith("Version"))
                 ? "Version is required."

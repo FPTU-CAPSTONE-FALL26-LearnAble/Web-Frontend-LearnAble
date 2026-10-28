@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Download, FileQuestion, Plus, Search, Upload } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Input } from "@/shared/ui/primitives/input";
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import {
   notConnected,
@@ -300,17 +300,14 @@ export function QuestionBankRoute({
           </Button>
         </div>
       )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-        <div className="border-b border-[var(--color-border-subtle)] p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+        <div className="border-b border-border p-5">
           <h2 className="text-lg font-bold">{view.title}</h2>
           <p role="status" className="mt-1 text-sm text-muted-foreground">
             Showing {rows.length} of {filtered.length} questions
           </p>
         </div>
-        <Table
-          containerLabel={`${view.title} table`}
-          className="min-w-[1120px]"
-        >
+        <Table aria-label={`${view.title} table`} className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
               <TableHead>

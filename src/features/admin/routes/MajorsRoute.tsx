@@ -8,14 +8,14 @@ import {
   updateMajor,
   type Major,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   ReadState,
@@ -70,7 +70,13 @@ export function MajorsRoute() {
   const departments = useDepartmentOptions();
   const departmentRows = departments.data?.items ?? [];
   const list = useQuery({
-    queryKey: adminKeys.list("majors", [search, department, active, page, size]),
+    queryKey: adminKeys.list("majors", [
+      search,
+      department,
+      active,
+      page,
+      size,
+    ]),
     queryFn: () =>
       getMajors({
         SearchTerm: search,
@@ -114,8 +120,8 @@ export function MajorsRoute() {
   const toggle = useAdminWrite<{ id: string; next: boolean }>({
     resource: "majors",
     action: "Major status change",
-    // Specializations, curriculums and student profiles all key off a major.
-    alsoInvalidate: ["specializations", "curriculums", "studentProfiles"],
+    // Curriculums and student profiles both key off a major.
+    alsoInvalidate: ["curriculums", "studentProfiles"],
     mutationFn: ({ id, next }) => setMajorActive(id, next),
     onSuccess: () => setToggling(null),
   });
@@ -145,7 +151,7 @@ export function MajorsRoute() {
     <div className="space-y-6">
       <PageHeading
         title="Majors"
-        description="Majors belong to a department and carry the specializations, curriculums and student profiles beneath them."
+        description="Majors belong to a department and carry the curriculums and student profiles beneath them."
       >
         <Button
           disabled={!departmentRows.length}
@@ -159,15 +165,16 @@ export function MajorsRoute() {
           New major
         </Button>
       </PageHeading>
-      {!departments.isPending && !departments.error && !departmentRows.length && (
-        <p
-          role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
-        >
-          Create a department first — every major must belong to one.
-        </p>
-      )}
+      {!departments.isPending &&
+        !departments.error &&
+        !departmentRows.length && (
+          <p
+            role="status"
+            className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
+          >
+            Create a department first — every major must belong to one.
+          </p>
+        )}
 
       <section
         aria-label="Major summary"
@@ -357,7 +364,9 @@ export function MajorsRoute() {
           label="Major code"
           value={draft.majorCode}
           disabled={!creating}
-          onChange={(value) => setDraft((old) => ({ ...old, majorCode: value }))}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, majorCode: value }))
+          }
           error={
             errors.some((e) => e.startsWith("Major code"))
               ? "Major code is required."
@@ -367,7 +376,9 @@ export function MajorsRoute() {
         <TextField
           label="Major name"
           value={draft.majorName}
-          onChange={(value) => setDraft((old) => ({ ...old, majorName: value }))}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, majorName: value }))
+          }
           error={
             errors.some((e) => e.startsWith("Major name"))
               ? "Major name is required."
@@ -392,12 +403,13 @@ export function MajorsRoute() {
         title={toggling?.isActive ? "Deactivate major?" : "Activate major?"}
         description={
           toggling?.isActive
-            ? `${toggling?.majorName} will stop accepting new specializations, curriculums and student intakes. Existing records stay readable.`
-            : `${toggling?.majorName} will accept new specializations, curriculums and student intakes again.`
+            ? `${toggling?.majorName} will stop accepting new curriculums and student intakes. Existing records stay readable.`
+            : `${toggling?.majorName} will accept new curriculums and student intakes again.`
         }
         confirmLabel={toggling?.isActive ? "Deactivate" : "Activate"}
         onConfirm={() =>
-          toggling && toggle.mutate({ id: toggling.majorId, next: !toggling.isActive })
+          toggling &&
+          toggle.mutate({ id: toggling.majorId, next: !toggling.isActive })
         }
       />
     </div>

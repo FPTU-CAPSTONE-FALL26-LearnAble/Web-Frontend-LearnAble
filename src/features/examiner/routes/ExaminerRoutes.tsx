@@ -20,20 +20,20 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Progress } from "@/shared/ui/primitives/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/shared/ui/primitives/select";
+import { Textarea } from "@/shared/ui/primitives/textarea";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   getQuestion,
@@ -44,9 +44,16 @@ import {
 } from "@/api/catalog";
 import { useExpiredSession } from "@/features/lecturer/api/useLecturerData";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
-import { toast } from "@/shared/ui/primitives/Toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
+import { toast } from "@/shared/ui/primitives/toast";
 import { candidates, examPapers, incidents, rooms } from "../data/fixtures";
+import { cn } from "@/lib/utils";
 
 const unavailable = (label: string) =>
   toast({
@@ -75,7 +82,7 @@ function ApiState({
     return (
       <div
         role="alert"
-        className="m-4 rounded-xl border border-[var(--color-error)] p-4"
+        className="m-4 rounded-xl border border-destructive bg-destructive/10 p-4 text-destructive"
       >
         <p className="font-bold">Unable to load data from LearnAble API.</p>
         <Button className="mt-3" variant="outline" onClick={onRetry}>
@@ -150,7 +157,7 @@ function PageHeading({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-col gap-4 border-b border-[var(--color-border-subtle)] pb-5 md:flex-row md:items-end md:justify-between">
+    <header className="mb-6 flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow ? <span className="sr-only">{eyebrow}</span> : null}
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -165,6 +172,13 @@ function PageHeading({
   );
 }
 
+const metricToneClasses: Record<string, string> = {
+  green: "bg-success text-success-foreground",
+  orange: "bg-primary text-primary-foreground",
+  red: "bg-destructive/15 text-destructive",
+  blue: "bg-secondary text-secondary-foreground",
+};
+
 function Metric({
   label,
   value,
@@ -178,24 +192,15 @@ function Metric({
   tone?: "blue" | "green" | "orange" | "red";
   icon?: React.ComponentType<{ className?: string }>;
 }) {
-  const color =
-    tone === "green"
-      ? "var(--color-success)"
-      : tone === "orange"
-        ? "var(--color-action)"
-        : tone === "red"
-          ? "var(--color-error)"
-          : "var(--color-secondary)";
   return (
     <div className="examiner-panel p-5">
       <div className="flex items-start justify-between">
         <p className="examiner-kicker">{label}</p>
         <span
-          className="rounded-lg p-2"
-          style={{
-            color,
-            background: `color-mix(in srgb, ${color} 10%, white)`,
-          }}
+          className={cn(
+            "rounded-lg p-2",
+            metricToneClasses[tone] ?? "bg-secondary text-secondary-foreground",
+          )}
         >
           <Icon className="size-5" />
         </span>
@@ -208,6 +213,25 @@ function Metric({
   );
 }
 
+const statusToneClasses: Record<string, { badge: string; dot: string }> = {
+  success: {
+    badge: "border-success-foreground/30 bg-success text-success-foreground",
+    dot: "bg-success-foreground",
+  },
+  warning: {
+    badge: "border-warning-foreground/30 bg-warning text-warning-foreground",
+    dot: "bg-warning-foreground",
+  },
+  danger: {
+    badge: "border-destructive/30 bg-destructive/15 text-destructive",
+    dot: "bg-destructive",
+  },
+  info: {
+    badge: "border-secondary-foreground/30 bg-secondary text-secondary-foreground",
+    dot: "bg-secondary-foreground",
+  },
+};
+
 function Status({
   children,
   tone = "info",
@@ -215,24 +239,15 @@ function Status({
   children: React.ReactNode;
   tone?: "success" | "warning" | "danger" | "info";
 }) {
-  const color =
-    tone === "success"
-      ? "var(--color-success)"
-      : tone === "warning"
-        ? "var(--color-warning)"
-        : tone === "danger"
-          ? "var(--color-error)"
-          : "var(--color-secondary)";
+  const config = statusToneClasses[tone] ?? statusToneClasses.info;
   return (
     <span
-      className="inline-flex min-h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-extrabold"
-      style={{
-        color,
-        borderColor: color,
-        background: `color-mix(in srgb, ${color} 10%, white)`,
-      }}
+      className={cn(
+        "inline-flex min-h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-extrabold",
+        config.badge,
+      )}
     >
-      <span className="size-1.5 rounded-full" style={{ background: color }} />
+      <span className={cn("size-1.5 rounded-full", config.dot)} />
       {children}
     </span>
   );
@@ -240,8 +255,8 @@ function Status({
 
 function SimulationNotice() {
   return (
-    <div className="mb-5 flex items-center gap-2 rounded-lg border border-[var(--color-secondary)] bg-[color-mix(in_srgb,var(--color-secondary)_7%,white)] px-4 py-3 text-sm">
-      <Radio className="size-4 text-[var(--color-secondary)]" />
+    <div className="mb-5 flex items-center gap-2 rounded-lg border border-secondary-foreground/30 bg-secondary px-4 py-3 text-sm text-secondary-foreground">
+      <Radio className="size-4 text-secondary-foreground" />
       <span>
         <strong>Simulation data.</strong> Operational actions are not connected
         to live exam services.
@@ -297,7 +312,7 @@ export function ExaminerDashboardRoute() {
             <p className="text-xs font-bold uppercase text-white/60">
               Kiosk integrity
             </p>
-            <p className="mt-1 text-3xl font-extrabold text-[var(--color-success)]">
+            <p className="mt-1 text-3xl font-extrabold text-success">
               97.0%
             </p>
             <Button
@@ -340,9 +355,9 @@ export function ExaminerDashboardRoute() {
         />
       </section>
       <section className="examiner-major mt-5 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <div>
-            <p className="examiner-kicker text-[var(--color-error)]">
+            <p className="examiner-kicker text-destructive">
               Priority queue
             </p>
             <h2 className="mt-1 text-xl font-extrabold">
@@ -356,7 +371,7 @@ export function ExaminerDashboardRoute() {
             Record incident
           </Button>
         </div>
-        <div className="divide-y divide-[var(--color-border-subtle)]">
+        <div className="divide-y divide-border">
           {incidents.map((incident) => (
             <article
               key={incident.id}
@@ -403,7 +418,7 @@ export function ExaminerDashboardRoute() {
             <h2 className="text-lg font-extrabold">Active exam rooms</h2>
             <Link
               to="/examiner/monitoring"
-              className="text-sm font-bold text-[var(--color-secondary)]"
+              className="text-sm font-bold text-primary hover:underline"
             >
               Open monitoring →
             </Link>
@@ -412,7 +427,7 @@ export function ExaminerDashboardRoute() {
             {rooms.slice(0, 2).map((room) => (
               <div
                 key={room.id}
-                className="rounded-xl border border-[var(--color-border-subtle)] p-4"
+                className="rounded-xl border border-border p-4"
               >
                 <div className="flex justify-between gap-3">
                   <strong>{room.name}</strong>
@@ -430,13 +445,13 @@ export function ExaminerDashboardRoute() {
         <div className="examiner-panel p-5">
           <h2 className="text-lg font-extrabold">Upcoming operations</h2>
           <div className="mt-4 space-y-3">
-            <div className="rounded-xl border border-[var(--color-border-subtle)] p-4">
+            <div className="rounded-xl border border-border p-4">
               <strong>13:30 · SWE201 Final Exam</strong>
               <p className="mt-1 text-sm text-muted-foreground">
                 Lab Alpha 302 · 35 candidates
               </p>
             </div>
-            <div className="rounded-xl border border-[var(--color-border-subtle)] p-4">
+            <div className="rounded-xl border border-border p-4">
               <strong>15:45 · PRN211 Midterm</strong>
               <p className="mt-1 text-sm text-muted-foreground">
                 Lab Beta 204 · 30 candidates
@@ -538,7 +553,7 @@ export function ExamBankRoute() {
               <SelectItem value="Draft">Draft</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex rounded-lg border border-[var(--color-border-subtle)] p-1">
+          <div className="flex rounded-lg border border-border p-1">
             <Button
               size="icon"
               variant={view === "grid" ? "default" : "ghost"}
@@ -588,7 +603,7 @@ export function ExamBankRoute() {
             <p className="mt-1 text-sm text-muted-foreground">
               {paper.type} · {paper.semester}
             </p>
-            <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl bg-[color-mix(in_srgb,var(--color-secondary)_5%,white)] p-3 text-center">
+            <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl bg-secondary p-3 text-center text-secondary-foreground">
               <div>
                 <p className="examiner-kicker">Questions</p>
                 <strong>{paper.questions}</strong>
@@ -648,10 +663,10 @@ function Stepper({
         <li key={step}>
           <Link
             to={`${base}/${["setup", "questions", "operations", "readiness"][i] ?? ""}`}
-            className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${i === current ? "border-[var(--color-action)] bg-[color-mix(in_srgb,var(--color-action)_8%,white)]" : "border-[var(--color-border-subtle)] text-muted-foreground"}`}
+            className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${i === current ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
           >
             <span
-              className={`grid size-7 place-items-center rounded-lg ${i === current ? "bg-[var(--color-action)] text-white" : "bg-[var(--color-border-subtle)]"}`}
+              className={`grid size-7 place-items-center rounded-lg ${i === current ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
             >
               {i + 1}
             </span>
@@ -674,7 +689,7 @@ function WizardActions({
   nextDisabled?: boolean;
 }) {
   return (
-    <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-[var(--color-border-subtle)] pt-5">
+    <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-border pt-5">
       <Button variant="outline" asChild>
         <Link to={back}>
           <ArrowLeft />
@@ -945,7 +960,7 @@ export function QuestionSelectionRoute() {
       <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
         <section className="examiner-major overflow-hidden">
           <form
-            className="grid gap-3 border-b border-[var(--color-border-subtle)] p-4 md:grid-cols-[1fr_repeat(3,160px)_auto]"
+            className="grid gap-3 border-b border-border p-4 md:grid-cols-[1fr_repeat(3,160px)_auto]"
             onSubmit={(event) => {
               event.preventDefault();
               setSearch(query.trim());
@@ -1030,7 +1045,7 @@ export function QuestionSelectionRoute() {
           />
           {!questionData.isPending && !questionData.error ? (
             <div
-              className="examiner-scroll max-h-[620px] divide-y divide-[var(--color-border-subtle)] overflow-y-auto"
+              className="examiner-scroll max-h-[620px] divide-y divide-border overflow-y-auto"
               role="region"
               aria-label="Available active questions"
               tabIndex={0}
@@ -1042,7 +1057,7 @@ export function QuestionSelectionRoute() {
                 return (
                   <label
                     key={question.questionId}
-                    className="flex cursor-pointer items-start gap-3 p-4 hover:bg-[color-mix(in_srgb,var(--color-secondary)_4%,white)]"
+                    className="flex cursor-pointer items-start gap-3 p-4 hover:bg-accent"
                   >
                     <Checkbox
                       checked={selected.has(question.questionId)}
@@ -1061,7 +1076,6 @@ export function QuestionSelectionRoute() {
                       </p>
                     </div>
                     <Button
-                      size="sm"
                       variant="outline"
                       type="button"
                       onClick={(event) => {
@@ -1077,7 +1091,7 @@ export function QuestionSelectionRoute() {
             </div>
           ) : null}
           {questionData.data && questionData.data.totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-[var(--color-border-subtle)] p-4">
+            <div className="flex items-center justify-between border-t border-border p-4">
               <Button
                 variant="outline"
                 disabled={!questionData.data.hasPreviousPage}
@@ -1152,11 +1166,13 @@ export function QuestionSelectionRoute() {
           if (!open) setPreviewId(undefined);
         }}
       >
-        <DialogContent
-          title="Question preview"
-          description="Live question detail from LearnAble API."
-          closeLabel="Close question preview"
-        >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Question preview</DialogTitle>
+            <DialogDescription>
+              Live question detail from LearnAble API.
+            </DialogDescription>
+          </DialogHeader>
           <ApiState
             pending={preview.isPending}
             error={preview.error}
@@ -1179,7 +1195,7 @@ export function QuestionSelectionRoute() {
                     .map((option) => (
                       <li
                         key={option.optionId}
-                        className="rounded-lg border border-[var(--color-border-subtle)] p-3"
+                        className="rounded-lg border border-border p-3"
                       >
                         {option.content}
                       </li>
@@ -1257,7 +1273,7 @@ function ConfigPanel({ title, items }: { title: string; items: string[] }) {
         {items.map((item, index) => (
           <label
             key={item}
-            className="flex min-h-12 items-center gap-3 rounded-lg border border-[var(--color-border-subtle)] px-3"
+            className="flex min-h-12 items-center gap-3 rounded-lg border border-border px-3"
           >
             <Checkbox defaultChecked={index !== 2} />
             <span className="text-sm font-semibold">{item}</span>
@@ -1294,15 +1310,15 @@ export function ExamReadinessRoute() {
             {checks.map((check) => (
               <div
                 key={check}
-                className="flex gap-3 rounded-lg border border-[var(--color-border-subtle)] p-3"
+                className="flex gap-3 rounded-lg border border-border p-3"
               >
-                <CheckCircle2 className="size-5 shrink-0 text-[var(--color-success)]" />
+                <CheckCircle2 className="size-5 shrink-0 text-success-foreground" />
                 <span className="text-sm font-semibold">{check}</span>
               </div>
             ))}
           </div>
-          <div className="mt-5 rounded-xl bg-[color-mix(in_srgb,var(--color-success)_10%,white)] p-4">
-            <p className="font-extrabold text-[var(--color-success)]">
+          <div className="mt-5 rounded-xl border border-success-foreground/30 bg-success p-4">
+            <p className="font-extrabold text-success-foreground">
               6 of 6 checks passed
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -1333,7 +1349,7 @@ export function ExamReadinessRoute() {
               ].map((answer, i) => (
                 <label
                   key={answer}
-                  className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--color-border-subtle)] px-4"
+                  className="flex min-h-12 items-center gap-3 rounded-xl border border-border px-4"
                 >
                   <input
                     type="radio"
@@ -1424,16 +1440,16 @@ export function ExamScheduleDashboardRoute() {
       </section>
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
         <div className="examiner-major overflow-hidden">
-          <div className="border-b border-[var(--color-border-subtle)] p-5">
+          <div className="border-b border-border p-5">
             <h2 className="text-lg font-extrabold">Scheduled shifts</h2>
           </div>
           {examPapers.slice(0, 4).map((paper, i) => (
             <article
               key={paper.id}
-              className="grid gap-4 border-b border-[var(--color-border-subtle)] p-5 last:border-0 lg:grid-cols-[100px_1fr_auto] lg:items-center"
+              className="grid gap-4 border-b border-border p-5 last:border-0 lg:grid-cols-[100px_1fr_auto] lg:items-center"
             >
               <div>
-                <p className="text-xl font-extrabold text-[var(--color-action)]">
+                <p className="text-xl font-extrabold text-primary">
                   {["07:30", "09:30", "13:30", "15:45"][i]}
                 </p>
                 <p className="text-xs text-muted-foreground">90 minutes</p>
@@ -1459,7 +1475,7 @@ export function ExamScheduleDashboardRoute() {
               {rooms.map((room) => (
                 <div
                   key={room.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--color-border-subtle)] p-3"
+                  className="flex items-center justify-between rounded-lg border border-border p-3"
                 >
                   <div>
                     <strong className="text-sm">{room.name}</strong>
@@ -1502,10 +1518,10 @@ function ScheduleStepper({ current }: { current: number }) {
         <li key={step}>
           <Link
             to={`/examiner/schedule/new/${routes[i]}`}
-            className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${i === current ? "border-[var(--color-action)] bg-[color-mix(in_srgb,var(--color-action)_8%,white)]" : "border-[var(--color-border-subtle)] text-muted-foreground"}`}
+            className={`flex min-h-12 items-center gap-2 rounded-xl border px-3 text-sm font-bold ${i === current ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
           >
             <span
-              className={`grid size-7 place-items-center rounded-lg ${i === current ? "bg-[var(--color-action)] text-white" : "bg-[var(--color-border-subtle)]"}`}
+              className={`grid size-7 place-items-center rounded-lg ${i === current ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
             >
               {i + 1}
             </span>
@@ -1661,7 +1677,7 @@ export function ScheduleRoomsRoute() {
         {rooms.map((room) => (
           <label
             key={room.id}
-            className={`examiner-major cursor-pointer p-5 ${selected.has(room.id) ? "border-[var(--color-action)]" : ""}`}
+            className={`examiner-major cursor-pointer p-5 ${selected.has(room.id) ? "border-primary" : ""}`}
           >
             <div className="flex items-start gap-3">
               <Checkbox
@@ -1686,10 +1702,10 @@ export function ScheduleRoomsRoute() {
                   {room.invigilators}
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg bg-[color-mix(in_srgb,var(--color-success)_8%,white)] p-3">
+                  <div className="rounded-lg border border-success-foreground/30 bg-success p-3 text-success-foreground">
                     <strong>Network ready</strong>
                   </div>
-                  <div className="rounded-lg bg-[color-mix(in_srgb,var(--color-secondary)_7%,white)] p-3">
+                  <div className="rounded-lg border border-secondary-foreground/30 bg-secondary p-3 text-secondary-foreground">
                     <strong>SEB verified</strong>
                   </div>
                 </div>
@@ -1712,10 +1728,7 @@ export function ScheduleRoomsRoute() {
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {["Lab Alpha 302", "Lab Alpha 304"].map((roomName, roomIndex) => (
-            <div
-              key={roomName}
-              className="rounded-xl border border-[var(--color-border-subtle)] p-4"
-            >
+            <div key={roomName} className="rounded-xl border border-border p-4">
               <div className="flex items-center justify-between gap-3">
                 <strong>{roomName}</strong>
                 <span className="text-xs text-muted-foreground">
@@ -1770,8 +1783,8 @@ export function ScheduleRoomsRoute() {
                 </Field>
               </div>
               {roomIndex === 1 && !staff.second304 ? (
-                <div className="mt-3 flex items-start gap-2 rounded-lg border border-[var(--color-warning)] bg-[color-mix(in_srgb,var(--color-warning)_8%,white)] p-3 text-sm">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-warning)]" />
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning-foreground/30 bg-warning p-3 text-sm text-warning-foreground">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-foreground" />
                   <span>
                     <strong>Coverage gap:</strong> assign one additional
                     invigilator before release.
@@ -1841,7 +1854,7 @@ export function ScheduleCandidatesRoute() {
       <ScheduleStepper current={2} />
       <div className="grid gap-5 xl:grid-cols-[1fr_430px]">
         <section className="examiner-major overflow-hidden">
-          <div className="border-b border-[var(--color-border-subtle)] p-4">
+          <div className="border-b border-border p-4">
             <Label className="relative">
               <Search className="absolute left-3 top-3 size-5 text-muted-foreground" />
               <Input
@@ -1852,7 +1865,7 @@ export function ScheduleCandidatesRoute() {
               />
             </Label>
           </div>
-          <div className="border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-muted-foreground sm:hidden">
+          <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground sm:hidden">
             Swipe horizontally to view room and eligibility.
           </div>
           <div
@@ -1872,10 +1885,7 @@ export function ScheduleCandidatesRoute() {
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-[var(--color-border-subtle)]"
-                  >
+                  <tr key={c.id} className="border-b border-border">
                     <td className="p-3">
                       <strong>{c.name}</strong>
                       <p className="text-xs text-muted-foreground">{c.id}</p>
@@ -1901,7 +1911,7 @@ export function ScheduleCandidatesRoute() {
             {Array.from({ length: 35 }, (_, i) => (
               <button
                 key={i}
-                className="aspect-square rounded-lg border border-[var(--color-border-subtle)] text-xs font-bold hover:border-[var(--color-action)]"
+                className="aspect-square rounded-lg border border-border text-xs font-bold hover:border-primary"
                 aria-label={`Seat ${i + 1}`}
               >
                 {i + 1}
@@ -1910,7 +1920,7 @@ export function ScheduleCandidatesRoute() {
           </div>
           <div className="mt-5 flex justify-between text-sm">
             <span>35 assigned</span>
-            <strong className="text-[var(--color-success)]">
+            <strong className="text-success-foreground">
               100% allocated
             </strong>
           </div>
@@ -1996,7 +2006,7 @@ export function ScheduleReadinessRoute() {
             return (
               <div
                 key={room.id}
-                className="rounded-xl border border-[var(--color-border-subtle)] p-4"
+                className="rounded-xl border border-border p-4"
               >
                 <div className="flex justify-between">
                   <strong>{room.name}</strong>
@@ -2028,10 +2038,7 @@ export function ScheduleReadinessRoute() {
               ["Check-in", "13:30"],
               ["Campus", "Hoa Lac"],
             ].map(([key, value]) => (
-              <div
-                key={key}
-                className="rounded-lg border border-[var(--color-border-subtle)] p-3"
-              >
+              <div key={key} className="rounded-lg border border-border p-3">
                 <dt className="text-xs font-bold uppercase text-muted-foreground">
                   {key}
                 </dt>
@@ -2045,21 +2052,21 @@ export function ScheduleReadinessRoute() {
             Candidate allocation evidence
           </h2>
           <div className="mt-4 space-y-3">
-            <div className="flex justify-between rounded-lg border border-[var(--color-border-subtle)] p-3">
+            <div className="flex justify-between rounded-lg border border-border p-3">
               <span>Eligible candidates</span>
               <strong>35/35</strong>
             </div>
-            <div className="flex justify-between rounded-lg border border-[var(--color-border-subtle)] p-3">
+            <div className="flex justify-between rounded-lg border border-border p-3">
               <span>Seats assigned</span>
               <strong>35/35</strong>
             </div>
-            <div className="flex justify-between rounded-lg border border-[var(--color-border-subtle)] p-3">
+            <div className="flex justify-between rounded-lg border border-border p-3">
               <span>Unresolved conflicts</span>
               <strong
                 className={
                   staffingComplete
-                    ? "text-[var(--color-success)]"
-                    : "text-[var(--color-warning)]"
+                    ? "text-success-foreground"
+                    : "text-warning-foreground"
                 }
               >
                 {staffingComplete ? "0" : "1 staffing gap"}
@@ -2166,7 +2173,7 @@ export function LiveMonitoringRoute() {
               key={room.id}
               className="examiner-major flex flex-col overflow-hidden"
             >
-              <div className="border-b border-[var(--color-border-subtle)] p-5">
+              <div className="border-b border-border p-5">
                 <div className="flex justify-between">
                   <div>
                     <h3 className="text-xl font-extrabold">{room.name}</h3>
@@ -2198,7 +2205,7 @@ export function LiveMonitoringRoute() {
                     value={(room.online / room.capacity) * 100}
                   />
                 </div>
-                <div className="rounded-xl bg-[color-mix(in_srgb,var(--color-secondary)_6%,white)] p-4">
+                <div className="rounded-xl bg-secondary p-4 text-secondary-foreground">
                   <span className="text-sm">Submission progress</span>
                   <strong className="float-right">
                     {room.submitted}/{room.capacity}
@@ -2226,7 +2233,7 @@ export function LiveMonitoringRoute() {
             ].map((item) => (
               <div
                 key={item}
-                className="rounded-lg border border-[var(--color-border-subtle)] px-4 py-2 text-sm"
+                className="rounded-lg border border-border px-4 py-2 text-sm"
               >
                 {item}
               </div>
@@ -2234,14 +2241,14 @@ export function LiveMonitoringRoute() {
           </div>
         </div>
         <div className="examiner-major p-5">
-          <h2 className="text-lg font-extrabold text-[var(--color-error)]">
+          <h2 className="text-lg font-extrabold text-destructive">
             Emergency incidents
           </h2>
           <div className="mt-4 space-y-3">
             {incidents.map((i) => (
               <div
                 key={i.id}
-                className="rounded-xl border border-[var(--color-error)] bg-[color-mix(in_srgb,var(--color-error)_5%,white)] p-4"
+                className="rounded-xl border border-destructive/30 bg-destructive/15 p-4 text-destructive"
               >
                 <strong>
                   {i.station} · {i.room}
@@ -2300,7 +2307,7 @@ export function RoomMonitoringRoute() {
           </div>
           <div>
             <p className="text-xs text-white/60">Incidents</p>
-            <strong className="text-2xl text-[var(--color-error)]">01</strong>
+            <strong className="text-2xl text-destructive">01</strong>
           </div>
         </div>
       </section>
@@ -2325,7 +2332,7 @@ export function RoomMonitoringRoute() {
           <Link
             key={c.id}
             to={`/examiner/monitoring/${room.id}/candidates/${c.id}`}
-            className={`rounded-xl border p-3 transition hover:-translate-y-0.5 ${c.state === "Disconnected" ? "border-[var(--color-error)] bg-[color-mix(in_srgb,var(--color-error)_8%,white)]" : c.state === "Submitted" ? "border-[var(--color-success)] bg-[color-mix(in_srgb,var(--color-success)_8%,white)]" : "border-[var(--color-border-subtle)]"}`}
+            className={`rounded-xl border p-3 transition hover:-translate-y-0.5 ${c.state === "Disconnected" ? "border-destructive/30 bg-destructive/15 text-destructive" : c.state === "Submitted" ? "border-success-foreground/30 bg-success text-success-foreground" : "border-border"}`}
           >
             <div className="flex items-center justify-between">
               <strong className="text-lg">
@@ -2381,7 +2388,7 @@ export function CandidateMonitoringRoute() {
               <div>
                 <p className="text-xs text-white/60">Network link</p>
                 <strong
-                  className={`text-lg ${candidate.state === "Disconnected" ? "text-[var(--color-error)]" : "text-[var(--color-success)]"}`}
+                  className={`text-lg ${candidate.state === "Disconnected" ? "text-destructive" : "text-success-foreground"}`}
                 >
                   {candidate.state === "Disconnected"
                     ? "Disconnected"
@@ -2399,7 +2406,7 @@ export function CandidateMonitoringRoute() {
             </div>
           </div>
           <div className="examiner-major overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
               <div>
                 <h2 className="text-lg font-extrabold">
                   Workstation live view
@@ -2411,10 +2418,10 @@ export function CandidateMonitoringRoute() {
               </div>
               <Status tone="success">Identity verified</Status>
             </div>
-            <div className="grid gap-4 bg-[var(--color-text)] p-5 text-white lg:grid-cols-[1fr_220px]">
+            <div className="grid gap-4 bg-foreground p-5 text-white lg:grid-cols-[1fr_220px]">
               <div className="grid min-h-72 place-items-center rounded-xl border border-white/20 bg-white/5 p-6 text-center">
                 <div>
-                  <MonitorCheck className="mx-auto size-12 text-[var(--color-success)]" />
+                  <MonitorCheck className="mx-auto size-12 text-success" />
                   <p className="mt-4 text-xl font-extrabold">
                     Secure exam workspace active
                   </p>
@@ -2479,7 +2486,7 @@ export function CandidateMonitoringRoute() {
               {Array.from({ length: 40 }, (_, i) => (
                 <span
                   key={i}
-                  className={`grid aspect-square place-items-center rounded-md border text-xs font-bold ${i < candidate.progress ? "border-[var(--color-success)] bg-[color-mix(in_srgb,var(--color-success)_9%,white)]" : "border-[var(--color-border-subtle)]"}`}
+                  className={`grid aspect-square place-items-center rounded-md border text-xs font-bold ${i < candidate.progress ? "border-success-foreground/30 bg-success text-success-foreground" : "border-border"}`}
                 >
                   {i + 1}
                 </span>
@@ -2500,7 +2507,7 @@ export function CandidateMonitoringRoute() {
               ].map(([k, v]) => (
                 <div
                   key={k}
-                  className="flex justify-between gap-3 border-b border-[var(--color-border-subtle)] pb-2"
+                  className="flex justify-between gap-3 border-b border-border pb-2"
                 >
                   <dt className="text-muted-foreground">{k}</dt>
                   <dd className="font-bold">{v}</dd>
@@ -2519,7 +2526,7 @@ export function CandidateMonitoringRoute() {
               ].map((event) => (
                 <div
                   key={event}
-                  className="rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-sm"
+                  className="rounded-lg border border-border px-3 py-2 text-sm"
                 >
                   {event}
                 </div>

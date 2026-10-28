@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "@/shared/ui/primitives/button";
+import { Input } from "@/shared/ui/primitives/input";
+import { Label } from "@/shared/ui/primitives/label";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { ChoiceField, TextField } from "./QuestionFields";
 import type { QuestionDraft } from "./model";
 import { Trash2 } from "lucide-react";
@@ -19,10 +19,10 @@ export function QuestionTypeForm({
     const options = draft.options.map((option, i) => (
       <div
         key={i}
-        className={`space-y-2 rounded-xl border p-4 ${option.correct ? "border-[var(--color-success)]" : "border-[var(--color-border-subtle)]"}`}
+        className={`space-y-2 rounded-xl border p-4 ${option.correct ? "border-success-foreground/50" : "border-border"}`}
       >
         <div className="flex items-center justify-between">
-          <p className="flex size-7 items-center justify-center rounded-lg border border-[var(--color-border-subtle)] text-xs font-bold">
+          <p className="flex size-7 items-center justify-center rounded-lg border border-border text-xs font-bold">
             {String.fromCharCode(65 + i)}
           </p>
           <Label className="flex min-h-11 items-center gap-2">

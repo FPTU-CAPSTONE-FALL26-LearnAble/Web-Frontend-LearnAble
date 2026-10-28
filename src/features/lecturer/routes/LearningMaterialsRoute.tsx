@@ -11,10 +11,10 @@ import {
   Upload,
   AlertCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import { getMaterials } from "@/api/lecturer";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { ChoiceField } from "../questions/QuestionFields";
@@ -259,8 +259,8 @@ export function LearningMaterialsRoute() {
           )}
         </div>
       )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <h2 className="text-lg font-bold">Your learning materials</h2>
           <p role="status" className="text-sm text-muted-foreground">
             Showing {rows.length} of {data.data?.totalCount ?? 0} materials
@@ -272,7 +272,10 @@ export function LearningMaterialsRoute() {
           retry={() => void data.refetch()}
         />
         {!data.isPending && !data.error && (
-          <Table containerLabel="Learning materials table" className="min-w-[1120px]">
+          <Table
+            aria-label="Learning materials table"
+            className="min-w-[1120px]"
+          >
             <TableHeader>
               <TableRow>
                 <TableHead>

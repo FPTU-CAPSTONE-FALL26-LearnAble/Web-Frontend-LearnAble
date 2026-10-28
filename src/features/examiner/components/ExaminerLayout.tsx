@@ -2,16 +2,16 @@ import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/shared/ui/primitives/sheet";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { ExaminerSidebar } from "./ExaminerSidebar";
 import "./examiner-theme.css";
 
@@ -35,10 +35,10 @@ export function ExaminerLayout() {
   return (
     <div className="examiner-shell min-h-screen bg-white lg:flex">
       <SkipLink />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-[var(--color-border-subtle)] lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
         <ExaminerSidebar {...props} />
       </aside>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border-subtle)] bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
         <Button
           size="icon"
           variant="outline"

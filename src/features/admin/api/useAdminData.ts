@@ -20,7 +20,7 @@ import {
 } from "@/api/admin";
 import { describeError } from "@/app/providers";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 
 /** Query keys are namespaced so one write invalidates exactly its resource. */
 export const adminKeys = {

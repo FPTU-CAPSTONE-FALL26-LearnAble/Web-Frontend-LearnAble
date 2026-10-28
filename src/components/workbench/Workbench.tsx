@@ -1,13 +1,18 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Badge } from "@/shared/ui/primitives/badge";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/shared/ui/primitives/alert";
 import { describeError } from "@/app/providers";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { ChoiceField } from "@/components/workbench/Fields";
+import { cn } from "@/lib/utils";
 export function ScrollRegion({
   label,
   className,
@@ -83,6 +88,13 @@ export function Breadcrumb({
     </nav>
   );
 }
+const summaryToneClasses: Record<string, string> = {
+  danger: "bg-destructive/15 text-destructive",
+  success: "bg-success text-success-foreground",
+  warning: "bg-warning text-warning-foreground",
+  info: "bg-secondary text-secondary-foreground",
+};
+
 export function SummaryCard({
   label,
   value,
@@ -104,17 +116,16 @@ export function SummaryCard({
           ? "warning"
           : "info";
   return (
-    <Card className="min-w-0 overflow-hidden border-[var(--color-border-subtle)] py-0 shadow-none">
+    <Card className="min-w-0 overflow-hidden border-border py-0 shadow-none">
       <CardContent>
         <div className="flex items-start justify-between gap-3 pt-5 text-sm font-semibold text-muted-foreground">
           <span>{label}</span>
           {icon && (
             <span
-              className="summary-icon flex size-9 shrink-0 items-center justify-center rounded-lg"
-              style={{
-                background: `var(--color-${tone}-bg)`,
-                color: `var(--color-${tone}-text)`,
-              }}
+              className={cn(
+                "summary-icon flex size-9 shrink-0 items-center justify-center rounded-lg",
+                summaryToneClasses[tone] ?? "bg-secondary text-secondary-foreground"
+              )}
             >
               {icon}
             </span>
@@ -132,6 +143,29 @@ export function SummaryCard({
 }
 type StatusTone = "success" | "danger" | "warning" | "info" | "neutral";
 
+const toneClasses: Record<StatusTone, { badge: string; dot: string }> = {
+  success: {
+    badge: "bg-success text-success-foreground border-success-foreground/30",
+    dot: "bg-success-foreground",
+  },
+  danger: {
+    badge: "bg-destructive/15 text-destructive border-destructive/30",
+    dot: "bg-destructive",
+  },
+  warning: {
+    badge: "bg-warning text-warning-foreground border-warning-foreground/30",
+    dot: "bg-warning-foreground",
+  },
+  info: {
+    badge: "bg-secondary text-secondary-foreground border-secondary-foreground/30",
+    dot: "bg-secondary-foreground",
+  },
+  neutral: {
+    badge: "bg-muted text-muted-foreground border-border",
+    dot: "bg-muted-foreground",
+  },
+};
+
 export function StatusBadge({
   value,
   tone: toneOverride,
@@ -140,38 +174,24 @@ export function StatusBadge({
   tone?: StatusTone;
 }) {
   // `\bactive\b` keeps "Inactive" out of the success bucket.
-  const tone: StatusTone = toneOverride ?? (/\bactive\b|published|done|present|submitted|ready/i.test(value)
-    ? "success"
-    : /failed|error|incident|urgent/i.test(value)
-      ? "danger"
-      : /pending|draft|waiting|high/i.test(value)
-      ? "warning"
-        : "info");
-  const toneColor = {
-    success: "var(--color-success)",
-    danger: "var(--color-error)",
-    warning: "var(--color-warning)",
-    info: "var(--color-secondary)",
-    neutral: "var(--color-border)",
-  }[tone];
-  const toneBackground =
-    tone === "neutral" ? "var(--color-neutral-status-bg)" : `var(--color-${tone}-bg)`;
-  const toneText =
-    tone === "neutral" ? "var(--color-neutral-status-text)" : `var(--color-${tone}-text)`;
+  const tone: StatusTone =
+    toneOverride ??
+    (/\bactive\b|published|done|present|submitted|ready/i.test(value)
+      ? "success"
+      : /failed|error|incident|urgent/i.test(value)
+        ? "danger"
+        : /pending|draft|waiting|high/i.test(value)
+          ? "warning"
+          : "info");
+  const config = toneClasses[tone];
   return (
     <Badge
       variant="outline"
-      className="h-auto gap-1.5 px-2.5 py-1 font-extrabold shadow-none"
-      style={{
-        background: toneBackground,
-        color: toneText,
-        borderColor: `color-mix(in srgb, ${toneColor} 45%, #ffffff)`,
-      }}
+      className={cn("h-auto gap-1.5 px-2.5 py-1 font-extrabold shadow-none", config.badge)}
     >
       <span
         aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
-        style={{ background: toneColor }}
+        className={cn("size-1.5 shrink-0 rounded-full", config.dot)}
       />
       {value}
     </Badge>
@@ -228,7 +248,7 @@ export function Pagination({
   onSize: (size: string) => void;
 }) {
   return (
-    <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-border-subtle)] p-4">
+    <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border p-4">
       <ChoiceField
         label="Rows per page"
         value={size}

@@ -20,7 +20,7 @@ export class ApiFailure extends Error {
   }
 }
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "http://54.79.78.167:8080/api/v1";
+const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 export async function request<T>(
   path: string,

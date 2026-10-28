@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LiveRegion } from "@/shared/a11y/LiveRegion";
-import { Toaster, toast } from "@/shared/ui/primitives/Toast";
+import { Toaster, toast } from "@/shared/ui/primitives/toast";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 import { ApiFailure } from "@/api/client";

@@ -7,16 +7,16 @@ const config: Record<
   ExamResult["status"],
   { text: string; className: string; Icon: typeof Check }
 > = {
-  passed: { text: vi.results.status.passed, className: "text-[var(--color-success)]", Icon: Check },
-  failed: { text: vi.results.status.failed, className: "text-[var(--color-error)]", Icon: X },
+  passed: { text: vi.results.status.passed, className: "text-success-foreground", Icon: Check },
+  failed: { text: vi.results.status.failed, className: "text-destructive", Icon: X },
   pending: {
     text: vi.results.status.pending,
-    className: "text-[var(--color-text-muted)]",
+    className: "text-muted-foreground",
     Icon: CircleHelp,
   },
   flagged: {
     text: vi.results.status.flagged,
-    className: "bg-[var(--color-warning-bg)] text-[var(--color-warning-text)] rounded-[var(--radius)] px-2",
+    className: "bg-warning text-warning-foreground rounded-md border border-warning-foreground/30 px-2",
     Icon: Flag,
   },
 };

@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/shared/ui/primitives/alert-dialog";
 
 export function UnsavedChangesDialog({ dirty }: { dirty: boolean }) {
   const blocker = useBlocker(dirty);

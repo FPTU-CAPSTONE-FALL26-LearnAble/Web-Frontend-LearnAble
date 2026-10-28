@@ -9,14 +9,14 @@ import {
   updateUniversity,
   type University,
 } from "@/api/admin";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import {
   PageHeading,
   StatusBadge,
@@ -153,7 +153,7 @@ export function UniversitiesRoute() {
     if (draft.contactEmail.trim() && !emailPattern.test(draft.contactEmail.trim()))
       found.push("Contact email must be a valid address.");
     if (draft.primaryColor.trim() && !colorPattern.test(draft.primaryColor.trim()))
-      found.push("Primary colour must be a hex value such as #F37021.");
+      found.push("Primary colour must be a six-digit hex value.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -181,8 +181,7 @@ export function UniversitiesRoute() {
         />
         <p
           role="status"
-          className="rounded-xl border border-[var(--color-warning)] p-4 text-sm"
-          style={{ background: "var(--color-warning-bg)" }}
+          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
         >
           Only a super administrator can manage universities. Your account works
           inside its own university.
@@ -294,7 +293,7 @@ export function UniversitiesRoute() {
                     {row.primaryColor && (
                       <span
                         aria-hidden
-                        className="size-3 rounded-full border border-[var(--color-border-subtle)]"
+                        className="size-3 rounded-full border border-border"
                         style={{ background: row.primaryColor }}
                       />
                     )}

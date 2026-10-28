@@ -14,11 +14,11 @@ import {
   Users,
   TriangleAlert,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/shared/ui/primitives/badge";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Progress } from "@/shared/ui/primitives/progress";
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/shared/ui/primitives/table";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   lecturerDashboardFixture as data,
@@ -74,7 +74,7 @@ export function LecturerDashboardRoute() {
   );
   return (
     <div className="space-y-6">
-      <section className="flex flex-col justify-between gap-4 rounded-xl border border-[var(--color-border-subtle)] bg-card p-6 xl:flex-row xl:items-center">
+      <section className="flex flex-col justify-between gap-4 rounded-xl border border-border bg-card p-6 xl:flex-row xl:items-center">
         <h1
           tabIndex={-1}
           className="text-2xl font-extrabold tracking-[-0.025em] outline-none sm:text-3xl"
@@ -82,7 +82,7 @@ export function LecturerDashboardRoute() {
           <span className="font-semibold text-muted-foreground">
             {greeting},{" "}
           </span>
-          <span className="text-[var(--color-action)]">{user.fullName}.</span>
+          <span className="text-primary">{user.fullName}.</span>
         </h1>
         <div className="flex flex-wrap gap-3">
           <Button
@@ -103,14 +103,14 @@ export function LecturerDashboardRoute() {
       </section>
       <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card className="lecturer-major-card gap-0 rounded-xl border py-0 shadow-none ring-0">
-          <div className="border-b border-[var(--color-border-subtle)] p-5">
+          <div className="border-b border-border p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Badge className="min-h-9 px-5 py-2 text-base font-extrabold bg-[var(--color-action)] text-white shadow-[var(--shadow-control)]">
+              <Badge className="min-h-9 px-5 py-2 text-base font-extrabold bg-primary text-primary-foreground shadow-sm">
                 Today’s exam
               </Badge>
               <StatusBadge value="Ready for candidates" />
             </div>
-            <div className="mt-5 space-y-3 rounded-xl border border-[var(--color-border)] p-5">
+            <div className="mt-5 space-y-3 rounded-xl border border-border p-5">
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                 <p className="flex flex-wrap items-center gap-1.5 font-semibold">
                   <Clock3 aria-hidden className="size-5 text-secondary" />
@@ -128,69 +128,69 @@ export function LecturerDashboardRoute() {
                 value={exam.progress}
                 aria-label="Countdown to attendance opening"
                 aria-valuetext={`${exam.countdownMinutes} minutes until attendance opens`}
-                className="h-2 bg-[var(--color-border-subtle)] [&_[data-slot=progress-indicator]]:bg-[var(--color-action)]"
+                className="h-2 bg-muted [&_[data-slot=progress-indicator]]:bg-primary"
               />
             </div>
           </div>
           <div className="grid gap-4 p-5 sm:grid-cols-2">
-            <div className="space-y-3 rounded-xl border border-[color-mix(in_srgb,var(--color-action)_45%,white)] bg-[var(--color-selected-bg)] p-4">
+            <div className="space-y-3 rounded-xl border border-primary/45 bg-accent p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                 <BookOpenText
                   aria-hidden
-                  className="size-4 text-[var(--color-action)]"
+                  className="size-4 text-primary"
                 />
                 Subject & semester
               </p>
-              <h2 className="text-xl font-extrabold leading-snug text-[var(--color-text)]">
+              <h2 className="text-xl font-extrabold leading-snug text-foreground">
                 {exam.subjectCode} – {exam.subject}
               </h2>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Badge
                   variant="outline"
-                  className="min-h-7 border-[var(--color-action)] bg-white px-3 font-extrabold text-[var(--color-action)]"
+                  className="min-h-7 border-primary bg-background px-3 font-extrabold text-primary"
                 >
                   Final Exam
                 </Badge>
                 <span className="text-muted-foreground">Fall 2026</span>
               </div>
             </div>
-            <div className="space-y-3 rounded-xl border border-[color-mix(in_srgb,var(--color-secondary)_42%,white)] bg-[var(--color-info-bg)] p-4">
+            <div className="space-y-3 rounded-xl border border-secondary/42 bg-secondary p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                 <Clock3
                   aria-hidden
-                  className="size-4 text-[var(--color-secondary)]"
+                  className="size-4 text-secondary-foreground"
                 />
                 Time & room
               </p>
-              <p className="text-xl font-extrabold tabular-nums text-[var(--color-secondary)]">
+              <p className="text-xl font-extrabold tabular-nums text-secondary-foreground">
                 {exam.time}
               </p>
               <p className="flex flex-wrap items-center gap-2 text-xs">
                 <Badge
                   variant="outline"
-                  className="min-h-7 border-[var(--color-secondary)] bg-white px-3 font-extrabold text-[var(--color-secondary)]"
+                  className="min-h-7 border-secondary bg-background px-3 font-extrabold text-secondary-foreground"
                 >
                   {exam.room}
                 </Badge>
-                <span className="flex items-center gap-1 font-semibold text-[var(--color-text)]">
+                <span className="flex items-center gap-1 font-semibold text-foreground">
                   <MapPin
                     aria-hidden
-                    className="size-3.5 text-[var(--color-secondary)]"
+                    className="size-3.5 text-secondary-foreground"
                   />
                   {exam.location}
                 </span>
               </p>
             </div>
-            <div className="relative flex min-h-36 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--color-success)_42%,white)] bg-[var(--color-success-bg)] p-4 pt-11">
+            <div className="relative flex min-h-36 items-center justify-center rounded-xl border border-success-foreground/30 bg-success p-4 pt-11 text-success-foreground">
               <p className="absolute inset-x-4 top-4 flex items-center justify-between text-xs font-bold uppercase text-muted-foreground">
                 Registered candidates
                 <Users
                   aria-hidden
-                  className="size-4 text-[var(--color-success)]"
+                  className="size-4 text-success-foreground"
                 />
               </p>
               <p className="flex flex-wrap items-baseline justify-center gap-2 text-center">
-                <strong className="text-3xl font-extrabold text-[var(--color-success)]">
+                <strong className="text-3xl font-extrabold text-success-foreground">
                   35
                 </strong>
                 <span className="text-sm font-bold">Students assigned</span>
@@ -202,7 +202,7 @@ export function LecturerDashboardRoute() {
               detail={`Version ${exam.version} · Opens at 13:30`}
             />
           </div>
-          <div className="mx-5 mb-5 flex flex-col items-start justify-between gap-3 border-t border-[var(--color-border-subtle)] pt-3 sm:flex-row sm:items-center">
+          <div className="mx-5 mb-5 flex flex-col items-start justify-between gap-3 border-t border-border pt-3 sm:flex-row sm:items-center">
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Lock aria-hidden className="size-4" />
               Exam access follows the scheduled start time.
@@ -219,7 +219,7 @@ export function LecturerDashboardRoute() {
           </div>
         </Card>
         <Card className="lecturer-major-card gap-4 rounded-xl border p-5 shadow-none ring-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border-subtle)] pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
             <div>
               <h2 className="flex items-center gap-2 text-base font-bold">
                 <CalendarClock aria-hidden className="size-5 text-secondary" />
@@ -237,7 +237,7 @@ export function LecturerDashboardRoute() {
             {data.upcoming.map((shift, index) => (
               <div
                 key={shift.subjectCode}
-                className="space-y-2 rounded-xl border border-[var(--color-border-subtle)] p-3"
+                className="space-y-2 rounded-xl border border-border p-3"
               >
                 <p className="flex items-center gap-1.5 text-xs font-bold tabular-nums">
                   <Clock3 aria-hidden className="size-4 text-secondary" />
@@ -268,12 +268,12 @@ export function LecturerDashboardRoute() {
         </Card>
       </div>
       <Card className="lecturer-major-card gap-3.5 rounded-xl border p-5 shadow-none ring-0">
-        <div className="flex flex-col justify-between gap-4 border-b border-[var(--color-border-subtle)] pb-3 xl:flex-row xl:items-center">
+        <div className="flex flex-col justify-between gap-4 border-b border-border pb-3 xl:flex-row xl:items-center">
           <div>
             <h2 className="flex flex-wrap items-center gap-2 text-lg font-bold">
               <TriangleAlert
                 aria-hidden
-                className="size-5 text-[var(--color-error)]"
+                className="size-5 text-destructive"
               />
               Urgent work queue
               <StatusBadge value={`${data.totals.urgent} urgent`} />
@@ -341,7 +341,7 @@ export function LecturerDashboardRoute() {
                 <TableRow key={item.id}>
                   <TableCell className="w-44 whitespace-normal px-3 py-2.5">
                     <div className="flex items-start gap-2.5">
-                      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--color-selected-bg)] text-[var(--color-action)]">
+                      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-primary">
                         {item.id.startsWith("DOC") ? (
                           <BookOpenText aria-hidden className="size-4" />
                         ) : (
@@ -369,7 +369,7 @@ export function LecturerDashboardRoute() {
                     <p className="flex items-center gap-1.5 font-semibold">
                       <CircleAlert
                         aria-hidden
-                        className="size-4 shrink-0 text-[var(--color-error)]"
+                        className="size-4 shrink-0 text-destructive"
                       />
                       {item.impact}
                     </p>
@@ -404,7 +404,7 @@ export function LecturerDashboardRoute() {
             </TableBody>
           </Table>
         </ScrollRegion>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] pt-2 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-2 text-xs">
           <p
             role="status"
             aria-live="polite"

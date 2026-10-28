@@ -1,17 +1,17 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/primitives/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/shared/ui/primitives/sheet";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { lecturerDashboardFixture } from "@/features/lecturer/data/dashboardFixture";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/Toast";
+import { toast } from "@/shared/ui/primitives/toast";
 import { LecturerSidebar } from "./LecturerSidebar";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import "./lecturer-theme.css";
@@ -41,10 +41,10 @@ export function LecturerLayout() {
   return (
     <div className="lecturer-shell min-h-screen bg-background lg:flex">
       <SkipLink />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-[var(--color-border-subtle)] lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
         <LecturerSidebar {...sidebarProps} />
       </aside>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border-subtle)] bg-card px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
         <Button
           variant="outline"
           size="icon"

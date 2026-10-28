@@ -1,8 +1,8 @@
 import type { FormEvent, ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,9 +12,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Table } from "@/components/ui/table";
-import { Dialog, DialogContent } from "@/shared/ui/primitives/Dialog";
+} from "@/shared/ui/primitives/alert-dialog";
+import { Table } from "@/shared/ui/primitives/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
 import { Pagination, ReadState } from "@/components/workbench/Workbench";
 
 /** Dates arrive as ISO date or date-time strings; an unparsable one stays honest. */
@@ -89,9 +95,7 @@ export function FilterPanel({
             {children}
           </div>
         ) : null}
-        {hint ? (
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        ) : null}
+        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
   );
@@ -125,8 +129,8 @@ export function TablePanel({
   children: ReactNode;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--color-border-subtle)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] p-5">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
         <h2 className="text-lg font-bold">{heading}</h2>
         <p role="status" className="text-sm tabular-nums text-muted-foreground">
           Showing {shown} of {total} {noun}
@@ -205,11 +209,13 @@ export function FormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {open ? (
         <DialogContent
-          title={title}
-          description={description}
           className="max-h-[92vh] w-[min(94vw,640px)] overflow-y-auto"
           aria-describedby={errors.length ? "admin-form-errors" : undefined}
         >
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
           {/*
             `noValidate` keeps our announced, persistent error list the single
             source of truth. Native constraint validation on email/number/date
@@ -221,8 +227,7 @@ export function FormDialog({
               <div
                 id="admin-form-errors"
                 role="alert"
-                className="rounded-xl border border-[var(--color-error)] p-4"
-                style={{ background: "var(--color-danger-bg)" }}
+                className="rounded-xl border border-destructive bg-destructive/10 p-4 text-destructive"
               >
                 <p className="font-bold">Fix the following before saving:</p>
                 <ul className="mt-2 list-inside list-disc text-sm">
@@ -233,7 +238,7 @@ export function FormDialog({
               </div>
             )}
             {children}
-            <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-border-subtle)] pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button
                 type="button"
                 variant="outline"

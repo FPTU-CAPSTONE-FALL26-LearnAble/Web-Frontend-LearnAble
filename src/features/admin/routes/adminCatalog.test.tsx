@@ -57,7 +57,7 @@ const university = {
   emailDomain: "fpt.edu.vn",
   timezone: "Asia/Ho_Chi_Minh",
   logoUrl: null,
-  primaryColor: "#F37021",
+  primaryColor: null,
   status: "Active",
   createdAt: "2026-01-06T00:00:00Z",
   updatedAt: "2026-01-06T00:00:00Z",
