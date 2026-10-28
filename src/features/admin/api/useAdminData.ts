@@ -8,16 +8,14 @@ import {
   getCurriculums,
   getDepartments,
   getMajors,
-  getSpecializations,
-  getSyllabi,
+  getUniversityLookup,
   type AdminSemester,
   type AdminSubject,
   type AdminUser,
   type Curriculum,
   type Department,
   type Major,
-  type Specialization,
-  type Syllabus,
+  type UniversityLookup,
   type UserRole,
 } from "@/api/admin";
 import { describeError } from "@/app/providers";
@@ -82,6 +80,30 @@ export function useAdminWrite<TVariables = void>({
 }
 
 /**
+ * Tenant scope of the signed-in admin. Tenant-owned creates (departments,
+ * subjects, semesters, users) default to the admin's own university; only a
+ * super admin may choose another one.
+ */
+export function useUniversityScope() {
+  const user = useAuthStore((state) => state.user);
+  return {
+    universityId: user?.universityId ?? "",
+    isSuperAdmin: user?.isSuperAdmin ?? false,
+  };
+}
+
+/** Anonymous lookup, so it also works for admins who cannot list tenants. */
+export function useUniversityOptions(enabled = true) {
+  const query = useQuery({
+    queryKey: adminKeys.list("universities", ["options"]),
+    queryFn: () => getUniversityLookup({ PageSize: 200 }),
+    enabled,
+  });
+  useExpiredAdminSession(query.error);
+  return query;
+}
+
+/**
  * Reference lists used by the admin forms as foreign keys. They are read at a
  * large page size because the selects need the whole set, not one page.
  */
@@ -100,16 +122,6 @@ export function useMajorOptions(enabled = true) {
     queryKey: adminKeys.list("majors", ["options"]),
     queryFn: () => getMajors({ PageSize: 200 }),
     enabled,
-  });
-  useExpiredAdminSession(query.error);
-  return query;
-}
-
-export function useSpecializationOptions(majorId?: string) {
-  const query = useQuery({
-    queryKey: adminKeys.list("specializations", ["options", majorId ?? "all"]),
-    queryFn: () =>
-      getSpecializations({ PageSize: 200, MajorId: majorId || undefined }),
   });
   useExpiredAdminSession(query.error);
   return query;
@@ -143,16 +155,6 @@ export function useSemesterOptions() {
   return query;
 }
 
-export function useSyllabusOptions(subjectId?: string) {
-  const query = useQuery({
-    queryKey: adminKeys.list("syllabi", ["options", subjectId ?? "all"]),
-    queryFn: () =>
-      getSyllabi({ PageSize: 200, SubjectId: subjectId || undefined }),
-  });
-  useExpiredAdminSession(query.error);
-  return query;
-}
-
 /**
  * Accounts eligible for a profile. Filtered by role so a student profile cannot
  * be attached to a lecturer account by accident.
@@ -167,6 +169,13 @@ export function useUserOptions(role?: UserRole) {
 }
 
 /** Label helpers keep foreign keys readable in dense tables. */
+export const universityLabel = (
+  rows: UniversityLookup[],
+  id?: string | null,
+) => {
+  const row = rows.find((item) => item.universityId === id);
+  return row ? `${row.code} · ${row.name}` : null;
+};
 export const userLabel = (rows: AdminUser[], id?: string | null) => {
   const row = rows.find((item) => item.userId === id);
   return row ? `${row.userCode} · ${row.fullName}` : null;
@@ -179,13 +188,6 @@ export const majorLabel = (rows: Major[], id?: string | null) => {
   const row = rows.find((item) => item.majorId === id);
   return row ? `${row.majorCode} · ${row.majorName}` : null;
 };
-export const specializationLabel = (
-  rows: Specialization[],
-  id?: string | null,
-) => {
-  const row = rows.find((item) => item.specializationId === id);
-  return row ? `${row.specializationCode} · ${row.specializationName}` : null;
-};
 export const curriculumLabel = (rows: Curriculum[], id?: string | null) => {
   const row = rows.find((item) => item.curriculumId === id);
   return row ? `${row.curriculumCode} · ${row.version}` : null;
@@ -197,8 +199,4 @@ export const subjectLabel = (rows: AdminSubject[], id?: string | null) => {
 export const semesterLabel = (rows: AdminSemester[], id?: string | null) => {
   const row = rows.find((item) => item.semesterId === id);
   return row ? `${row.semesterCode} · ${row.semesterName}` : null;
-};
-export const syllabusLabel = (rows: Syllabus[], id?: string | null) => {
-  const row = rows.find((item) => item.syllabusId === id);
-  return row ? `${row.syllabusCode} · ${row.version}` : null;
 };

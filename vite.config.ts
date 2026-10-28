@@ -11,7 +11,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "https://backend-learnable.onrender.com",
+        target: "http://54.79.78.167:8080",
         changeOrigin: true,
       },
     },

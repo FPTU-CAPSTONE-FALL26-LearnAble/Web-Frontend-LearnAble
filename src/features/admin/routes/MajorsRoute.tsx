@@ -120,8 +120,8 @@ export function MajorsRoute() {
   const toggle = useAdminWrite<{ id: string; next: boolean }>({
     resource: "majors",
     action: "Major status change",
-    // Specializations, curriculums and student profiles all key off a major.
-    alsoInvalidate: ["specializations", "curriculums", "studentProfiles"],
+    // Curriculums and student profiles both key off a major.
+    alsoInvalidate: ["curriculums", "studentProfiles"],
     mutationFn: ({ id, next }) => setMajorActive(id, next),
     onSuccess: () => setToggling(null),
   });
@@ -151,7 +151,7 @@ export function MajorsRoute() {
     <div className="space-y-6">
       <PageHeading
         title="Majors"
-        description="Majors belong to a department and carry the specializations, curriculums and student profiles beneath them."
+        description="Majors belong to a department and carry the curriculums and student profiles beneath them."
       >
         <Button
           disabled={!departmentRows.length}
@@ -403,8 +403,8 @@ export function MajorsRoute() {
         title={toggling?.isActive ? "Deactivate major?" : "Activate major?"}
         description={
           toggling?.isActive
-            ? `${toggling?.majorName} will stop accepting new specializations, curriculums and student intakes. Existing records stay readable.`
-            : `${toggling?.majorName} will accept new specializations, curriculums and student intakes again.`
+            ? `${toggling?.majorName} will stop accepting new curriculums and student intakes. Existing records stay readable.`
+            : `${toggling?.majorName} will accept new curriculums and student intakes again.`
         }
         confirmLabel={toggling?.isActive ? "Deactivate" : "Activate"}
         onConfirm={() =>

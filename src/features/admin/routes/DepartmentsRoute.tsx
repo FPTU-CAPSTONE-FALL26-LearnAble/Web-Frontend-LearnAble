@@ -27,7 +27,9 @@ import {
   adminKeys,
   useAdminWrite,
   useExpiredAdminSession,
+  useUniversityScope,
 } from "../api/useAdminData";
+import { UniversityField } from "../components/UniversityField";
 import {
   ConfirmAction,
   EmptyRow,
@@ -38,11 +40,13 @@ import {
 } from "../components/AdminSurfaces";
 
 type Draft = {
+  universityId: string;
   departmentCode: string;
   departmentName: string;
   description: string;
 };
 const emptyDraft: Draft = {
+  universityId: "",
   departmentCode: "",
   departmentName: "",
   description: "",
@@ -60,6 +64,7 @@ export function DepartmentsRoute() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [toggling, setToggling] = useState<Department | null>(null);
+  const scope = useUniversityScope();
 
   const list = useQuery({
     queryKey: adminKeys.list("departments", [search, active, page, size]),
@@ -85,6 +90,7 @@ export function DepartmentsRoute() {
     action: "Create department",
     mutationFn: () =>
       createDepartment({
+        universityId: draft.universityId,
         departmentCode: draft.departmentCode.trim(),
         departmentName: draft.departmentName.trim(),
         description: draft.description.trim() || null,
@@ -113,6 +119,8 @@ export function DepartmentsRoute() {
   const submit = () => {
     const found: string[] = [];
     if (!creating && !editing) return;
+    if (creating && !draft.universityId)
+      found.push("University is required.");
     if (creating && !draft.departmentCode.trim())
       found.push("Department code is required.");
     if (!draft.departmentName.trim())
@@ -139,7 +147,7 @@ export function DepartmentsRoute() {
       >
         <Button
           onClick={() => {
-            setDraft(emptyDraft);
+            setDraft({ ...emptyDraft, universityId: scope.universityId });
             setErrors([]);
             setCreating(true);
           }}
@@ -259,6 +267,7 @@ export function DepartmentsRoute() {
                       setEditing(row);
                       setErrors([]);
                       setDraft({
+                        universityId: row.universityId,
                         departmentCode: row.departmentCode,
                         departmentName: row.departmentName,
                         description: row.description ?? "",
@@ -300,6 +309,13 @@ export function DepartmentsRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        <UniversityField
+          value={draft.universityId}
+          disabled={!creating}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, universityId: value }))
+          }
+        />
         <TextField
           label="Department code"
           value={draft.departmentCode}
