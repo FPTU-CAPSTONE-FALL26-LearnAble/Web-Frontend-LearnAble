@@ -9,8 +9,12 @@ import {
 
 /**
  * Admin workspace contract — mirrors the deployed LearnAble OpenAPI document
- * (Departments, Majors, Specializations, Subjects, Semesters, Curriculums,
- * Users, StudentProfiles, LecturerProfiles).
+ * (Universities, Departments, Majors, Subjects, Topics, Semesters,
+ * Curriculums, Users, StudentProfiles, LecturerProfiles).
+ *
+ * The API is multi-tenant: Departments, Subjects, Semesters and Users belong
+ * to a university, and their create bodies carry `universityId`. A regular
+ * admin writes into their own university; a super admin may pick one.
  *
  * Reads keep the `catalog.ts` conventions: paged envelope, null → "Not
  * available". Writes are real backend calls — no local simulation — so a
@@ -21,7 +25,7 @@ const unavailable = "Not available";
 const text = (value: string | null | undefined) => value ?? unavailable;
 
 /** Server enums. Keep in sync with `components.schemas` of the OpenAPI document. */
-export const courseSectionStatuses = ["Open", "Closed", "Cancelled"] as const;
+export const universityStatuses = ["Active", "Inactive"] as const;
 export const userRoles = ["Student", "Lecturer", "Examiner", "Admin"] as const;
 export const userStatuses = ["Active", "Inactive"] as const;
 export const semesterStatuses = ["Planned", "Ongoing", "Closed"] as const;
@@ -41,6 +45,7 @@ export type EnrollmentStatus = (typeof enrollmentStatuses)[number];
 export const departmentSchema = z
   .object({
     departmentId: z.string(),
+    universityId: z.string(),
     departmentCode: z.string().nullable(),
     departmentName: z.string().nullable(),
     description: z.string().nullable(),
@@ -71,26 +76,10 @@ export const majorSchema = z
     majorName: text(row.majorName),
   }));
 
-export const specializationSchema = z
-  .object({
-    specializationId: z.string(),
-    majorId: z.string(),
-    specializationCode: z.string().nullable(),
-    specializationName: z.string().nullable(),
-    description: z.string().nullable(),
-    isActive: z.boolean(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-  })
-  .transform((row) => ({
-    ...row,
-    specializationCode: text(row.specializationCode),
-    specializationName: text(row.specializationName),
-  }));
-
 export const adminSubjectSchema = z
   .object({
     subjectId: z.string(),
+    universityId: z.string(),
     departmentId: z.string().nullable(),
     subjectCode: z.string().nullable(),
     subjectNameEn: z.string().nullable(),
@@ -109,6 +98,7 @@ export const adminSubjectSchema = z
 export const adminSemesterSchema = z
   .object({
     semesterId: z.string(),
+    universityId: z.string(),
     semesterCode: z.string().nullable(),
     semesterName: z.string().nullable(),
     academicYear: z.string().nullable(),
@@ -154,6 +144,7 @@ export const curriculumSchema = z
 export const adminUserSchema = z
   .object({
     userId: z.string(),
+    universityId: z.string(),
     userCode: z.string().nullable(),
     email: z.string().nullable(),
     fullName: z.string().nullable(),
@@ -176,11 +167,9 @@ export const adminUserSchema = z
 
 export const studentProfileSchema = z
   .object({
-    studentProfileId: z.string(),
     userId: z.string(),
     userRole: z.string().nullable(),
     majorId: z.string(),
-    specializationId: z.string().nullable(),
     curriculumId: z.string(),
     intakeYear: z.number(),
     currentSemester: z.number(),
@@ -192,10 +181,15 @@ export const studentProfileSchema = z
     ...row,
     enrollmentStatus: text(row.enrollmentStatus),
   }));
+/*
+ * Profiles share their primary key with the user account: neither response
+ * carries a profile id, so `/StudentProfiles/{id}` and `/LecturerProfiles/{id}`
+ * take the `userId`. The response also carries the student's accessibility
+ * preferences, which the admin surface does not edit.
+ */
 
 export const lecturerProfileSchema = z
   .object({
-    lecturerProfileId: z.string(),
     userId: z.string(),
     userRole: z.string().nullable(),
     departmentId: z.string().nullable(),
@@ -211,52 +205,11 @@ export const lecturerProfileSchema = z
     academicRank: text(row.academicRank),
   }));
 
-export const courseSectionSchema = z
-  .object({
-    sectionId: z.string(),
-    subjectId: z.string(),
-    semesterId: z.string(),
-    // Paired with `lecturerRole` exactly as profiles pair `userId`/`userRole`,
-    // so this is the lecturer's user id, not a lecturer-profile id.
-    lecturerId: z.string().nullable(),
-    lecturerRole: z.string().nullable(),
-    sectionCode: z.string().nullable(),
-    capacity: z.number().nullable(),
-    status: z.string().nullable(),
-    createdAt: z.string(),
-  })
-  .transform((row) => ({
-    ...row,
-    sectionCode: text(row.sectionCode),
-    status: text(row.status),
-  }));
-
-export const syllabusSchema = z
-  .object({
-    syllabusId: z.string(),
-    subjectId: z.string(),
-    createdBy: z.string().nullable(),
-    authorRole: z.string().nullable(),
-    syllabusCode: z.string().nullable(),
-    syllabusName: z.string().nullable(),
-    version: z.string().nullable(),
-    isActive: z.boolean(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-  })
-  .transform((row) => ({
-    ...row,
-    syllabusCode: text(row.syllabusCode),
-    syllabusName: text(row.syllabusName),
-    version: text(row.version),
-  }));
-
 /** Fuller than `catalog.ts`'s `topicSchema`, which the lecturer selectors use. */
 export const adminTopicSchema = z
   .object({
     topicId: z.string(),
     subjectId: z.string(),
-    syllabusId: z.string().nullable(),
     topicCode: z.string().nullable(),
     topicName: z.string().nullable(),
     description: z.string().nullable(),
@@ -271,12 +224,52 @@ export const adminTopicSchema = z
     topicName: text(row.topicName),
   }));
 
-export type CourseSection = z.output<typeof courseSectionSchema>;
-export type Syllabus = z.output<typeof syllabusSchema>;
+export const universitySchema = z
+  .object({
+    universityId: z.string(),
+    code: z.string().nullable(),
+    name: z.string().nullable(),
+    shortName: z.string().nullable(),
+    nameEn: z.string().nullable(),
+    address: z.string().nullable(),
+    phone: z.string().nullable(),
+    contactEmail: z.string().nullable(),
+    website: z.string().nullable(),
+    subdomain: z.string().nullable(),
+    emailDomain: z.string().nullable(),
+    timezone: z.string().nullable(),
+    logoUrl: z.string().nullable(),
+    primaryColor: z.string().nullable(),
+    status: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .transform((row) => ({
+    ...row,
+    code: text(row.code),
+    name: text(row.name),
+    status: text(row.status),
+  }));
+
+/** Anonymous `/Universities/lookup` — the light shape the selects need. */
+export const universityLookupSchema = z
+  .object({
+    universityId: z.string(),
+    code: z.string().nullable(),
+    name: z.string().nullable(),
+    shortName: z.string().nullable().optional(),
+  })
+  .transform((row) => ({
+    ...row,
+    code: text(row.code),
+    name: text(row.name),
+  }));
+
+export type University = z.output<typeof universitySchema>;
+export type UniversityLookup = z.output<typeof universityLookupSchema>;
 export type AdminTopic = z.output<typeof adminTopicSchema>;
 export type Department = z.output<typeof departmentSchema>;
 export type Major = z.output<typeof majorSchema>;
-export type Specialization = z.output<typeof specializationSchema>;
 export type AdminSubject = z.output<typeof adminSubjectSchema>;
 export type AdminSemester = z.output<typeof adminSemesterSchema>;
 export type Curriculum = z.output<typeof curriculumSchema>;
@@ -351,7 +344,28 @@ async function write(
 
 /* ---------------------------------------------------------- request bodies */
 
+export type CreateUniversityBody = {
+  code: string;
+  name: string;
+  shortName?: string | null;
+  nameEn?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  contactEmail?: string | null;
+  website?: string | null;
+  subdomain?: string | null;
+  emailDomain?: string | null;
+  timezone?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+};
+/** Code, subdomain and email domain are fixed once the tenant exists. */
+export type UpdateUniversityBody = Omit<
+  CreateUniversityBody,
+  "code" | "subdomain" | "emailDomain"
+>;
 export type CreateDepartmentBody = {
+  universityId: string;
   departmentCode: string;
   departmentName: string;
   description?: string | null;
@@ -370,17 +384,8 @@ export type UpdateMajorBody = {
   majorName: string;
   description?: string | null;
 };
-export type CreateSpecializationBody = {
-  majorId: string;
-  specializationCode: string;
-  specializationName: string;
-  description?: string | null;
-};
-export type UpdateSpecializationBody = {
-  specializationName: string;
-  description?: string | null;
-};
 export type CreateSubjectBody = {
+  universityId: string;
   departmentId?: string | null;
   subjectCode: string;
   subjectNameEn: string;
@@ -393,6 +398,7 @@ export type UpdateSubjectBody = {
   description?: string | null;
 };
 export type CreateSemesterBody = {
+  universityId: string;
   semesterCode: string;
   semesterName: string;
   academicYear: string;
@@ -422,31 +428,8 @@ export type UpdateCurriculumBody = {
   effectiveTo?: string | null;
   totalCredits?: number | null;
 };
-export type CreateCourseSectionBody = {
-  subjectId: string;
-  semesterId: string;
-  lecturerId?: string | null;
-  sectionCode: string;
-  capacity?: number | null;
-};
-/** The API accepts only the assignment and the capacity after creation. */
-export type UpdateCourseSectionBody = {
-  lecturerId?: string | null;
-  capacity?: number | null;
-};
-export type CreateSyllabusBody = {
-  subjectId: string;
-  syllabusCode: string;
-  syllabusName: string;
-  version: string;
-};
-export type UpdateSyllabusBody = {
-  syllabusName: string;
-  version: string;
-};
 export type CreateTopicBody = {
   subjectId: string;
-  syllabusId?: string | null;
   topicCode: string;
   topicName: string;
   description?: string | null;
@@ -458,6 +441,7 @@ export type UpdateTopicBody = {
   displayOrder: number;
 };
 export type CreateUserBody = {
+  universityId: string;
   fullName: string;
   dateOfBirth?: string | null;
   gender?: string | null;
@@ -476,13 +460,12 @@ export type UpdateUserBody = {
 export type CreateStudentProfileBody = {
   userId: string;
   majorId: string;
-  specializationId?: string | null;
   curriculumId: string;
   intakeYear: number;
   currentSemester: number;
 };
+/** The API accepts only the semester counter after creation. */
 export type UpdateStudentProfileBody = {
-  specializationId?: string | null;
   currentSemester: number;
 };
 export type CreateLecturerProfileBody = {
@@ -500,6 +483,29 @@ export type UpdateLecturerProfileBody = {
   hireDate?: string | null;
   bio?: string | null;
 };
+
+/* ------------------------------------------------------------- Universities */
+
+export const getUniversities = (filters: ReadFilters = {}) =>
+  readPage<University>("Universities", universitySchema, {
+    PageNumber: 1,
+    PageSize: 10,
+    SortBy: "code",
+    ...filters,
+  });
+/** Anonymous lookup used by the university selects. */
+export const getUniversityLookup = (filters: ReadFilters = {}) =>
+  readPage<UniversityLookup>("Universities/lookup", universityLookupSchema, {
+    PageNumber: 1,
+    PageSize: 100,
+    ...filters,
+  });
+export const createUniversity = (body: CreateUniversityBody) =>
+  write("Universities", "POST", body);
+export const updateUniversity = (id: string, body: UpdateUniversityBody) =>
+  write(`Universities/${id}`, "PUT", body);
+export const setUniversityActive = (id: string, active: boolean) =>
+  write(`Universities/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
 
 /* -------------------------------------------------------------- Departments */
 
@@ -535,26 +541,6 @@ export const updateMajor = (id: string, body: UpdateMajorBody) =>
   write(`Majors/${id}`, "PUT", body);
 export const setMajorActive = (id: string, active: boolean) =>
   write(`Majors/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
-
-/* --------------------------------------------------------- Specializations */
-
-export const getSpecializations = (filters: ReadFilters = {}) =>
-  readPage<Specialization>("Specializations", specializationSchema, {
-    PageNumber: 1,
-    PageSize: 100,
-    SortBy: "specializationCode",
-    ...filters,
-  });
-export const getSpecialization = (id: string) =>
-  readOne<Specialization>("Specializations", id, specializationSchema);
-export const createSpecialization = (body: CreateSpecializationBody) =>
-  write("Specializations", "POST", body);
-export const updateSpecialization = (
-  id: string,
-  body: UpdateSpecializationBody,
-) => write(`Specializations/${id}`, "PUT", body);
-export const setSpecializationActive = (id: string, active: boolean) =>
-  write(`Specializations/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
 
 /* ----------------------------------------------------------------- Subjects */
 
@@ -608,44 +594,6 @@ export const approveCurriculum = (id: string) =>
 export const archiveCurriculum = (id: string) =>
   write(`Curriculums/${id}/archive`, "PATCH");
 
-/* ----------------------------------------------------------- CourseSections */
-
-export const getCourseSections = (filters: ReadFilters = {}) =>
-  readPage<CourseSection>("CourseSections", courseSectionSchema, {
-    PageNumber: 1,
-    PageSize: 10,
-    SortBy: "sectionCode",
-    ...filters,
-  });
-export const createCourseSection = (body: CreateCourseSectionBody) =>
-  write("CourseSections", "POST", body);
-export const updateCourseSection = (
-  id: string,
-  body: UpdateCourseSectionBody,
-) => write(`CourseSections/${id}`, "PUT", body);
-export const openCourseSection = (id: string) =>
-  write(`CourseSections/${id}/open`, "PATCH");
-export const closeCourseSection = (id: string) =>
-  write(`CourseSections/${id}/close`, "PATCH");
-export const cancelCourseSection = (id: string) =>
-  write(`CourseSections/${id}/cancel`, "PATCH");
-
-/* ------------------------------------------------------------------ Syllabi */
-
-export const getSyllabi = (filters: ReadFilters = {}) =>
-  readPage<Syllabus>("Syllabi", syllabusSchema, {
-    PageNumber: 1,
-    PageSize: 10,
-    SortBy: "syllabusCode",
-    ...filters,
-  });
-export const createSyllabus = (body: CreateSyllabusBody) =>
-  write("Syllabi", "POST", body);
-export const updateSyllabus = (id: string, body: UpdateSyllabusBody) =>
-  write(`Syllabi/${id}`, "PUT", body);
-export const setSyllabusActive = (id: string, active: boolean) =>
-  write(`Syllabi/${id}/${active ? "activate" : "deactivate"}`, "PATCH");
-
 /* ------------------------------------------------------------------- Topics */
 
 export const getAdminTopics = (filters: ReadFilters = {}) =>
@@ -691,14 +639,17 @@ export const getStudentProfiles = (filters: ReadFilters = {}) =>
   });
 export const createStudentProfile = (body: CreateStudentProfileBody) =>
   write("StudentProfiles", "POST", body);
+/** Profile endpoints are keyed by the account's `userId`. */
 export const updateStudentProfile = (
-  id: string,
+  userId: string,
   body: UpdateStudentProfileBody,
-) => write(`StudentProfiles/${id}`, "PUT", body);
-export const changeEnrollmentStatus = (id: string, status: EnrollmentStatus) =>
-  write(`StudentProfiles/${id}/enrollment-status`, "PATCH", { status });
-export const deleteStudentProfile = (id: string) =>
-  write(`StudentProfiles/${id}`, "DELETE");
+) => write(`StudentProfiles/${userId}`, "PUT", body);
+export const changeEnrollmentStatus = (
+  userId: string,
+  status: EnrollmentStatus,
+) => write(`StudentProfiles/${userId}/enrollment-status`, "PATCH", { status });
+export const deleteStudentProfile = (userId: string) =>
+  write(`StudentProfiles/${userId}`, "DELETE");
 
 /* -------------------------------------------------------- LecturerProfiles */
 
@@ -712,8 +663,8 @@ export const getLecturerProfiles = (filters: ReadFilters = {}) =>
 export const createLecturerProfile = (body: CreateLecturerProfileBody) =>
   write("LecturerProfiles", "POST", body);
 export const updateLecturerProfile = (
-  id: string,
+  userId: string,
   body: UpdateLecturerProfileBody,
-) => write(`LecturerProfiles/${id}`, "PUT", body);
-export const deleteLecturerProfile = (id: string) =>
-  write(`LecturerProfiles/${id}`, "DELETE");
+) => write(`LecturerProfiles/${userId}`, "PUT", body);
+export const deleteLecturerProfile = (userId: string) =>
+  write(`LecturerProfiles/${userId}`, "DELETE");

@@ -31,6 +31,9 @@ vi.mock("@/api/admin", async (importOriginal) => {
     await importOriginal<typeof import("@/api/admin")>();
   return {
     ...actual,
+    getUniversityLookup: vi.fn(async () =>
+      page([{ universityId: "uni-fpt", code: "FPTU", name: "FPT University" }]),
+    ),
     getDepartments: vi.fn(async () => ({
       items: [
         {
@@ -105,6 +108,8 @@ function view(element: ReactNode) {
       fullName: "Admin One",
       email: "admin@fpt.edu.vn",
       role: "Admin",
+      universityId: "uni-fpt",
+      isSuperAdmin: false,
     },
   });
   const router = createMemoryRouter([{ path: "/", element }], {
@@ -195,11 +200,23 @@ describe("Admin workspaces", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Create department" }));
     await waitFor(() =>
       expect(createDepartment).toHaveBeenCalledWith({
+        // A regular admin always writes into their own university.
+        universityId: "uni-fpt",
         departmentCode: "DS",
         departmentName: "Data Science",
         description: null,
       }),
     );
+  });
+
+  it("locks the university of a regular admin to their own tenant", async () => {
+    const user = userEvent.setup();
+    view(<DepartmentsRoute />);
+    await screen.findByText("Software Engineering");
+    await user.click(screen.getByRole("button", { name: "New department" }));
+    const university = await screen.findByLabelText("University");
+    expect(university).toBeDisabled();
+    expect(university).toHaveTextContent("FPTU · FPT University");
   });
 
   it("confirms before changing a department's active state", async () => {

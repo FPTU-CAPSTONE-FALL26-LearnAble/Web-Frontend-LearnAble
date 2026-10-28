@@ -4,7 +4,18 @@ import type { AuthTokens } from "@/lib/auth/tokenStore";
 
 /** API-01 — POST /auth/login */
 
-export const userSchema = z.object({ id: z.string(), fullName: z.string(), email: z.string(), role: z.string() });
+/**
+ * `universityId` / `isSuperAdmin` scope tenant-owned writes. They are optional
+ * so a user persisted before multi-tenancy still parses until the next login.
+ */
+export const userSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+  role: z.string(),
+  universityId: z.string().optional(),
+  isSuperAdmin: z.boolean().optional(),
+});
 export type User = z.infer<typeof userSchema>;
 
 const authTokensSchema = z.object({
@@ -24,6 +35,8 @@ const currentUserResponseSchema = z.object({
   success: z.boolean(),
   message: z.string().nullable(),
   data: z.object({
+    universityId: z.string().optional(),
+    isSuperAdmin: z.boolean().optional(),
     userId: z.string(),
     fullName: z.string().nullable(),
     email: z.string().nullable(),
@@ -52,5 +65,7 @@ export async function getCurrentUser(): Promise<User> {
     fullName: response.data.fullName ?? "LearnAble user",
     email: response.data.email ?? "",
     role: response.data.role ?? "User",
+    universityId: response.data.universityId,
+    isSuperAdmin: response.data.isSuperAdmin ?? false,
   };
 }

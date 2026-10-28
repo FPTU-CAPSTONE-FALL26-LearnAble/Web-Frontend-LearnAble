@@ -31,12 +31,10 @@ import {
   adminKeys,
   curriculumLabel,
   majorLabel,
-  specializationLabel,
   useAdminWrite,
   useCurriculumOptions,
   useExpiredAdminSession,
   useMajorOptions,
-  useSpecializationOptions,
   useUserOptions,
   userLabel,
 } from "../api/useAdminData";
@@ -52,7 +50,6 @@ import {
 type Draft = {
   userId: string;
   majorId: string;
-  specializationId: string;
   curriculumId: string;
   intakeYear: string;
   currentSemester: string;
@@ -60,12 +57,10 @@ type Draft = {
 const emptyDraft: Draft = {
   userId: "",
   majorId: "",
-  specializationId: "",
   curriculumId: "",
   intakeYear: "",
   currentSemester: "1",
 };
-const noSpecialization = "none";
 
 const statusTone = (status: string) =>
   status === "Studying"
@@ -81,7 +76,6 @@ const statusTone = (status: string) =>
 export function StudentProfilesRoute() {
   useRouteAnnouncer("Student Profiles · LearnAble Admin", "Student Profiles");
   const [major, setMajor] = useState("all");
-  const [specialization, setSpecialization] = useState("all");
   const [curriculum, setCurriculum] = useState("all");
   const [enrollment, setEnrollment] = useState("all");
   const [intake, setIntake] = useState("");
@@ -100,22 +94,18 @@ export function StudentProfilesRoute() {
 
   const students = useUserOptions("Student");
   const majors = useMajorOptions();
-  // Draft narrows its own specialization and curriculum options to the chosen major.
+  // Draft narrows its own curriculum options to the chosen major.
   const draftMajor = creating ? draft.majorId : undefined;
-  const specializations = useSpecializationOptions(draftMajor);
   const curriculums = useCurriculumOptions(draftMajor);
-  const allSpecializations = useSpecializationOptions();
   const allCurriculums = useCurriculumOptions();
 
   const studentRows = students.data?.items ?? [];
   const majorRows = majors.data?.items ?? [];
-  const specializationRows = allSpecializations.data?.items ?? [];
   const curriculumRows = allCurriculums.data?.items ?? [];
 
   const list = useQuery({
     queryKey: adminKeys.list("studentProfiles", [
       major,
-      specialization,
       curriculum,
       enrollment,
       appliedIntake,
@@ -125,8 +115,6 @@ export function StudentProfilesRoute() {
     queryFn: () =>
       getStudentProfiles({
         MajorId: major === "all" ? undefined : major,
-        SpecializationId:
-          specialization === "all" ? undefined : specialization,
         CurriculumId: curriculum === "all" ? undefined : curriculum,
         EnrollmentStatus: enrollment === "all" ? undefined : enrollment,
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
@@ -150,10 +138,6 @@ export function StudentProfilesRoute() {
       createStudentProfile({
         userId: draft.userId,
         majorId: draft.majorId,
-        specializationId:
-          draft.specializationId === noSpecialization || !draft.specializationId
-            ? null
-            : draft.specializationId,
         curriculumId: draft.curriculumId,
         intakeYear: Number(draft.intakeYear),
         currentSemester: Number(draft.currentSemester),
@@ -164,11 +148,7 @@ export function StudentProfilesRoute() {
     resource: "studentProfiles",
     action: "Update student profile",
     mutationFn: () =>
-      updateStudentProfile(editing!.studentProfileId, {
-        specializationId:
-          draft.specializationId === noSpecialization || !draft.specializationId
-            ? null
-            : draft.specializationId,
+      updateStudentProfile(editing!.userId, {
         currentSemester: Number(draft.currentSemester),
       }),
     onSuccess: closeForm,
@@ -213,7 +193,6 @@ export function StudentProfilesRoute() {
   };
   const reset = () => {
     setMajor("all");
-    setSpecialization("all");
     setCurriculum("all");
     setEnrollment("all");
     setIntake("");
@@ -231,7 +210,7 @@ export function StudentProfilesRoute() {
     <div className="space-y-6">
       <PageHeading
         title="Student Profiles"
-        description="The academic record behind a student account: major, specialization, curriculum, intake and enrollment status."
+        description="The academic record behind a student account: major, curriculum, intake and enrollment status."
       >
         <Button
           disabled={!studentRows.length || !majorRows.length}
@@ -310,25 +289,7 @@ export function StudentProfilesRoute() {
           ]}
           onChange={(value) => {
             setMajor(value);
-            setSpecialization("all");
             setCurriculum("all");
-            setPage(1);
-          }}
-        />
-        <ChoiceField
-          label="Specialization"
-          value={specialization}
-          options={[
-            { value: "all", label: "All specializations" },
-            ...specializationRows
-              .filter((row) => major === "all" || row.majorId === major)
-              .map((row) => ({
-                value: row.specializationId,
-                label: `${row.specializationCode} · ${row.specializationName}`,
-              })),
-          ]}
-          onChange={(value) => {
-            setSpecialization(value);
             setPage(1);
           }}
         />
@@ -391,7 +352,7 @@ export function StudentProfilesRoute() {
         <TableHeader>
           <TableRow>
             <TableHead>Student</TableHead>
-            <TableHead>Major / specialization</TableHead>
+            <TableHead>Major</TableHead>
             <TableHead>Curriculum</TableHead>
             <TableHead>Intake</TableHead>
             <TableHead>Semester</TableHead>
@@ -401,7 +362,7 @@ export function StudentProfilesRoute() {
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.studentProfileId}>
+            <TableRow key={row.userId}>
               <TableCell className="min-w-56 whitespace-normal">
                 <p className="font-bold leading-relaxed">
                   {userLabel(studentRows, row.userId) ?? "Account not in list"}
@@ -413,12 +374,6 @@ export function StudentProfilesRoute() {
               <TableCell className="min-w-56 whitespace-normal">
                 <p className="font-bold">
                   {majorLabel(majorRows, row.majorId) ?? "Not available"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {specializationLabel(
-                    specializationRows,
-                    row.specializationId,
-                  ) ?? "No specialization"}
                 </p>
               </TableCell>
               <TableCell className="min-w-44 whitespace-normal">
@@ -445,8 +400,6 @@ export function StudentProfilesRoute() {
                       setDraft({
                         userId: row.userId,
                         majorId: row.majorId,
-                        specializationId:
-                          row.specializationId ?? noSpecialization,
                         curriculumId: row.curriculumId,
                         intakeYear: String(row.intakeYear),
                         currentSemester: String(row.currentSemester),
@@ -505,7 +458,7 @@ export function StudentProfilesRoute() {
         description={
           creating
             ? "Account, major, curriculum and intake year are permanent once the profile exists."
-            : "Only the specialization and current semester can be changed. Use the status control in the table to move enrollment."
+            : "Only the current semester can be changed. Use the status control in the table to move enrollment."
         }
         submitLabel={creating ? "Create profile" : "Save changes"}
         pending={create.isPending || update.isPending}
@@ -536,29 +489,8 @@ export function StudentProfilesRoute() {
             setDraft((old) => ({
               ...old,
               majorId: value,
-              specializationId: "",
               curriculumId: "",
             }))
-          }
-        />
-        <ChoiceField
-          label="Specialization of student"
-          value={draft.specializationId || noSpecialization}
-          placeholder="Select a specialization"
-          options={[
-            { value: noSpecialization, label: "No specialization" },
-            ...(creating
-              ? (specializations.data?.items ?? [])
-              : specializationRows.filter(
-                  (row) => row.majorId === draft.majorId,
-                )
-            ).map((row) => ({
-              value: row.specializationId,
-              label: `${row.specializationCode} · ${row.specializationName}`,
-            })),
-          ]}
-          onChange={(value) =>
-            setDraft((old) => ({ ...old, specializationId: value }))
           }
         />
         <ChoiceField
@@ -621,7 +553,7 @@ export function StudentProfilesRoute() {
         onConfirm={() =>
           statusChange &&
           changeStatus.mutate({
-            id: statusChange.row.studentProfileId,
+            id: statusChange.row.userId,
             status: statusChange.next,
           })
         }
@@ -635,7 +567,7 @@ export function StudentProfilesRoute() {
         title="Delete student profile?"
         description={`The academic record for ${userLabel(studentRows, removing?.userId) ?? "this student"} will be removed. The user account itself is not deleted. This cannot be undone.`}
         confirmLabel="Delete profile"
-        onConfirm={() => removing && remove.mutate(removing.studentProfileId)}
+        onConfirm={() => removing && remove.mutate(removing.userId)}
       />
     </div>
   );

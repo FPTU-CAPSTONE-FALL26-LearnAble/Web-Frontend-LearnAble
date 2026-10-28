@@ -30,7 +30,9 @@ import {
   useAdminWrite,
   useDepartmentOptions,
   useExpiredAdminSession,
+  useUniversityScope,
 } from "../api/useAdminData";
+import { UniversityField } from "../components/UniversityField";
 import {
   ConfirmAction,
   EmptyRow,
@@ -41,6 +43,7 @@ import {
 } from "../components/AdminSurfaces";
 
 type Draft = {
+  universityId: string;
   departmentId: string;
   subjectCode: string;
   subjectNameEn: string;
@@ -48,6 +51,7 @@ type Draft = {
   description: string;
 };
 const emptyDraft: Draft = {
+  universityId: "",
   departmentId: "",
   subjectCode: "",
   subjectNameEn: "",
@@ -67,6 +71,7 @@ export function SubjectsRoute() {
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminSubject | null>(null);
+  const scope = useUniversityScope();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [toggling, setToggling] = useState<AdminSubject | null>(null);
@@ -104,6 +109,7 @@ export function SubjectsRoute() {
     action: "Create subject",
     mutationFn: () =>
       createSubject({
+        universityId: draft.universityId,
         departmentId:
           draft.departmentId === noDepartment || !draft.departmentId
             ? null
@@ -137,6 +143,8 @@ export function SubjectsRoute() {
 
   const submit = () => {
     const found: string[] = [];
+    if (creating && !draft.universityId)
+      found.push("University is required.");
     if (creating && !draft.subjectCode.trim())
       found.push("Subject code is required.");
     if (!draft.subjectNameEn.trim())
@@ -163,7 +171,7 @@ export function SubjectsRoute() {
       >
         <Button
           onClick={() => {
-            setDraft(emptyDraft);
+            setDraft({ ...emptyDraft, universityId: scope.universityId });
             setErrors([]);
             setCreating(true);
           }}
@@ -300,6 +308,7 @@ export function SubjectsRoute() {
                       setEditing(row);
                       setErrors([]);
                       setDraft({
+                        universityId: row.universityId,
                         departmentId: row.departmentId ?? noDepartment,
                         subjectCode: row.subjectCode,
                         subjectNameEn: row.subjectNameEn,
@@ -343,6 +352,13 @@ export function SubjectsRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        <UniversityField
+          value={draft.universityId}
+          disabled={!creating}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, universityId: value }))
+          }
+        />
         <ChoiceField
           label="Owning department"
           value={draft.departmentId}

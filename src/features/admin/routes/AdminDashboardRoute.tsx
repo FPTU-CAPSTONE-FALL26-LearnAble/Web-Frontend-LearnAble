@@ -2,14 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
   ArrowRight,
-  BookMarked,
   Building2,
   CalendarRange,
   GraduationCap,
-  Layers,
   LibraryBig,
   ListTree,
-  Network,
+  University,
   ScrollText,
   UserCog,
   UserRound,
@@ -20,14 +18,12 @@ import {
   getAdminSubjects,
   getAdminTopics,
   getAdminUsers,
-  getCourseSections,
   getCurriculums,
   getDepartments,
   getLecturerProfiles,
   getMajors,
-  getSpecializations,
   getStudentProfiles,
-  getSyllabi,
+  getUniversities,
 } from "@/api/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,7 +42,11 @@ import {
   SummaryCard,
 } from "@/components/workbench/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { adminKeys, useExpiredAdminSession } from "../api/useAdminData";
+import {
+  adminKeys,
+  useExpiredAdminSession,
+  useUniversityScope,
+} from "../api/useAdminData";
 import { formatDate } from "../components/AdminSurfaces";
 
 /**
@@ -55,6 +55,14 @@ import { formatDate } from "../components/AdminSurfaces";
  * rather than a fabricated number.
  */
 const countQueries = [
+  {
+    key: "universities",
+    label: "Universities",
+    path: "/admin/universities",
+    icon: University,
+    read: () => getUniversities({ PageSize: 1 }),
+    superAdminOnly: true,
+  },
   {
     key: "users",
     label: "User accounts",
@@ -77,13 +85,6 @@ const countQueries = [
     read: () => getMajors({ PageSize: 1 }),
   },
   {
-    key: "specializations",
-    label: "Specializations",
-    path: "/admin/specializations",
-    icon: Network,
-    read: () => getSpecializations({ PageSize: 1 }),
-  },
-  {
     key: "subjects",
     label: "Subjects",
     path: "/admin/subjects",
@@ -91,25 +92,11 @@ const countQueries = [
     read: () => getAdminSubjects({ PageSize: 1 }),
   },
   {
-    key: "syllabi",
-    label: "Syllabi",
-    path: "/admin/syllabi",
-    icon: BookMarked,
-    read: () => getSyllabi({ PageSize: 1 }),
-  },
-  {
     key: "topics",
     label: "Topics",
     path: "/admin/topics",
     icon: ListTree,
     read: () => getAdminTopics({ PageSize: 1 }),
-  },
-  {
-    key: "courseSections",
-    label: "Course sections",
-    path: "/admin/course-sections",
-    icon: Layers,
-    read: () => getCourseSections({ PageSize: 1 }),
   },
   {
     key: "curriculums",
@@ -175,6 +162,11 @@ const semesterTone = (status: string) =>
 
 export function AdminDashboardRoute() {
   useRouteAnnouncer("Admin Dashboard · LearnAble", "Administration");
+  const { isSuperAdmin } = useUniversityScope();
+  // Tenant management is a super-admin capability; other tiles are tenant-scoped.
+  const tiles = countQueries.filter(
+    (item) => isSuperAdmin || !("superAdminOnly" in item),
+  );
   const semesters = useQuery({
     queryKey: adminKeys.list("semesters", ["dashboard"]),
     queryFn: () => getAdminSemesters({ PageSize: 5, SortBy: "-startDate" }),
@@ -187,7 +179,7 @@ export function AdminDashboardRoute() {
     <div className="space-y-6">
       <PageHeading
         title="Administration"
-        description="Academic structure, terms and accounts for LearnAble at FPT University."
+        description="Academic structure, terms and accounts for your LearnAble university."
       >
         <Button asChild>
           <Link to="/admin/users">
@@ -232,7 +224,7 @@ export function AdminDashboardRoute() {
             <div className="mt-3">
               <p className="font-bold">No semester is currently Ongoing.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Start a planned semester to open course sections and exam
+                Start a planned semester to open exam
                 scheduling.
               </p>
               <Button asChild variant="outline" className="mt-3">
@@ -250,7 +242,7 @@ export function AdminDashboardRoute() {
         aria-label="Record counts"
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {countQueries.map((item) => (
+        {tiles.map((item) => (
           <CountTile
             key={item.key}
             label={item.label}

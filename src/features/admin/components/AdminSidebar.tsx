@@ -1,16 +1,15 @@
 import {
-  BookMarked,
   Building2,
   CalendarRange,
   ChevronDown,
   GraduationCap,
-  Layers,
   LayoutDashboard,
   LibraryBig,
   ListTree,
   LogOut,
   Network,
   ScrollText,
+  University,
   UserCog,
   UserRound,
   Users,
@@ -25,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-type Item = { label: string; path: string; icon: LucideIcon };
+type Item = { label: string; path: string; icon: LucideIcon; superAdminOnly?: boolean };
 type Group = { label: string; id: string; icon: LucideIcon; items: Item[] };
 
 export const adminNavigation: { dashboard: Item; groups: Group[] } = {
@@ -40,13 +39,14 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
       id: "organisation",
       icon: Network,
       items: [
+        {
+          label: "Universities",
+          path: "/admin/universities",
+          icon: University,
+          superAdminOnly: true,
+        },
         { label: "Departments", path: "/admin/departments", icon: Building2 },
         { label: "Majors", path: "/admin/majors", icon: GraduationCap },
-        {
-          label: "Specializations",
-          path: "/admin/specializations",
-          icon: Network,
-        },
       ],
     },
     {
@@ -55,7 +55,6 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
       icon: LibraryBig,
       items: [
         { label: "Subjects", path: "/admin/subjects", icon: LibraryBig },
-        { label: "Syllabi", path: "/admin/syllabi", icon: BookMarked },
         { label: "Topics", path: "/admin/topics", icon: ListTree },
         { label: "Curriculums", path: "/admin/curriculums", icon: ScrollText },
       ],
@@ -66,11 +65,6 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
       icon: CalendarRange,
       items: [
         { label: "Semesters", path: "/admin/semesters", icon: CalendarRange },
-        {
-          label: "Course Sections",
-          path: "/admin/course-sections",
-          icon: Layers,
-        },
       ],
     },
     {
@@ -214,7 +208,12 @@ export function AdminSidebar({
         {adminNavigation.groups.map((group) => (
           <NavGroup
             key={group.id}
-            group={group}
+            group={{
+              ...group,
+              items: group.items.filter(
+                (item) => user.isSuperAdmin || !item.superAdminOnly,
+              ),
+            }}
             activePath={activePath}
             onNavigate={onNavigate}
           />
@@ -226,7 +225,7 @@ export function AdminSidebar({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user.fullName}</p>
             <p className="truncate text-xs text-muted-foreground">
-              FPT University administrator
+              {user.isSuperAdmin ? "Super administrator" : "University administrator"}
             </p>
           </div>
           <Button

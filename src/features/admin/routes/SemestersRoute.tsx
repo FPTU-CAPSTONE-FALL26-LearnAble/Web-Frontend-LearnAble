@@ -29,7 +29,9 @@ import {
   adminKeys,
   useAdminWrite,
   useExpiredAdminSession,
+  useUniversityScope,
 } from "../api/useAdminData";
+import { UniversityField } from "../components/UniversityField";
 import {
   ConfirmAction,
   EmptyRow,
@@ -41,6 +43,7 @@ import {
 } from "../components/AdminSurfaces";
 
 type Draft = {
+  universityId: string;
   semesterCode: string;
   semesterName: string;
   academicYear: string;
@@ -48,6 +51,7 @@ type Draft = {
   endDate: string;
 };
 const emptyDraft: Draft = {
+  universityId: "",
   semesterCode: "",
   semesterName: "",
   academicYear: "",
@@ -75,6 +79,7 @@ export function SemestersRoute() {
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminSemester | null>(null);
+  const scope = useUniversityScope();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [transition, setTransition] = useState<{
@@ -113,6 +118,7 @@ export function SemestersRoute() {
     action: "Create semester",
     mutationFn: () =>
       createSemester({
+        universityId: draft.universityId,
         semesterCode: draft.semesterCode.trim(),
         semesterName: draft.semesterName.trim(),
         academicYear: draft.academicYear.trim(),
@@ -145,6 +151,8 @@ export function SemestersRoute() {
 
   const submit = () => {
     const found: string[] = [];
+    if (creating && !draft.universityId)
+      found.push("University is required.");
     if (creating && !draft.semesterCode.trim())
       found.push("Semester code is required.");
     if (!draft.semesterName.trim()) found.push("Semester name is required.");
@@ -181,7 +189,7 @@ export function SemestersRoute() {
       >
         <Button
           onClick={() => {
-            setDraft(emptyDraft);
+            setDraft({ ...emptyDraft, universityId: scope.universityId });
             setErrors([]);
             setCreating(true);
           }}
@@ -297,6 +305,7 @@ export function SemestersRoute() {
                       setEditing(row);
                       setErrors([]);
                       setDraft({
+                        universityId: row.universityId,
                         semesterCode: row.semesterCode,
                         semesterName: row.semesterName,
                         academicYear: row.academicYear,
@@ -353,6 +362,13 @@ export function SemestersRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        <UniversityField
+          value={draft.universityId}
+          disabled={!creating}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, universityId: value }))
+          }
+        />
         <TextField
           label="Semester code"
           value={draft.semesterCode}

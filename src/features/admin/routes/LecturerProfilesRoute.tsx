@@ -123,7 +123,7 @@ export function LecturerProfilesRoute() {
     resource: "lecturerProfiles",
     action: "Update lecturer profile",
     mutationFn: () =>
-      updateLecturerProfile(editing!.lecturerProfileId, body()),
+      updateLecturerProfile(editing!.userId, body()),
     onSuccess: closeForm,
   });
   const remove = useAdminWrite<string>({
@@ -270,7 +270,7 @@ export function LecturerProfilesRoute() {
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.lecturerProfileId}>
+            <TableRow key={row.userId}>
               <TableCell className="min-w-56 whitespace-normal">
                 <p className="font-bold leading-relaxed">
                   {userLabel(lecturerRows, row.userId) ?? "Account not in list"}
@@ -414,7 +414,7 @@ export function LecturerProfilesRoute() {
         title="Delete lecturer profile?"
         description={`The staff record for ${userLabel(lecturerRows, removing?.userId) ?? "this lecturer"} will be removed. The user account itself is not deleted. This cannot be undone.`}
         confirmLabel="Delete profile"
-        onConfirm={() => removing && remove.mutate(removing.lecturerProfileId)}
+        onConfirm={() => removing && remove.mutate(removing.userId)}
       />
     </div>
   );

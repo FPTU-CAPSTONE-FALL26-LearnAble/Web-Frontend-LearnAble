@@ -27,11 +27,9 @@ import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import {
   adminKeys,
   subjectLabel,
-  syllabusLabel,
   useAdminWrite,
   useExpiredAdminSession,
   useSubjectOptions,
-  useSyllabusOptions,
 } from "../api/useAdminData";
 import {
   ConfirmAction,
@@ -44,7 +42,6 @@ import {
 
 type Draft = {
   subjectId: string;
-  syllabusId: string;
   topicCode: string;
   topicName: string;
   description: string;
@@ -52,20 +49,17 @@ type Draft = {
 };
 const emptyDraft: Draft = {
   subjectId: "",
-  syllabusId: "",
   topicCode: "",
   topicName: "",
   description: "",
   displayOrder: "1",
 };
-const noSyllabus = "none";
 
 export function TopicsRoute() {
   useRouteAnnouncer("Topics · LearnAble Admin", "Topics");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("all");
-  const [syllabus, setSyllabus] = useState("all");
   const [active, setActive] = useState("all");
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
@@ -76,17 +70,12 @@ export function TopicsRoute() {
   const [toggling, setToggling] = useState<AdminTopic | null>(null);
 
   const subjects = useSubjectOptions();
-  const allSyllabi = useSyllabusOptions();
-  // The create form narrows its syllabus options to the chosen subject.
-  const draftSyllabi = useSyllabusOptions(creating ? draft.subjectId : undefined);
   const subjectRows = subjects.data?.items ?? [];
-  const syllabusRows = allSyllabi.data?.items ?? [];
 
   const list = useQuery({
     queryKey: adminKeys.list("topics", [
       search,
       subject,
-      syllabus,
       active,
       page,
       size,
@@ -95,7 +84,6 @@ export function TopicsRoute() {
       getAdminTopics({
         SearchTerm: search,
         SubjectId: subject === "all" ? undefined : subject,
-        SyllabusId: syllabus === "all" ? undefined : syllabus,
         IsActive: active === "all" ? undefined : active === "active",
         PageNumber: page,
         PageSize: Number(size),
@@ -116,10 +104,6 @@ export function TopicsRoute() {
     mutationFn: () =>
       createTopic({
         subjectId: draft.subjectId,
-        syllabusId:
-          draft.syllabusId === noSyllabus || !draft.syllabusId
-            ? null
-            : draft.syllabusId,
         topicCode: draft.topicCode.trim(),
         topicName: draft.topicName.trim(),
         description: draft.description.trim() || null,
@@ -163,7 +147,6 @@ export function TopicsRoute() {
     setQuery("");
     setSearch("");
     setSubject("all");
-    setSyllabus("all");
     setActive("all");
     setPage(1);
   };
@@ -231,7 +214,6 @@ export function TopicsRoute() {
           setPage(1);
         }}
         onReset={reset}
-        hint="Pick a subject first to narrow the syllabus list."
       >
         <ChoiceField
           label="Subject"
@@ -245,24 +227,6 @@ export function TopicsRoute() {
           ]}
           onChange={(value) => {
             setSubject(value);
-            setSyllabus("all");
-            setPage(1);
-          }}
-        />
-        <ChoiceField
-          label="Syllabus"
-          value={syllabus}
-          options={[
-            { value: "all", label: "All syllabi" },
-            ...syllabusRows
-              .filter((row) => subject === "all" || row.subjectId === subject)
-              .map((row) => ({
-                value: row.syllabusId,
-                label: `${row.syllabusCode} · ${row.version}`,
-              })),
-          ]}
-          onChange={(value) => {
-            setSyllabus(value);
             setPage(1);
           }}
         />
@@ -281,12 +245,9 @@ export function TopicsRoute() {
         />
       </FilterPanel>
       <ReadState
-        pending={subjects.isPending || allSyllabi.isPending}
-        error={subjects.error || allSyllabi.error}
-        retry={() => {
-          void subjects.refetch();
-          void allSyllabi.refetch();
-        }}
+        pending={subjects.isPending}
+        error={subjects.error}
+        retry={() => void subjects.refetch()}
       />
 
       <TablePanel
@@ -311,7 +272,6 @@ export function TopicsRoute() {
             <TableHead>Code</TableHead>
             <TableHead>Topic</TableHead>
             <TableHead>Subject</TableHead>
-            <TableHead>Syllabus</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Last updated</TableHead>
             <TableHead>Actions</TableHead>
@@ -335,9 +295,6 @@ export function TopicsRoute() {
               <TableCell className="min-w-44 whitespace-normal">
                 {subjectLabel(subjectRows, row.subjectId) ?? "Not available"}
               </TableCell>
-              <TableCell className="min-w-40 whitespace-normal">
-                {syllabusLabel(syllabusRows, row.syllabusId) ?? "No syllabus"}
-              </TableCell>
               <TableCell>
                 <StatusBadge
                   value={row.isActive ? "Active" : "Inactive"}
@@ -356,7 +313,6 @@ export function TopicsRoute() {
                       setErrors([]);
                       setDraft({
                         subjectId: row.subjectId,
-                        syllabusId: row.syllabusId ?? noSyllabus,
                         topicCode: row.topicCode,
                         topicName: row.topicName,
                         description: row.description ?? "",
@@ -375,7 +331,7 @@ export function TopicsRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={8}
+              columns={7}
               title="No topics match your filters."
               hint="Try another search, or add a topic to a subject."
             />
@@ -391,8 +347,8 @@ export function TopicsRoute() {
         title={creating ? "New topic" : "Edit topic"}
         description={
           creating
-            ? "The subject, syllabus and topic code are permanent once created."
-            : `Update ${editing?.topicCode ?? ""}. Subject, syllabus and code cannot be changed.`
+            ? "The subject and topic code are permanent once created."
+            : `Update ${editing?.topicCode ?? ""}. Subject and code cannot be changed.`
         }
         submitLabel={creating ? "Create topic" : "Save changes"}
         pending={create.isPending || update.isPending}
@@ -409,26 +365,7 @@ export function TopicsRoute() {
             label: `${row.subjectCode} · ${row.subjectNameEn}`,
           }))}
           onChange={(value) =>
-            setDraft((old) => ({ ...old, subjectId: value, syllabusId: "" }))
-          }
-        />
-        <ChoiceField
-          label="Syllabus of topic"
-          value={draft.syllabusId || noSyllabus}
-          placeholder="Select a syllabus"
-          disabled={!creating}
-          options={[
-            { value: noSyllabus, label: "No syllabus" },
-            ...(creating
-              ? (draftSyllabi.data?.items ?? [])
-              : syllabusRows.filter((row) => row.subjectId === draft.subjectId)
-            ).map((row) => ({
-              value: row.syllabusId,
-              label: `${row.syllabusCode} · ${row.version}`,
-            })),
-          ]}
-          onChange={(value) =>
-            setDraft((old) => ({ ...old, syllabusId: value }))
+            setDraft((old) => ({ ...old, subjectId: value }))
           }
         />
         <div className="grid gap-4 sm:grid-cols-2">

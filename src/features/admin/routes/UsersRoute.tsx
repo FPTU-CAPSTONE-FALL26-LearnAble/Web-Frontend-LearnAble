@@ -30,7 +30,9 @@ import {
   adminKeys,
   useAdminWrite,
   useExpiredAdminSession,
+  useUniversityScope,
 } from "../api/useAdminData";
+import { UniversityField } from "../components/UniversityField";
 import {
   ConfirmAction,
   EmptyRow,
@@ -42,6 +44,7 @@ import {
 } from "../components/AdminSurfaces";
 
 type Draft = {
+  universityId: string;
   userCode: string;
   fullName: string;
   email: string;
@@ -52,6 +55,7 @@ type Draft = {
   password: string;
 };
 const emptyDraft: Draft = {
+  universityId: "",
   userCode: "",
   fullName: "",
   email: "",
@@ -83,6 +87,7 @@ export function UsersRoute() {
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
+  const scope = useUniversityScope();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
@@ -112,6 +117,7 @@ export function UsersRoute() {
     action: "Create account",
     mutationFn: () =>
       createUser({
+        universityId: draft.universityId,
         userCode: draft.userCode.trim(),
         fullName: draft.fullName.trim(),
         email: draft.email.trim(),
@@ -146,6 +152,8 @@ export function UsersRoute() {
 
   const submit = () => {
     const found: string[] = [];
+    if (creating && !draft.universityId)
+      found.push("University is required.");
     if (!draft.fullName.trim()) found.push("Full name is required.");
     if (creating) {
       if (!draft.userCode.trim()) found.push("User code is required.");
@@ -178,7 +186,7 @@ export function UsersRoute() {
       >
         <Button
           onClick={() => {
-            setDraft(emptyDraft);
+            setDraft({ ...emptyDraft, universityId: scope.universityId });
             setErrors([]);
             setCreating(true);
           }}
@@ -323,6 +331,7 @@ export function UsersRoute() {
                       setEditing(row);
                       setErrors([]);
                       setDraft({
+                        universityId: row.universityId,
                         userCode: row.userCode,
                         fullName: row.fullName,
                         email: row.email,
@@ -374,6 +383,13 @@ export function UsersRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        <UniversityField
+          value={draft.universityId}
+          disabled={!creating}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, universityId: value }))
+          }
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             label="User code"
