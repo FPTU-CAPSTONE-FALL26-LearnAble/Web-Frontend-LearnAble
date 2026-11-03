@@ -25,7 +25,7 @@ export interface MultipleChoiceQuestionProps {
   options: MultipleChoiceOption[];
   value: string | null;
   onValueChange: (optionId: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -52,12 +52,17 @@ export function MultipleChoiceQuestion({
   className,
 }: MultipleChoiceQuestionProps) {
   const questionId = `multiple-choice-question-${questionNumber}`;
+  const selectOption = (optionId: string) => {
+    const option = options.find((item) => item.id === optionId);
+    if (option) announce(vi.announce.answerSelected(option.text));
+    onValueChange(optionId);
+  };
 
   return (
     <section
       aria-labelledby={questionId}
       className={cn(
-        "mt-4 grid gap-y-6 sm:grid-cols-[6rem_minmax(0,1fr)_3rem] sm:gap-x-4",
+        "mt-4 grid gap-y-6 sm:grid-cols-[minmax(6rem,max-content)_minmax(0,1fr)_3rem] sm:gap-x-4",
         className,
       )}
     >
@@ -121,10 +126,22 @@ export function MultipleChoiceQuestion({
             aria-label={vi.exam.selectOneAlternative}
             value={value ?? ""}
             disabled={disabled}
-            onValueChange={(optionId) => {
-              const option = options.find((item) => item.id === optionId);
-              if (option) announce(vi.announce.answerSelected(option.text));
-              onValueChange(optionId);
+            onValueChange={selectOption}
+            onKeyDown={(event) => {
+              // Radix defers arrow focus. A fast keyup can clear its selection
+              // flag before focus arrives, so select on keydown and let Radix
+              // keep owning focus, wrapping and scroll behavior.
+              if (disabled || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+                || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              const target = (event.target as HTMLElement).closest('[role="radio"]');
+              const enabled = options.filter((option) => !option.disabled);
+              const index = enabled.findIndex((option) => option.id === target?.getAttribute("value"));
+              if (index < 0 || !enabled.length) return;
+              const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
+              const forward = event.key === "ArrowDown" || event.key === (rtl ? "ArrowLeft" : "ArrowRight");
+              const next = event.key === "Home" ? 0 : event.key === "End" ? enabled.length - 1
+                : (index + (forward ? 1 : -1) + enabled.length) % enabled.length;
+              if (enabled[next].id !== value) selectOption(enabled[next].id);
             }}
             className="divide-y divide-border overflow-hidden rounded bg-card gap-0"
           >
@@ -166,10 +183,10 @@ export function MultipleChoiceQuestion({
         <Button
           type="button"
           variant="ghost"
-          disabled={disabled || value === null}
+          disabled={disabled || !onReset || value === null}
           className="-ml-2 font-normal text-base"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   ChevronRight,
   CircleHelp,
@@ -24,6 +25,9 @@ export interface AssessmentPlayerOptionsProps {
   selectedSetting?: PlayerSetting;
   onGoToSubmission?: () => void;
   onSelectSetting?: (setting: PlayerSetting) => void;
+  interactionLocked?: boolean;
+  enabledSettings?: PlayerSetting[];
+  onRestoreFocus?: () => void;
 }
 
 /** Full-window options overlay opened from the player header. */
@@ -33,8 +37,12 @@ export function AssessmentPlayerOptions({
   selectedSetting,
   onGoToSubmission,
   onSelectSetting,
+  interactionLocked = false,
+  enabledSettings,
+  onRestoreFocus,
 }: AssessmentPlayerOptionsProps) {
   const strings = vi.exam.player;
+  const handoff = useRef(false);
   const displaySettings = [
     { id: "language", label: strings.language, icon: CircleHelp },
     { id: "contrast", label: strings.contrast, icon: Contrast },
@@ -44,6 +52,11 @@ export function AssessmentPlayerOptions({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!handoff.current) onRestoreFocus?.();
+          handoff.current = false;
+        }}
         overlayClassName="bg-transparent duration-0 supports-backdrop-filter:backdrop-blur-none data-open:animate-none data-closed:animate-none"
         closeButtonSize="icon-xl"
         className="inset-0 h-dvh max-w-none translate-x-0 translate-y-0 rounded-none bg-secondary p-4 font-sans duration-0 data-open:animate-none data-closed:animate-none sm:max-w-none sm:p-6"
@@ -55,7 +68,12 @@ export function AssessmentPlayerOptions({
           <Button
             size="xl"
             className="h-20 justify-between rounded bg-primary px-6 text-base font-normal text-primary-foreground hover:bg-primary/90"
-            onClick={onGoToSubmission}
+            disabled={!onGoToSubmission || interactionLocked}
+            onClick={() => {
+              handoff.current = true;
+              onOpenChange(false);
+              onGoToSubmission?.();
+            }}
           >
             <span className="flex items-center gap-5">
               <Send aria-hidden className="size-5" />
@@ -74,7 +92,8 @@ export function AssessmentPlayerOptions({
                   "h-20 w-full justify-between rounded-none px-6 text-base font-normal hover:bg-muted",
                   selectedSetting === id && "bg-primary/10",
                 )}
-                onClick={() => onSelectSetting?.(id)}
+                onClick={() => { handoff.current = true; onOpenChange(false); onSelectSetting?.(id); }}
+                disabled={!onSelectSetting || (enabledSettings !== undefined && !enabledSettings.includes(id))}
               >
                 <span className="flex items-center gap-5">
                   <Icon aria-hidden className="size-5 text-muted-foreground" />
@@ -92,7 +111,8 @@ export function AssessmentPlayerOptions({
               "h-20 justify-between rounded border border-border bg-card px-6 text-base font-normal hover:bg-muted",
               selectedSetting === "remainingTime" && "bg-primary/10",
             )}
-            onClick={() => onSelectSetting?.("remainingTime")}
+            onClick={() => { onOpenChange(false); onSelectSetting?.("remainingTime"); }}
+            disabled={!onSelectSetting || (enabledSettings !== undefined && !enabledSettings.includes("remainingTime"))}
           >
             <span className="flex items-center gap-5">
               <EyeOff aria-hidden className="size-5 text-muted-foreground" />

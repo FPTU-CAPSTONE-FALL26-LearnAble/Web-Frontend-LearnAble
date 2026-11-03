@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { Tabs, TabsContent } from "@/shared/ui/primitives/tabs";
@@ -10,6 +10,7 @@ import {
   type PlayerFilter,
   type PlayerQuestion as PlayerQuestionData,
   type PlayerView,
+  type PlayerNavigation,
 } from "./assessment-player-types";
 import { AssessmentPlayerFooter } from "./AssessmentPlayerFooter";
 import { AssessmentPlayerOverview } from "./AssessmentPlayerOverview";
@@ -31,10 +32,29 @@ export interface AssessmentPlayerProps {
   onAnswerChange: (questionId: string, value: Answer) => void;
   onToggleFlag: (questionId: string) => void;
   /** Clears answers and flags; the player then opens the first question. */
-  onStartOver: () => void;
+  onStartOver?: () => void;
+  /** Supply with onNavigationChange for a controlled live attempt. */
+  navigation?: PlayerNavigation;
+  onNavigationChange?: (navigation: PlayerNavigation) => void;
+  /** Omitted until the host knows the actual connection/save state. */
+  status?: ReactNode;
+  timer?: ReactNode;
+  saveStatus?: ReactNode;
+  inputModeIndicator?: ReactNode;
+  /** Prevent answer, reset and flag changes while submitting or expired. */
+  interactionLocked?: boolean;
+  /** Disable until the host can durably clear a response on the server. */
+  canClearAnswer?: boolean;
   selectedSetting?: PlayerSetting;
   onGoToSubmission?: () => void;
   onSelectSetting?: (setting: PlayerSetting) => void;
+  enabledSettings?: PlayerSetting[];
+  optionsOpen?: boolean;
+  onOptionsOpenChange?: (open: boolean) => void;
+  /** Host feedback inside the frame, above the scrolling questions. */
+  feedback?: ReactNode;
+  /** Focus the recovered view when a full-page host finishes loading it. */
+  focusOnMount?: boolean;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -55,12 +75,52 @@ export function AssessmentPlayer({
   selectedSetting,
   onGoToSubmission,
   onSelectSetting,
+  navigation,
+  onNavigationChange,
+  status,
+  timer,
+  saveStatus,
+  inputModeIndicator,
+  interactionLocked = false,
+  canClearAnswer = true,
+  enabledSettings,
+  optionsOpen: controlledOptionsOpen,
+  onOptionsOpenChange,
+  feedback,
+  focusOnMount = false,
 }: AssessmentPlayerProps) {
-  const [index, setIndex] = useState(0);
-  const [view, setView] = useState<PlayerView>("contents");
-  const [filter, setFilter] = useState<PlayerFilter>("all");
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [localNavigation, setLocalNavigation] = useState<PlayerNavigation>({
+    questionId: null, view: "contents", filter: "all",
+  });
+  const position = navigation ?? localNavigation;
+  const { view, filter } = position;
+  const index = Math.max(0, questions.findIndex((q) => q.id === position.questionId));
+  const navigate = (patch: Partial<PlayerNavigation>) => {
+    const next = { ...position, ...patch };
+    if (!navigation) setLocalNavigation(next);
+    onNavigationChange?.(next);
+  };
+  const [localOptionsOpen, setLocalOptionsOpen] = useState(false);
+  const optionsOpen = controlledOptionsOpen ?? localOptionsOpen;
+  const setOptionsOpen = (open: boolean) => {
+    if (controlledOptionsOpen === undefined) setLocalOptionsOpen(open);
+    onOptionsOpenChange?.(open);
+  };
   const current = questions[index];
+  const mainRef = useRef<HTMLElement>(null);
+  const optionsButtonRef = useRef<HTMLButtonElement>(null);
+  const previousPosition = useRef({ view, questionId: current?.id });
+  const initialFocus = useRef(true);
+  useEffect(() => {
+    const previous = previousPosition.current;
+    previousPosition.current = { view, questionId: current?.id };
+    const first = initialFocus.current;
+    initialFocus.current = false;
+    if (!(first && focusOnMount) && previous.view === view && previous.questionId === current?.id) return;
+    const heading = view === "question" ? mainRef.current?.querySelector<HTMLElement>("h2")
+      : document.getElementById(view === "review" ? "review-heading" : "contents-heading");
+    heading?.focus();
+  }, [view, current?.id, focusOnMount]);
   const answeredCount = questions.filter((question) =>
     answerState(answers[question.id]),
   ).length;
@@ -77,41 +137,52 @@ export function AssessmentPlayer({
   );
 
   const goTo = (nextIndex: number) => {
-    setIndex(nextIndex);
-    setView("question");
+    const question = questions[nextIndex];
+    if (question) navigate({ questionId: question.id, view: "question" });
   };
 
   return (
     <Tabs
       value={filter}
-      onValueChange={(value) => setFilter(value as PlayerFilter)}
+      onValueChange={(value) => navigate({ filter: value as PlayerFilter })}
       className="gap-0"
     >
+      <h1 className="sr-only">{title}</h1>
       <AssessmentPlayerShell
         candidate={candidate}
-        status={vi.exam.player.connected}
+        status={status}
         trailing={
-          <Button
-            variant="ghost"
-            size="icon-xl"
-            aria-label={vi.exam.player.openOptions}
-            aria-expanded={optionsOpen}
-            onClick={() => setOptionsOpen((open) => !open)}
-          >
-            <Menu aria-hidden />
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {timer}
+            {saveStatus}
+            {inputModeIndicator}
+            <Button
+              ref={optionsButtonRef}
+              data-player-options
+              variant="ghost"
+              size="icon-xl"
+              aria-label={vi.exam.player.openOptions}
+              aria-expanded={optionsOpen}
+              onClick={() => setOptionsOpen(!optionsOpen)}
+            >
+              <Menu aria-hidden />
+            </Button>
+          </div>
         }
         headerContent={
           <AssessmentPlayerOverview
             title={title}
             answeredCount={answeredCount}
-            flaggedCount={flagged.length}
+            flaggedCount={questions.filter((question) => flagged.includes(question.id)).length}
             questionCount={questions.length}
             view={view}
-            onStartOver={() => {
+            onStartOver={onStartOver ? () => {
+              if (interactionLocked) return;
               onStartOver();
               goTo(0);
-            }}
+            } : undefined}
+            interactionLocked={interactionLocked}
+            onGoToSubmission={onGoToSubmission}
           />
         }
         footer={
@@ -122,7 +193,7 @@ export function AssessmentPlayer({
             questions={questions}
             view={view}
             onGoTo={goTo}
-            onViewChange={setView}
+            onViewChange={(nextView: PlayerView) => navigate({ view: nextView })}
           />
         }
       >
@@ -132,22 +203,37 @@ export function AssessmentPlayer({
           selectedSetting={selectedSetting}
           onGoToSubmission={onGoToSubmission}
           onSelectSetting={onSelectSetting}
+          interactionLocked={interactionLocked}
+          enabledSettings={enabledSettings}
+          onRestoreFocus={() => optionsButtonRef.current?.focus()}
         />
-
-        <main className="min-h-0 w-full flex-1 overflow-y-scroll py-4 pl-4">
+        {feedback}
+        <main ref={mainRef} id="main" className="min-h-0 w-full flex-1 overflow-y-scroll py-4 pl-4">
           <div className="w-full mx-auto max-w-4xl flex-1">
             {view === "question" && current ? (
-              <PlayerQuestion
-                question={current}
-                questionNumber={index + 1}
-                questionCount={questions.length}
-                answer={answers[current.id]}
-                flagged={flagged.includes(current.id)}
-                onAnswerChange={(value) => onAnswerChange(current.id, value)}
-                onReset={() => onAnswerChange(current.id, undefined)}
-                onToggleFlag={() => onToggleFlag(current.id)}
-                className="mx-auto max-w-4xl"
-              />
+              <fieldset disabled={interactionLocked} lang={current.stemLang} aria-label={current.title} className="min-w-0">
+                <PlayerQuestion
+                  key={current.id}
+                  question={current}
+                  questionNumber={index + 1}
+                  questionCount={questions.length}
+                  answer={answers[current.id]}
+                  flagged={flagged.includes(current.id)}
+                  onAnswerChange={(value) => {
+                    if (!interactionLocked && !optionsOpen && (canClearAnswer || answerState(value))) {
+                      onAnswerChange(current.id, value);
+                    }
+                  }}
+                  onReset={canClearAnswer ? () => {
+                    if (!interactionLocked && !optionsOpen) onAnswerChange(current.id, undefined);
+                  } : undefined}
+                  onToggleFlag={() => {
+                    if (!interactionLocked && !optionsOpen) onToggleFlag(current.id);
+                  }}
+                  disabled={interactionLocked}
+                  className="mx-auto max-w-4xl"
+                />
+              </fieldset>
             ) : (
               <section
                 aria-labelledby={

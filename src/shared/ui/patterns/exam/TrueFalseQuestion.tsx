@@ -16,7 +16,7 @@ export interface TrueFalseQuestionProps {
   stem: string;
   value: string | null;
   onValueChange: (value: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   className?: string;
@@ -88,7 +88,7 @@ export function TrueFalseQuestion({
         ))}
       </RadioGroup>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
-        <Button variant="ghost" size="xl" onClick={onReset}>
+        <Button variant="ghost" size="xl" onClick={onReset} disabled={!onReset}>
           <RotateCcw aria-hidden />
           {strings.resetResponse}
         </Button>

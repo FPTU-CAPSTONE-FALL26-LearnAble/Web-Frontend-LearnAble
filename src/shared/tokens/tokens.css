@@ -49,6 +49,8 @@
   --border: color-mix(in srgb, var(--foreground) 15%, transparent);
   --checkbox: color-mix(in srgb, var(--foreground) 40%, transparent);
   --input: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --kbd: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --kbd-foreground: var(--foreground);
   --color-focus: var(--color-brand-600);
   --ring: var(--color-brand-600);
   --focus-ring-width: 4px;
@@ -93,6 +95,8 @@
   --info-foreground: var(--color-blue-100);
   --destructive: var(--color-red-400);
   --border: color-mix(in srgb, var(--foreground) 15%, transparent);
+  --kbd: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --kbd-foreground: var(--foreground);
   --checkbox: color-mix(in srgb, var(--foreground) 20%, transparent);
   --input: color-mix(in srgb, var(--foreground) 15%, transparent);
   --color-focus: var(--color-brand-100);

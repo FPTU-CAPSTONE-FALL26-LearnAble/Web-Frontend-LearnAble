@@ -24,7 +24,7 @@ export interface MultipleResponseQuestionProps {
   options: MultipleResponseOption[];
   selectedOptionIds: string[];
   onSelectionChange: (optionId: string, selected: boolean) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -166,10 +166,10 @@ export function MultipleResponseQuestion({
         <Button
           type="button"
           variant="ghost"
-          disabled={disabled || !hasSelection}
+          disabled={disabled || !onReset || !hasSelection}
           className="-ml-2 font-normal text-base"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >

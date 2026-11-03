@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Send } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { TabsList, TabsTrigger } from "@/shared/ui/primitives/tabs";
 import { cn } from "@/shared/ui/cn";
@@ -12,7 +12,9 @@ export interface AssessmentPlayerOverviewProps {
   flaggedCount: number;
   questionCount: number;
   view: PlayerView;
-  onStartOver: () => void;
+  onStartOver?: () => void;
+  onGoToSubmission?: () => void;
+  interactionLocked?: boolean;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -28,6 +30,8 @@ export function AssessmentPlayerOverview({
   questionCount,
   view,
   onStartOver,
+  onGoToSubmission,
+  interactionLocked = false,
 }: AssessmentPlayerOverviewProps) {
   const strings = vi.exam.player;
   const counts: Record<PlayerFilter, number> = {
@@ -47,33 +51,39 @@ export function AssessmentPlayerOverview({
       inert={view === "question"}
       className={cn(
         "w-full overflow-hidden transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-none",
-        view === "question" ? "max-h-0 opacity-0" : "max-h-56 opacity-100",
+        view === "question" ? "max-h-0 opacity-0" : "max-h-none opacity-100",
       )}
     >
       <div>
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-6 px-4 pb-8 pt-6 sm:px-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-6 px-4 pb-8 pt-6 sm:px-6">
           {view === "review" ? (
             <>
               <div>
-                <h2 id="review-heading" className="sr-only">
+                <h2 id="review-heading" tabIndex={-1} className="sr-only">
                   {strings.reviewHeading}
                 </h2>
                 <p className="text-lg font-normal text-foreground">
                   {strings.unattemptedSummary(questionCount - answeredCount)}
                 </p>
               </div>
-              <Button
+              {onStartOver ? <Button
                 size="xl"
                 className="shrink-0 bg-primary px-6 text-base font-normal text-primary-foreground hover:bg-primary/90"
                 onClick={onStartOver}
+                disabled={interactionLocked}
               >
                 <RotateCcw aria-hidden />
                 {strings.startOver}
-              </Button>
+              </Button> : null}
+              {onGoToSubmission ? <Button size="xl" onClick={onGoToSubmission} disabled={interactionLocked}>
+                <Send aria-hidden data-icon="inline-start" />
+                {strings.goToSubmission}
+              </Button> : null}
             </>
           ) : (
             <h2
               id="contents-heading"
+              tabIndex={-1}
               className="text-lg font-normal text-foreground"
             >
               {title}
@@ -93,7 +103,7 @@ export function AssessmentPlayerOverview({
                 className="will-change-transform !flex-none p-4 text-base font-normal data-[state=active]:shadow-none data-[state=active]:text-foreground group-data-horizontal/tabs:after:h-1"
               >
                 {labels[name]}{" "}
-                <span className="will-change-transform">({counts[name]})</span>
+                <span className="tabular-nums">({counts[name]})</span>
               </TabsTrigger>
             ))}
           </TabsList>

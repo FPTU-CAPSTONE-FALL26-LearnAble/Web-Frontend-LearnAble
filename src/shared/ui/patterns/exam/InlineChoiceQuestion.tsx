@@ -38,7 +38,7 @@ export interface InlineChoiceQuestionProps {
   slots: InlineChoiceSlot[];
   values: Record<string, string | undefined>;
   onValueChange: (slotId: string, value: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -179,10 +179,10 @@ export function InlineChoiceQuestion({
         <Button
           type="button"
           variant="ghost"
-          disabled={disabled || !hasSelection}
+          disabled={disabled || !onReset || !hasSelection}
           className="-ml-2 font-normal text-base"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >

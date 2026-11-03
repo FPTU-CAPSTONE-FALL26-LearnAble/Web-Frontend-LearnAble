@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/shared/ui/cn"
 
 const kbdVariants = cva(
-  "pointer-events-none inline-flex w-fit items-center justify-center gap-1 bg-muted font-sans font-medium whitespace-nowrap text-muted-foreground select-none in-data-[slot=tooltip-content]:bg-background/20 in-data-[slot=tooltip-content]:text-background dark:in-data-[slot=tooltip-content]:bg-background/10",
+  "pointer-events-none inline-flex w-fit items-center justify-center gap-1 bg-kbd font-sans font-medium whitespace-nowrap text-inherit select-none in-data-[slot=tooltip-content]:bg-background/20 in-data-[slot=tooltip-content]:text-background dark:in-data-[slot=tooltip-content]:bg-background/10",
   {
     variants: {
       size: {
