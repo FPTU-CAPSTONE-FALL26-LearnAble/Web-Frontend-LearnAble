@@ -30,10 +30,12 @@ Source measurements are normalized; roles and recommendations are interpreted. F
 | **Input Border**               | `var(--color-slate-200)` / `var(--color-slate-800)`   | `--input`                      | Default perimeter border stroke for inputs, textareas, checkboxes, and select triggers.                                       |
 | **Focus Ring**                 | `var(--color-brand-600)` / `var(--color-brand-100)`   | `--ring`, `--color-focus`      | High-visibility 4px focus indicator ring with 4px offset for all keyboard-focused interactive controls.                       |
 | **Destructive / Error**        | `var(--color-red-600)` / `var(--color-red-400)`       | `--destructive`                | Error banners, destructive buttons (Delete, Abort), validation error messages, and critical alerts.                           |
+| **Destructive Foreground**     | `var(--color-white)`                                  | `--destructive-foreground`     | Text and icons placed on filled destructive controls.                                                                         |
 | **Warning**                    | `var(--color-yellow-100)` / `var(--color-yellow-900)` | `--warning`                    | Cautionary notifications, time-expiring warnings, and non-blocking security alerts.                                           |
 | **Warning Foreground**         | `var(--color-yellow-900)` / `var(--color-yellow-100)` | `--warning-foreground`         | High-contrast text and icons on warning banners.                                                                              |
 | **Success**                    | `var(--color-green-100)` / `var(--color-green-900)`   | `--success`                    | Successful completion banners, submitted status tags, verified indicators, and passing grades.                                |
 | **Success Foreground**         | `var(--color-green-900)` / `var(--color-green-100)`   | `--success-foreground`         | Text and icons on success status tags and banners.                                                                            |
+| **Success Border**             | `var(--color-green-500)`                              | `--success-border`             | Bright structural border for active or successful operational states.                                                         |
 | **Sidebar Surface**            | `var(--color-slate-50)` / `var(--color-slate-900)`    | `--sidebar`                    | Dedicated background canvas for persistent navigation sidebars (lecturer workbench and navigation drawers).                   |
 | **Sidebar Foreground**         | `var(--color-slate-950)` / `var(--color-slate-50)`    | `--sidebar-foreground`         | Navigation link text, section headers, and user profile information in the sidebar.                                           |
 | **Sidebar Primary**            | `var(--color-brand-600)` / `var(--color-brand-500)`   | `--sidebar-primary`            | Active route navigation highlight marker and primary action fill inside the sidebar.                                          |
@@ -252,10 +254,12 @@ Include in your root CSS stylesheet (`tokens.css` / `index.css`) to define the L
 
   /* Semantic Feedback States */
   --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
   --warning: var(--color-yellow-100);
   --warning-foreground: var(--color-yellow-900);
   --success: var(--color-green-100);
   --success-foreground: var(--color-green-900);
+  --success-border: var(--color-green-500);
 
   /* Structural Borders & Focus Ring */
   --border: var(--color-slate-300);
@@ -305,10 +309,12 @@ Include in your root CSS stylesheet (`tokens.css` / `index.css`) to define the L
   --accent: var(--color-slate-800);
   --accent-foreground: var(--color-slate-50);
   --destructive: var(--color-red-400);
+  --destructive-foreground: var(--color-white);
   --warning: var(--color-yellow-900);
   --warning-foreground: var(--color-yellow-100);
   --success: var(--color-green-900);
   --success-foreground: var(--color-green-100);
+  --success-border: var(--color-green-500);
   --border: var(--color-slate-800);
   --input: var(--color-slate-800);
   --ring: var(--color-brand-100);
@@ -354,10 +360,12 @@ Include in your root CSS stylesheet (`tokens.css` / `index.css`) to define the L
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

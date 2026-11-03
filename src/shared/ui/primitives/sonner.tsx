@@ -10,7 +10,9 @@ import {
   Loader2Icon,
 } from "lucide-react";
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const DEFAULT_TOAST_DURATION = 5000;
+
+const Toaster = ({ duration = DEFAULT_TOAST_DURATION, style, ...props }: ToasterProps) => {
   const { theme } = useTheme();
 
   return (
@@ -30,8 +32,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          "--toast-duration": `${duration}ms`,
+          ...style,
         } as React.CSSProperties
       }
+      duration={duration}
       toastOptions={{
         classNames: {
           toast: "cn-toast",

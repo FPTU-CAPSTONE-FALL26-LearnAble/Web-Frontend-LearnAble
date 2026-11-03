@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ApiFailure, request } from "@/api/client";
 
 const unavailable = "Not available";
+const questionTypeSchema = z.enum(["Single", "Multiple", "Essay"]);
 
 const questionOptionSchema = z
   .object({
@@ -20,6 +21,8 @@ const questionOptionSchema = z
 export const subjectSchema = z
   .object({
     subjectId: z.string(),
+    universityId: z.string().optional(),
+    departmentId: z.string().nullable().optional(),
     subjectCode: z.string().nullable(),
     subjectNameEn: z.string().nullable(),
     isActive: z.boolean().optional(),
@@ -43,12 +46,15 @@ export const topicSchema = z
 
 export const questionSchema = z
   .object({
+    examTypeId: z.string(),
+    examTypeCode: z.string().nullable().optional(),
+    examTypeName: z.string().nullable().optional(),
     questionId: z.string(),
     topicId: z.string().nullable(),
     createdBy: z.string().nullable(),
     creatorRole: z.string().nullable().optional(),
     content: z.string().nullable(),
-    questionType: z.string().nullable(),
+    questionType: questionTypeSchema.nullable(),
     difficulty: z.string().nullable(),
     audioHintText: z.string().nullable().optional(),
     defaultScore: z.number(),
@@ -81,7 +87,9 @@ export const materialSchema = z
     pageCount: z.number().nullable().optional(),
     ocrStatus: z.string().nullable(),
     isTtsReady: z.boolean().optional(),
-    isIndexed: z.boolean().optional(),
+    hasManagedFile: z.boolean().optional(),
+    indexingStatus: z.string().nullable().optional(),
+    processingError: z.string().nullable().optional(),
     status: z.string().nullable(),
     uploadedAt: z.string(),
   })
@@ -96,6 +104,7 @@ export const materialSchema = z
 export const semesterSchema = z
   .object({
     semesterId: z.string(),
+    universityId: z.string().optional(),
     semesterCode: z.string().nullable(),
     semesterName: z.string().nullable(),
     academicYear: z.string().nullable(),
@@ -113,6 +122,8 @@ export const semesterSchema = z
 
 export type Subject = {
   subjectId: string;
+  universityId?: string;
+  departmentId?: string | null;
   subjectCode: string;
   subjectNameEn: string | null;
   isActive?: boolean;
@@ -124,6 +135,9 @@ export type Topic = {
   topicCode?: string | null;
 };
 export type CatalogQuestion = {
+  examTypeId: string;
+  examTypeCode?: string | null;
+  examTypeName?: string | null;
   questionId: string;
   topicId: string | null;
   createdBy: string | null;
@@ -159,12 +173,15 @@ export type LearningMaterial = {
   pageCount?: number | null;
   ocrStatus: string;
   isTtsReady?: boolean;
-  isIndexed?: boolean;
+  hasManagedFile?: boolean;
+  indexingStatus?: string | null;
+  processingError?: string | null;
   status: string;
   uploadedAt: string;
 };
 export type Semester = {
   semesterId: string;
+  universityId?: string;
   semesterCode: string;
   semesterName: string;
   academicYear: string;
@@ -182,6 +199,9 @@ export type Page<T> = {
   hasNextPage: boolean;
 };
 export type ReadFilters = Record<string, string | number | boolean | undefined>;
+
+export const questionTypes = ["Single", "Multiple", "Essay"] as const;
+export type QuestionType = (typeof questionTypes)[number];
 
 export function queryString(filters: ReadFilters) {
   const params = new URLSearchParams();

@@ -28,8 +28,8 @@ export function ExaminerLayout() {
     },
     onUnavailable: (label: string) =>
       toast({
-        title: "Feature not connected",
-        description: `${label} is not connected to the backend yet.`,
+        title: "Coming soon",
+        description: `${label} is not available yet. You can continue with the other examiner tools.`,
       }),
   };
   return (
@@ -47,7 +47,7 @@ export function ExaminerLayout() {
         >
           <Menu />
         </Button>
-        <BrandIdentity lecturer compact roleLabel={user.role} />
+        <BrandIdentity compact />
         <span className="max-w-24 truncate text-xs font-bold">
           {user.fullName}
         </span>

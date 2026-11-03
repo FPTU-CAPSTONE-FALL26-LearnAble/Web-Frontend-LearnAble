@@ -174,6 +174,9 @@ export const studentProfileSchema = z
     intakeYear: z.number(),
     currentSemester: z.number(),
     enrollmentStatus: z.string().nullable(),
+    fullName: z.string().nullable().optional(),
+    studentCode: z.string().nullable().optional(),
+    avatarUrl: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -197,6 +200,9 @@ export const lecturerProfileSchema = z
     officeRoom: z.string().nullable(),
     hireDate: z.string().nullable(),
     bio: z.string().nullable(),
+    fullName: z.string().nullable().optional(),
+    lecturerCode: z.string().nullable().optional(),
+    avatarUrl: z.string().nullable().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

@@ -19,6 +19,8 @@ export const userSchema = z.object({
 export type User = z.infer<typeof userSchema>;
 
 const authTokensSchema = z.object({
+  universityId: z.string().optional(),
+  isSuperAdmin: z.boolean().optional(),
   accessToken: z.string().nullable(),
   refreshToken: z.string().nullable(),
   accessTokenExpiresAt: z.string(),

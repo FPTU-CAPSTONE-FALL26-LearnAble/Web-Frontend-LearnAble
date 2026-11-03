@@ -12,20 +12,21 @@ import { AssistantRoute } from "@/features/assistant/routes/AssistantRoute";
 import { ProgressRoute } from "@/features/progress/routes/ProgressRoute";
 import { ResultsListRoute } from "@/features/results/routes/ResultsListRoute";
 import { ResultDetailRoute } from "@/features/results/routes/ResultDetailRoute";
-import { LecturerLayout } from "@/features/lecturer/components/LecturerLayout";
-import { RequireLecturer } from "@/features/lecturer/components/RequireLecturer";
-import { LecturerDashboardRoute } from "@/features/lecturer/routes/LecturerDashboardRoute";
-import { QuestionBankRoute } from "@/features/lecturer/routes/QuestionBankRoute";
+import { LecturerLayout } from "@/features/lecturer/shell/LecturerLayout";
+import { RequireLecturer } from "@/features/lecturer/shell/RequireLecturer";
+import { LecturerDashboardRoute } from "@/features/lecturer/dashboard/routes/LecturerDashboardRoute";
+import { QuestionBankRoute } from "@/features/lecturer/questions/routes/QuestionBankRoute";
+import { ImportQuestionsRoute } from "@/features/lecturer/questions/routes/ImportQuestionsRoute";
 const CreateQuestionRoute = lazy(() =>
-  import("@/features/lecturer/routes/CreateQuestionRoute").then((module) => ({
+  import("@/features/lecturer/questions/routes/CreateQuestionRoute").then((module) => ({
     default: module.CreateQuestionRoute,
   })),
 );
-import { LearningMaterialsRoute } from "@/features/lecturer/routes/LearningMaterialsRoute";
-import { UploadMaterialRoute } from "@/features/lecturer/routes/UploadMaterialRoute";
-import { ExamScheduleRoute } from "@/features/lecturer/routes/ExamScheduleRoute";
-import { AttendanceRoute } from "@/features/lecturer/routes/AttendanceRoute";
-import { LecturerProfileRoute } from "@/features/lecturer/routes/LecturerProfileRoute";
+import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/LearningMaterialsRoute";
+import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
+import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
+import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
+import { LecturerProfileRoute } from "@/features/lecturer/profile/routes/LecturerProfileRoute";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
 import { AdminDashboardRoute } from "@/features/admin/routes/AdminDashboardRoute";
@@ -57,9 +58,17 @@ import {
   ScheduleReadinessRoute,
   ScheduleRoomsRoute,
 } from "@/features/examiner/routes/ExaminerRoutes";
+import {
+  AccommodationsRoute,
+  ExamReportsRoute,
+  FlaggedSessionsRoute,
+  GradeReleaseRoute,
+  IntegrityReviewRoute,
+} from "@/features/examiner/routes/ExaminerWorkflowRoutes";
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
 import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
+import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 
 function LegacyParameterizedRedirect({
   destination,
@@ -79,11 +88,13 @@ function LegacyParameterizedRedirect({
 }
 
 export const router = createBrowserRouter([
+  { path: "/", element: <LandingRoute /> },
   { path: "/demo/components", element: <ComponentDemoRoute /> },
   { path: "/demo/result", element: <ResultReceiptDemoRoute /> },
   { path: "/demo/exam", element: <ExamDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   { path: "/login", element: <LoginRoute /> },
+  { path: "/register", element: <Navigate to="/login" replace /> },
   { path: "/forgot-password", element: <ForgotPasswordRoute /> },
   { path: "/dang-nhap", element: <Navigate to="/login" replace /> },
   {
@@ -124,6 +135,10 @@ export const router = createBrowserRouter([
                     <CreateQuestionRoute />
                   </Suspense>
                 ),
+              },
+              {
+                path: "/lecturer/questions/import",
+                element: <ImportQuestionsRoute />,
               },
               {
                 path: "/lecturer/materials",
@@ -230,6 +245,14 @@ export const router = createBrowserRouter([
                 path: "/examiner/monitoring/:roomId/candidates/:candidateId",
                 element: <CandidateMonitoringRoute />,
               },
+              { path: "/examiner/results", element: <GradeReleaseRoute /> },
+              { path: "/examiner/reviews", element: <IntegrityReviewRoute /> },
+              { path: "/examiner/flags", element: <FlaggedSessionsRoute /> },
+              { path: "/examiner/reports", element: <ExamReportsRoute /> },
+              {
+                path: "/examiner/accommodations",
+                element: <AccommodationsRoute />,
+              },
             ],
           },
         ],
@@ -253,7 +276,6 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: "/", element: <Navigate to="/practice" replace /> },
               {
                 path: "/settings/accessibility",
                 element: <AccessibilitySettingsRoute />,

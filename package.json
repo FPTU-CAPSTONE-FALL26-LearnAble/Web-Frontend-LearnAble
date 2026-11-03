@@ -11,14 +11,14 @@
     "test": "vitest run",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:colors": "node scripts/check-colors.mjs",
-    "check:ui": "npm run check:colors && npm run check:contrast"
+    "check:ui": "npm run check:architecture && npm run check:colors && npm run check:contrast",
+    "check:architecture": "node scripts/check-ui-architecture.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.0.1",
     "@tanstack/react-query": "5.80.6",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "cn": "^0.3.0",
     "katex": "^0.18.7",
     "lucide-react": "0.511.0",
     "next-themes": "^0.4.6",
@@ -35,7 +35,9 @@
   },
   "devDependencies": {
     "@eslint/js": "9.28.0",
+    "@shadcn/lint": "^0.2.3",
     "@tailwindcss/vite": "4.1.8",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",

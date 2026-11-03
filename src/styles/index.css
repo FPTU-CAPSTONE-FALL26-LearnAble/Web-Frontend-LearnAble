@@ -24,6 +24,45 @@ pre {
   font-family: var(--font-mono);
 }
 
+@property --toast-progress {
+  syntax: "<angle>";
+  initial-value: 0turn;
+  inherits: false;
+}
+
+@keyframes toast-border-progress {
+  from {
+    --toast-progress: 0turn;
+  }
+  to {
+    --toast-progress: 1turn;
+  }
+}
+
+/* The perimeter is the toast's visible lifetime: a complete green circuit
+   coincides with Sonner's automatic dismissal. */
+[data-sonner-toast].cn-toast[data-styled="true"] {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--normal-bg), var(--normal-bg)) padding-box,
+    conic-gradient(
+        from -90deg,
+        var(--success-border) 0turn var(--toast-progress),
+        var(--normal-border) var(--toast-progress) 1turn
+      )
+      border-box;
+  animation: toast-border-progress var(--toast-duration, 5000ms) linear forwards;
+}
+
+[data-sonner-toaster]:hover [data-sonner-toast].cn-toast,
+[data-sonner-toaster]:focus-within [data-sonner-toast].cn-toast {
+  animation-play-state: paused;
+}
+
+[data-sonner-toast].cn-toast[data-type="loading"] {
+  animation: none;
+}
+
 /* Focus ring thống nhất: 3px solid #16306e (hoặc --ring), offset 2px, tương phản với cả nền trang lẫn phần tử.
    `outline: none` bị cấm (ESLint + review). */
 /* :where(
@@ -87,9 +126,11 @@ pre {
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-primary-hover: var(--primary-hover);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-accent-foreground: var(--accent-foreground);

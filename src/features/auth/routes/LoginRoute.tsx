@@ -10,13 +10,6 @@ import {
   AlertTitle,
 } from "@/shared/ui/primitives/alert";
 import { Button } from "@/shared/ui/primitives/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/primitives/card";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
@@ -93,36 +86,56 @@ export function LoginRoute() {
         announce(describeLoginError(error), { assertive: true }),
     });
   });
-  const showGoogleDemo = () => announce(en.auth.demoMessage);
+  const showGoogleDemo = () =>
+    announce("Google sign-in will be available when identity integration is enabled.");
 
   return (
     <AuthShell
-      campusImage="/assets/auth/campus-statue.jpeg"
-      campusImageAlt="Self Made Man statue at FPT University campus"
-      campusImageClassName="object-[52%_center]"
-      heroTitle="Future Forward – Global Ready"
-      heroTitleClassName="text-3xl sm:text-4xl"
-      heroBody="A clear, accessible learning environment for FPT University students, lecturers, and staff across every campus."
+      campusImage="/assets/landing/inclusive-learning.png"
+      campusImageAlt="A visually impaired university learner using LearnAble with headphones and Braille materials"
+      campusImageClassName="object-[center_42%]"
+      eyebrow="Accessible learning • Inclusive assessment"
+      heroTitle="Learning without digital barriers"
+      heroTitleClassName="text-[28px] lg:text-[28px]"
+      heroBody="LearnAble brings accessible learning materials, question authoring and inclusive exam operations into one university platform."
+      highlights={[
+        { value: "Learn", label: "Accessible course materials" },
+        { value: "Prepare", label: "Inclusive question workflows" },
+        { value: "Assess", label: "Supported exam delivery" },
+      ]}
     >
-      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
-        <header className="flex justify-center pb-2">
-          <AuthBrand />
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+        <header className="flex justify-start border-b border-border pb-6">
+          <Link
+            to="/"
+            aria-label="Go to LearnAble home page"
+            className="rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <AuthBrand prominent />
+          </Link>
         </header>
 
-        <Card className="border-border shadow-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-medium tracking-tight">
-              {en.auth.welcome}
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              {en.auth.intro}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <form onSubmit={onSubmit} noValidate className="grid gap-4">
+        <section className="grid gap-5" aria-labelledby="login-heading">
+          <header className="space-y-2">
+            <h1
+              id="login-heading"
+              className="text-3xl font-semibold tracking-tight text-foreground outline-none"
+            >
+              Welcome to <span className="text-primary">LearnAble</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in with the university account issued to you.
+            </p>
+          </header>
+          <div className="grid gap-5">
+            <form onSubmit={onSubmit} noValidate className="grid gap-5">
+              <div className="grid gap-5 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="identifier">
-                  {en.auth.identifier}{" "}
+                <Label
+                  htmlFor="identifier"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                >
+                  Email{" "}
                   <span aria-hidden className="text-destructive">
                     *
                   </span>
@@ -130,7 +143,7 @@ export function LoginRoute() {
                 <Input
                   id="identifier"
                   autoComplete="username"
-                  placeholder={en.auth.identifierPlaceholder}
+                  placeholder="name@university.edu.vn"
                   aria-invalid={Boolean(errors.identifier)}
                   aria-describedby={
                     errors.identifier ? "identifier-error" : undefined
@@ -149,20 +162,15 @@ export function LoginRoute() {
               </div>
 
               <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">
+                  <Label
+                    htmlFor="password"
+                    className="text-xs font-semibold uppercase tracking-wide"
+                  >
                     {en.auth.password}{" "}
                     <span aria-hidden className="text-destructive">
                       *
                     </span>
                   </Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {en.auth.forgotPassword}
-                  </Link>
-                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -177,7 +185,7 @@ export function LoginRoute() {
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
+                    className="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={
                       showPassword ? en.auth.hidePassword : en.auth.showPassword
                     }
@@ -200,8 +208,9 @@ export function LoginRoute() {
                   </p>
                 ) : null}
               </div>
+              </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Controller
                   name="remember"
                   control={control}
@@ -223,6 +232,12 @@ export function LoginRoute() {
                     </div>
                   )}
                 />
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {en.auth.forgotPassword}
+                </Link>
               </div>
 
               {serverError ? (
@@ -241,11 +256,12 @@ export function LoginRoute() {
                 {loginMutation.isPending ? en.auth.submitting : en.auth.submit}
               </Button>
 
-              <div className="relative my-1 flex items-center justify-center">
-                <Separator className="w-full" />
-                <span className="absolute bg-card px-2 text-xs uppercase text-muted-foreground">
-                  {en.auth.quickSignIn}
+              <div className="my-2 flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="shrink-0 text-xs uppercase text-muted-foreground">
+                  Or sign in quickly
                 </span>
+                <Separator className="flex-1" />
               </div>
 
               <Button
@@ -255,19 +271,22 @@ export function LoginRoute() {
                 onClick={showGoogleDemo}
               >
                 <GoogleIcon />
-                Continue with Google
+                Continue with university Google account
               </Button>
             </form>
 
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
+            <div className="mt-2 flex items-start gap-2 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
               <Info
                 aria-hidden
                 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
               />
-              <p>{en.auth.accountNotice}</p>
+              <p>
+                Accounts are provided by your university. Contact Student
+                Services or campus IT if you need account support.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </AuthShell>
   );

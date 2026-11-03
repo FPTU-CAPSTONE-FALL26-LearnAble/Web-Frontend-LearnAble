@@ -19,8 +19,19 @@ const api = vi.hoisted(() => ({
   getTopics: vi.fn(),
   getSemesters: vi.fn(),
 }));
+const examApi = vi.hoisted(() => ({
+  getExamPaperBank: vi.fn(),
+  getExamRooms: vi.fn(),
+  getExamSchedules: vi.fn(),
+  publishExamPaper: vi.fn(),
+  getExamTypes: vi.fn(),
+  getExamSubjects: vi.fn(),
+  getAvailableExamQuestions: vi.fn(),
+  setExamPaperQuestions: vi.fn(),
+}));
 
 vi.mock("@/api/catalog", () => api);
+vi.mock("@/api/exams", () => examApi);
 
 vi.mock("@/shared/a11y/useRouteAnnouncer", () => ({
   useRouteAnnouncer: vi.fn(),
@@ -38,6 +49,7 @@ describe("Examiner routes", () => {
   });
   const question = {
     questionId: "q-live-1",
+    examTypeId: "type-1",
     topicId: "topic-1",
     createdBy: "lecturer-1",
     content: "Which process is iterative?",
@@ -52,6 +64,7 @@ describe("Examiner routes", () => {
   };
 
   beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
     sessionStorage.clear();
     api.getQuestions.mockResolvedValue(page([question]));
     api.getQuestion.mockResolvedValue(question);
@@ -59,6 +72,7 @@ describe("Examiner routes", () => {
       page([
         {
           subjectId: "subject-1",
+          universityId: "university-1",
           subjectCode: "SWE201",
           subjectNameEn: "Software Engineering",
         },
@@ -77,6 +91,7 @@ describe("Examiner routes", () => {
       page([
         {
           semesterId: "semester-1",
+          universityId: "university-1",
           semesterCode: "FA26",
           semesterName: "Fall 2026",
           academicYear: "2026",
@@ -86,6 +101,39 @@ describe("Examiner routes", () => {
         },
       ]),
     );
+    examApi.getExamPaperBank.mockResolvedValue([
+      {
+        examPaperId: "paper-1",
+        examSubjectId: "exam-subject-1",
+        paperCode: "PRF192-FE-01",
+        name: "C Programming Practical Test",
+        version: 1,
+        status: "Draft",
+        createdAt: "2026-10-26T00:00:00Z",
+        totalScore: 10,
+        questions: [],
+        eTag: "etag-1",
+        examSubject: { name: "PRF192", status: "Ready", durationMinutes: 90 },
+      },
+      {
+        examPaperId: "paper-2",
+        examSubjectId: "exam-subject-2",
+        paperCode: "SWE201-FE-01",
+        name: "Software Engineering Foundations",
+        version: 1,
+        status: "Published",
+        createdAt: "2026-10-26T00:00:00Z",
+        totalScore: 10,
+        questions: [],
+        examSubject: { name: "SWE201", status: "Ready", durationMinutes: 90 },
+      },
+    ]);
+    examApi.getExamRooms.mockResolvedValue(page([{ examRoomId: "room-1", universityId: "university-1", roomCode: "A302", name: "Lab Alpha 302", building: "Alpha", floor: 3, capacity: 35, isActive: true }]));
+    examApi.getExamSchedules.mockResolvedValue(page([{ examScheduleId: "schedule-1", examSubjectId: "exam-subject-1", examName: "SWE201 Final", examShiftId: "shift-1", examRoomId: "room-1", roomName: "Lab Alpha 302", startsAt: "2026-10-26T13:30:00Z", endsAt: "2026-10-26T15:30:00Z", entryOpensAt: "2026-10-26T13:00:00Z", entryClosesAt: "2026-10-26T14:00:00Z", status: "Open" }]));
+    examApi.getExamTypes.mockResolvedValue([{ examTypeId: "type-1", code: "FINAL", name: "Final Exam", isActive: true }]);
+    examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready" }]));
+    examApi.getAvailableExamQuestions.mockResolvedValue(page([{ ...question, eligible: true, reasons: [], examTypeId: "type-1" }]));
+    examApi.setExamPaperQuestions.mockResolvedValue({ questions: [{ questionId: question.questionId }], totalScore: 0.25, eTag: "etag-2" });
   });
 
   function renderRoute(node: React.ReactNode, entries = ["/"]) {
@@ -99,70 +147,91 @@ describe("Examiner routes", () => {
     );
   }
 
-  it("renders the dashboard with the signed-in examiner", () => {
+  it("renders the dashboard with the signed-in examiner", async () => {
     useAuthStore.setState({
       user: {
         id: "e1",
+        universityId: "university-1",
+        isSuperAdmin: false,
         fullName: "Mai Chi",
         email: "mai@fpt.edu.vn",
         role: "Examiner",
       },
     });
     renderRoute(<ExaminerDashboardRoute />);
-    expect(
-      screen.getByRole("heading", { name: /Good morning, Mai Chi/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Critical incidents requiring action"),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Good day, Mai Chi/i })).toBeInTheDocument();
+    expect(await screen.findByText("SWE201 Final")).toBeInTheDocument();
   });
 
-  it("searches and filters the exam bank locally", () => {
+  it("keeps paper and room data visible when schedules are unavailable", async () => {
+    examApi.getExamSchedules.mockRejectedValue(new Error("Schedule service unavailable"));
+    useAuthStore.setState({
+      user: { id: "e1", universityId: "university-1", isSuperAdmin: false, fullName: "Mai Chi", email: "mai@fpt.edu.vn", role: "Examiner" },
+    });
+    renderRoute(<ExaminerDashboardRoute />);
+    expect((await screen.findAllByText("Exam schedules are temporarily unavailable.")).length).toBeGreaterThan(0);
+    expect(screen.getByText("1 published")).toBeInTheDocument();
+    expect(screen.getByText("1 rooms returned")).toBeInTheDocument();
+  });
+
+  it("loads and filters the exam bank from the backend", async () => {
     renderRoute(<ExamBankRoute />);
+    expect(await screen.findByText("C Programming Practical Test")).toBeInTheDocument();
     fireEvent.change(
       screen.getByPlaceholderText("Search by code, subject, or title"),
       { target: { value: "PRF192" } },
     );
-    expect(
-      screen.getByText("C Programming Practical Test"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("C Programming Practical Test")).toBeInTheDocument();
     expect(
       screen.queryByText("Software Engineering Foundations"),
     ).not.toBeInTheDocument();
   });
 
-  it("loads, filters, selects and previews live questions without a write", async () => {
-    const request = vi.spyOn(globalThis, "fetch");
+  it("loads eligible questions and stores a scored selection", async () => {
+    sessionStorage.setItem("learnable:examiner:exam-preparation-v2", JSON.stringify({ examPaperId: "paper-1", paperETag: "etag-1", examTypeId: "type-1", selectedQuestions: [] }));
     renderRoute(<QuestionSelectionRoute />);
     expect(
       await screen.findByText("Which process is iterative?", { exact: false }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("Search question bank"), {
+    fireEvent.change(screen.getByPlaceholderText("Search questions"), {
       target: { value: "iterative" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    await waitFor(() =>
-      expect(api.getQuestions).toHaveBeenLastCalledWith(
-        expect.objectContaining({ SearchTerm: "iterative", Status: "Active" }),
-      ),
-    );
     fireEvent.click(screen.getByRole("checkbox"));
     expect(
-      screen.getByText("/ 40", { exact: false }).parentElement,
-    ).toHaveTextContent("1 / 40");
-    expect(
       JSON.parse(
-        sessionStorage.getItem("learnable:examiner:exam-draft-v1") ?? "{}",
+        sessionStorage.getItem("learnable:examiner:exam-preparation-v2") ?? "{}",
       ),
-    ).toEqual(expect.objectContaining({ selectedQuestionIds: ["q-live-1"] }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    expect(await screen.findByText("Agile")).toBeInTheDocument();
-    expect(api.getQuestion).toHaveBeenCalledWith("q-live-1");
-    expect(request).not.toHaveBeenCalled();
-    request.mockRestore();
+    ).toEqual(expect.objectContaining({ selectedQuestions: [{ questionId: "q-live-1", maxScore: 0.25 }] }));
+    expect(examApi.getAvailableExamQuestions).toHaveBeenCalledWith("paper-1", {
+      EligibleOnly: false,
+    });
   });
 
-  it("loads live subjects and semesters in exam and schedule setup", async () => {
+  it("shows why a question cannot be selected for the paper", async () => {
+    sessionStorage.setItem("learnable:examiner:exam-preparation-v2", JSON.stringify({
+      examPaperId: "paper-1",
+      paperETag: "etag-1",
+      examTypeId: "type-1",
+      selectedQuestions: [],
+    }));
+    examApi.getAvailableExamQuestions.mockResolvedValue(page([
+      {
+        ...question,
+        eligible: false,
+        reasons: ["Question needs audio.", "Every option needs audio."],
+        examTypeId: "type-2",
+      },
+    ]));
+
+    renderRoute(<QuestionSelectionRoute />);
+
+    expect(await screen.findByText("Question needs audio")).toBeInTheDocument();
+    expect(screen.getByText("Every option needs audio")).toBeInTheDocument();
+    expect(screen.getByText("Question does not match the exam type")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+  });
+
+  it("loads live catalogs for exam and schedule setup", async () => {
     renderRoute(
       <>
         <ExamSetupRoute />
@@ -172,13 +241,28 @@ describe("Examiner routes", () => {
     await waitFor(() => {
       expect(api.getSubjects).toHaveBeenCalled();
       expect(api.getSemesters).toHaveBeenCalled();
+      expect(examApi.getExamTypes).toHaveBeenCalled();
+      expect(examApi.getExamSubjects).toHaveBeenCalled();
     });
-    expect(screen.getAllByText("Simulation data.").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Simulation data.")).not.toBeInTheDocument();
   });
 
-  it("filters the room kiosk matrix", () => {
-    renderRoute(<RoomMonitoringRoute />, ["/examiner/monitoring/alpha-302"]);
-    fireEvent.click(screen.getByRole("button", { name: "Disconnected" }));
-    expect(screen.getByText("HE171004")).toBeInTheDocument();
+  it("suggests draft paper details from the exam configuration", async () => {
+    sessionStorage.setItem("learnable:examiner:exam-preparation-v2", JSON.stringify({
+      subjectId: "subject-1",
+      semesterId: "semester-1",
+      examTypeId: "type-1",
+      paperCode: "",
+      paperName: "",
+    }));
+    renderRoute(<ExamSetupRoute />);
+    await waitFor(() => expect(screen.getByLabelText("Paper code")).toHaveValue("SWE201-FINAL-FA26-01"));
+    expect(screen.getByLabelText("Paper name")).toHaveValue("SWE201 Final Exam FA26 Paper 1");
+  });
+
+  it("does not render fixture candidates when no routed room id is available", async () => {
+    renderRoute(<RoomMonitoringRoute />, ["/examiner/monitoring/room-1"]);
+    expect(await screen.findByRole("heading", { name: "Room not found" })).toBeInTheDocument();
+    expect(screen.queryByText("HE171004")).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { tokenStore } from "@/lib/auth/tokenStore";
+import { getDemoApiResponse } from "@/lib/demoData";
 
 /**
  * Client HTTP duy nhất của repo web. Lỗi là discriminated union có kiểu —
@@ -10,7 +11,7 @@ export type ApiError =
   | { kind: "network" }
   | { kind: "unauthorized" }
   | { kind: "not_found" }
-  | { kind: "server"; status: number }
+  | { kind: "server"; status: number; message?: string; errors?: string[] }
   | { kind: "parse" };
 
 export class ApiFailure extends Error {
@@ -22,11 +23,18 @@ export class ApiFailure extends Error {
 
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
-export async function request<T>(
+export async function request<TSchema extends z.ZodTypeAny>(
   path: string,
-  schema: z.ZodType<T>,
+  schema: TSchema,
   init?: RequestInit & { json?: unknown },
-): Promise<T> {
+): Promise<z.output<TSchema>> {
+  const demoResponse = getDemoApiResponse(path, init);
+  if (demoResponse !== undefined) {
+    const parsed = schema.safeParse(demoResponse);
+    if (!parsed.success) throw new ApiFailure({ kind: "parse" });
+    return parsed.data;
+  }
+
   const { json, ...rest } = init ?? {};
   const token = tokenStore.get();
 
@@ -48,7 +56,16 @@ export async function request<T>(
   if (!res.ok) {
     if (res.status === 401) throw new ApiFailure({ kind: "unauthorized" });
     if (res.status === 404) throw new ApiFailure({ kind: "not_found" });
-    throw new ApiFailure({ kind: "server", status: res.status });
+    let serverMessage: string | undefined;
+    let serverErrors: string[] | undefined;
+    try {
+      const payload = await res.clone().json() as { message?: unknown; errors?: unknown };
+      if (typeof payload.message === "string") serverMessage = payload.message;
+      if (Array.isArray(payload.errors)) serverErrors = payload.errors.filter((item): item is string => typeof item === "string");
+    } catch {
+      // Some server failures intentionally return an empty body.
+    }
+    throw new ApiFailure({ kind: "server", status: res.status, message: serverMessage, errors: serverErrors });
   }
 
   let data: unknown;
