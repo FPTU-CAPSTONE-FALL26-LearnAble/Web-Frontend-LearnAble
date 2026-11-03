@@ -17,6 +17,7 @@ export interface MultipleChoiceOption {
 
 export interface MultipleChoiceQuestionProps {
   questionNumber: number;
+  questionCount?: number;
   stem: string;
   stemLang?: string;
   image?: { src: string; alt: string };
@@ -38,6 +39,7 @@ export interface MultipleChoiceQuestionProps {
  */
 export function MultipleChoiceQuestion({
   questionNumber,
+  questionCount,
   stem,
   stemLang,
   image,
@@ -53,21 +55,18 @@ export function MultipleChoiceQuestion({
 }: MultipleChoiceQuestionProps) {
   const questionId = `multiple-choice-question-${questionNumber}`;
   const selectOption = (optionId: string) => {
-    const option = options.find((item) => item.id === optionId);
-    if (option) announce(vi.announce.answerSelected(option.text));
     onValueChange(optionId);
   };
 
   return (
     <section
-      aria-labelledby={questionId}
       className={cn(
         "mt-4 grid gap-y-6 sm:grid-cols-[minmax(6rem,max-content)_minmax(0,1fr)_3rem] sm:gap-x-4",
         className,
       )}
     >
-      <p className="text-base font-semibold text-foreground sm:col-start-1">
-        {vi.exam.questionNumber(questionNumber)}
+      <p id={`${questionId}-position`} className="text-base font-semibold text-foreground sm:col-start-1">
+        {questionCount ? `${vi.exam.questionPosition(questionNumber, questionCount)}.` : vi.exam.questionNumber(questionNumber)}
       </p>
 
       {onToggleFlag ? (
@@ -103,6 +102,7 @@ export function MultipleChoiceQuestion({
         >
           <h2
             id={questionId}
+            aria-labelledby={questionCount ? `${questionId}-position ${questionId}` : undefined}
             lang={stemLang}
             tabIndex={-1}
             className="text-base font-normal text-foreground"
@@ -161,11 +161,13 @@ export function MultipleChoiceQuestion({
                 >
                   <RadioGroupItem
                     id={optionId}
+                    lang={stemLang}
                     value={option.id}
                     disabled={optionDisabled}
                   />
                   <Label
                     htmlFor={optionId}
+                    lang={stemLang}
                     className="min-h-11 flex-1 cursor-pointer"
                   >
                     <p className="select-text text-base font-normal leading-relaxed">

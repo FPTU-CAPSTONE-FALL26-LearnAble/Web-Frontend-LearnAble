@@ -16,6 +16,7 @@ export interface MultipleResponseOption {
 export interface MultipleResponseQuestionProps {
   /** 1-based question number displayed within the question area. */
   questionNumber: number;
+  questionCount?: number;
   stem: string;
   stemLang?: string;
   image?: { src: string; alt: string };
@@ -38,6 +39,7 @@ export interface MultipleResponseQuestionProps {
  */
 export function MultipleResponseQuestion({
   questionNumber,
+  questionCount,
   stem,
   stemLang,
   image,
@@ -56,14 +58,13 @@ export function MultipleResponseQuestion({
 
   return (
     <section
-      aria-labelledby={questionId}
       className={cn(
         "mt-4 grid gap-y-6 sm:grid-cols-[6rem_minmax(0,1fr)_3rem] sm:gap-x-4",
         className,
       )}
     >
-      <p className="text-base font-semibold text-foreground sm:col-start-1">
-        {vi.exam.questionNumber(questionNumber)}
+      <p id={`${questionId}-position`} className="text-base font-semibold text-foreground sm:col-start-1">
+        {questionCount ? `${vi.exam.questionPosition(questionNumber, questionCount)}.` : vi.exam.questionNumber(questionNumber)}
       </p>
 
       {onToggleFlag ? (
@@ -99,6 +100,7 @@ export function MultipleResponseQuestion({
         >
           <h2
             id={questionId}
+            aria-labelledby={questionCount ? `${questionId}-position ${questionId}` : undefined}
             lang={stemLang}
             tabIndex={-1}
             className="text-base font-normal text-foreground"
@@ -135,20 +137,17 @@ export function MultipleResponseQuestion({
                 >
                   <Checkbox
                     id={optionId}
+                    lang={stemLang}
                     checked={selected}
                     disabled={optionDisabled}
                     onCheckedChange={(checked) => {
                       const nextSelected = checked === true;
-                      announce(
-                        nextSelected
-                          ? vi.announce.answerSelected(option.text)
-                          : vi.announce.answerDeselected(option.text),
-                      );
                       onSelectionChange(option.id, nextSelected);
                     }}
                   />
                   <Label
                     htmlFor={optionId}
+                    lang={stemLang}
                     className="min-h-11 flex-1 cursor-pointer "
                   >
                     <p className="select-text text-base font-normal leading-relaxed">

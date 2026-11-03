@@ -11,7 +11,7 @@ const questions: PlayerQuestion[] = [
 
 it("lets full-page hosts focus a restored question on mount", () => {
   renderPlayer({ focusOnMount: true, navigation: { questionId: "two", view: "question", filter: "all" } });
-  expect(screen.getByRole("heading", { name: "Second stem" })).toHaveFocus();
+  expect(screen.getByRole("heading", { name: /Second stem$/ })).toHaveFocus();
 });
 
 it("does not steal initial focus from an embedding host by default", () => {
@@ -55,9 +55,9 @@ describe("AssessmentPlayer", () => {
   it("moves keyboard focus to the new question heading", async () => {
     const { user } = renderPlayer();
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByRole("heading", { name: "First stem" })).toHaveFocus();
+    expect(screen.getByRole("heading", { name: /First stem$/ })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByRole("heading", { name: "Second stem" })).toHaveFocus();
+    expect(screen.getByRole("heading", { name: /Second stem$/ })).toHaveFocus();
   });
   it("disables reset when the host cannot clear an answer", async () => {
     const { user, onAnswerChange } = renderPlayer({ answers: { one: "A" }, canClearAnswer: false });
@@ -128,7 +128,7 @@ describe("AssessmentPlayer", () => {
     await user.click(screen.getByRole("button", { name: "Review" }));
     await user.click(screen.getByRole("button", { name: /Start over/ }));
     expect(onStartOver).toHaveBeenCalled();
-    expect(screen.getByRole("heading", { name: "First stem" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /First stem$/ })).toBeInTheDocument();
   });
 
   it("forwards the submission action from the options overlay", async () => {
@@ -160,17 +160,17 @@ describe("AssessmentPlayer", () => {
   it("reports controlled navigation without mutating the host position", async () => {
     const onNavigationChange = vi.fn();
     const { user } = renderPlayer({ navigation: { questionId: "two", view: "question", filter: "all" }, onNavigationChange });
-    expect(screen.getByRole("heading", { name: "Second stem" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Second stem$/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(onNavigationChange).toHaveBeenCalledWith({ questionId: "one", view: "question", filter: "all" });
-    expect(screen.getByRole("heading", { name: "Second stem" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Second stem$/ })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review" }));
     expect(onNavigationChange).toHaveBeenLastCalledWith({ questionId: "two", view: "review", filter: "all" });
   });
 
   it("restores by question id when question order changes", () => {
     renderPlayer({ questions: [...questions].reverse(), navigation: { questionId: "one", view: "question", filter: "flagged" } });
-    expect(screen.getByRole("heading", { name: "First stem" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /First stem$/ })).toBeInTheDocument();
   });
 
   it("locks answer, reset and flag changes while retaining navigation", async () => {
@@ -197,6 +197,16 @@ describe("AssessmentPlayer", () => {
   it("preserves the question language in the live player", async () => {
     const { user } = renderPlayer({ questions: [{ ...questions[0], stemLang: "vi" }] });
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByRole("heading", { name: "First stem" })).toHaveAttribute("lang", "vi");
+    expect(screen.getByRole("heading", { name: /First stem$/ })).toHaveAttribute("lang", "vi");
   });
+});
+
+it("describes admission at initial Contents focus and does not repeat it on return", async () => {
+  const { user } = renderPlayer({ focusOnMount: true, entryDescription: "Your exam lasts 60 minutes." });
+  expect(screen.getByRole("heading", { name: "Demo assessment", level: 2 })).toHaveFocus();
+  expect(screen.getByRole("heading", { name: "Demo assessment", level: 2 })).toHaveAccessibleDescription("Your exam lasts 60 minutes.");
+  await user.click(screen.getByRole("button", { name: "Next" }));
+  expect(document.activeElement).toHaveAccessibleDescription("");
+  await user.click(screen.getByRole("button", { name: "Navigate to table of contents" }));
+  expect(screen.getByRole("heading", { name: "Demo assessment", level: 2 })).toHaveAccessibleDescription("");
 });

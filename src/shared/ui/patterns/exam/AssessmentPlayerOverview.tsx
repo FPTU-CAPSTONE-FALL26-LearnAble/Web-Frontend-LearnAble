@@ -8,6 +8,7 @@ import type { PlayerFilter, PlayerView } from "./assessment-player-types";
 export interface AssessmentPlayerOverviewProps {
   /** Assessment name shown above the contents table. */
   title: string;
+  entryDescription?: string;
   answeredCount: number;
   flaggedCount: number;
   questionCount: number;
@@ -25,6 +26,7 @@ const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
  */
 export function AssessmentPlayerOverview({
   title,
+  entryDescription,
   answeredCount,
   flaggedCount,
   questionCount,
@@ -81,13 +83,17 @@ export function AssessmentPlayerOverview({
               </Button> : null}
             </>
           ) : (
+            <>
             <h2
               id="contents-heading"
+              aria-describedby={entryDescription ? "player-entry-description" : undefined}
               tabIndex={-1}
               className="text-lg font-normal text-foreground"
             >
               {title}
             </h2>
+            {entryDescription ? <p id="player-entry-description" className="sr-only">{entryDescription}</p> : null}
+            </>
           )}
         </div>
         <div className="mx-auto w-full max-w-4xl">

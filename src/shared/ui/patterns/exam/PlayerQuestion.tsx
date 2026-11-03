@@ -57,6 +57,7 @@ export function PlayerQuestion({
   );
   const shared = {
     questionNumber,
+    questionCount,
     stem: question.prompt,
     stemLang: question.stemLang,
     disabled,

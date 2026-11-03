@@ -82,6 +82,10 @@ export const en = {
     intro: "High-contrast colors and legible text are enabled by default. Use these settings to fine-tune your experience.",
     ttsSection: "Text-to-speech voice",
     ttsVoice: "Voice",
+    englishOnly: "English voices are available. Vietnamese voices are temporarily unavailable.",
+    noEnVoice: "No English text-to-speech voice is installed on this device.",
+    unavailable: "Temporarily unavailable",
+    vietnameseUnavailable: "Vietnamese — temporarily unavailable",
     ttsRate: "Reading speed",
     ttsRateValue: (rate: string) => `${rate} times normal speed`,
     ttsPreview: "Preview voice",
@@ -93,6 +97,7 @@ export const en = {
   exam: {
     pageTitle: (name: string) => `${name} — LearnAble`,
     question: (index: number, total: number) => `Question ${index}/${total}`,
+    questionPosition: (index: number, total: number) => `Question ${index} of ${total}`,
     questionNumber: (index: number) => `Question ${index}`,
     questionListLabel: "Question list",
     answerOptionsLabel: "Answer options",

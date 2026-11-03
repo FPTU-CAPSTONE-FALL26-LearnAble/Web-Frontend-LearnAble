@@ -55,6 +55,8 @@ export interface AssessmentPlayerProps {
   feedback?: ReactNode;
   /** Focus the recovered view when a full-page host finishes loading it. */
   focusOnMount?: boolean;
+  /** Admission context read with the first Contents heading only. */
+  entryDescription?: string;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -88,12 +90,15 @@ export function AssessmentPlayer({
   onOptionsOpenChange,
   feedback,
   focusOnMount = false,
+  entryDescription,
 }: AssessmentPlayerProps) {
   const [localNavigation, setLocalNavigation] = useState<PlayerNavigation>({
     questionId: null, view: "contents", filter: "all",
   });
   const position = navigation ?? localNavigation;
   const { view, filter } = position;
+  const [showEntryDescription, setShowEntryDescription] = useState(true);
+  useEffect(() => { if (view !== "contents") setShowEntryDescription(false); }, [view]);
   const index = Math.max(0, questions.findIndex((q) => q.id === position.questionId));
   const navigate = (patch: Partial<PlayerNavigation>) => {
     const next = { ...position, ...patch };
@@ -171,6 +176,7 @@ export function AssessmentPlayer({
         }
         headerContent={
           <AssessmentPlayerOverview
+            entryDescription={showEntryDescription ? entryDescription : undefined}
             title={title}
             answeredCount={answeredCount}
             flaggedCount={questions.filter((question) => flagged.includes(question.id)).length}
@@ -211,7 +217,7 @@ export function AssessmentPlayer({
         <main ref={mainRef} id="main" className="min-h-0 w-full flex-1 overflow-y-scroll py-4 pl-4">
           <div className="w-full mx-auto max-w-4xl flex-1">
             {view === "question" && current ? (
-              <fieldset disabled={interactionLocked} lang={current.stemLang} aria-label={current.title} className="min-w-0">
+              <fieldset disabled={interactionLocked} className="min-w-0">
                 <PlayerQuestion
                   key={current.id}
                   question={current}
