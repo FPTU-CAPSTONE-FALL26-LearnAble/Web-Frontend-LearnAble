@@ -2,6 +2,7 @@ import {
   BookOpenText,
   CalendarDays,
   ChevronDown,
+  ClipboardCheck,
   FileQuestion,
   GraduationCap,
   LayoutDashboard,
@@ -44,6 +45,12 @@ const navigation = [
     label: "Exam Schedule",
     icon: CalendarDays,
     path: "/lecturer/exams",
+    available: true,
+  },
+  {
+    label: "Essay Grading",
+    icon: ClipboardCheck,
+    path: "/lecturer/grading",
     available: true,
   },
 ];

@@ -26,6 +26,7 @@ import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/Lea
 import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
 import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
+import { LecturerGradingRoute } from "@/features/lecturer/exams/routes/LecturerGradingRoute";
 import { LecturerProfileRoute } from "@/features/lecturer/profile/routes/LecturerProfileRoute";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
@@ -149,6 +150,7 @@ export const router = createBrowserRouter([
                 element: <UploadMaterialRoute />,
               },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
+              { path: "/lecturer/grading", element: <LecturerGradingRoute /> },
               {
                 path: "/lecturer/exams/:examId/attendance",
                 element: <AttendanceRoute />,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiFailure, request } from "@/api/client";
+import { ApiFailure, request, requestBlob } from "@/api/client";
 import {
   materialSchema,
   questionSchema,
@@ -175,3 +175,70 @@ export const archiveLearningMaterial = (materialId: string) =>
   command(`/LearningMaterials/${materialId}/archive`, { method: "PATCH" });
 export const deleteLearningMaterial = (materialId: string) =>
   command(`/LearningMaterials/${materialId}`, { method: "DELETE" });
+
+const importIssueSchema = z.object({
+  rowNumber: z.number().nullable(),
+  column: z.string(),
+  code: z.string(),
+  message: z.string(),
+});
+const importOptionSchema = z.object({ letter: z.string(), content: z.string(), isCorrect: z.boolean() });
+const importRowSchema = z.object({
+  rowNumber: z.number(),
+  topic: z.string(),
+  topicId: z.string().nullable(),
+  examType: z.string(),
+  examTypeId: z.string().nullable(),
+  content: z.string(),
+  questionType: z.string().nullable(),
+  difficulty: z.string().nullable(),
+  defaultScore: z.number().nullable(),
+  options: z.array(importOptionSchema),
+  referenceAnswer: z.string().nullable(),
+  gradingCriteria: z.string().nullable(),
+  maxWords: z.number().nullable(),
+});
+export const questionImportValidationSchema = z.object({
+  templateVersion: z.number(),
+  fileSha256: z.string(),
+  subjectId: z.string(),
+  totalRows: z.number(),
+  validRows: z.number(),
+  invalidRows: z.number(),
+  canImport: z.boolean(),
+  requiresWarningAcknowledgement: z.boolean(),
+  rows: z.array(importRowSchema),
+  errors: z.array(importIssueSchema),
+  warnings: z.array(importIssueSchema),
+  warningFingerprint: z.string(),
+});
+export type QuestionImportValidation = z.infer<typeof questionImportValidationSchema>;
+
+export const questionImportResultSchema = z.object({
+  subjectId: z.string(),
+  importedQuestions: z.number(),
+  importedOptions: z.number(),
+  status: z.string(),
+  items: z.array(z.object({ excelRowNumber: z.number(), questionId: z.string(), optionCount: z.number() })),
+});
+
+function importForm(file: File, fields: Record<string, string | boolean> = {}) {
+  const form = new FormData();
+  form.set("File", file);
+  Object.entries(fields).forEach(([key, value]) => form.set(key, String(value)));
+  return form;
+}
+
+export const downloadQuestionImportTemplate = (subjectId: string) =>
+  requestBlob(`/subjects/${subjectId}/questions/import/template`);
+export const validateQuestionImport = (subjectId: string, file: File) =>
+  unwrap(`/subjects/${subjectId}/questions/import/validate`, questionImportValidationSchema, { method: "POST", body: importForm(file) });
+export const importQuestions = (subjectId: string, file: File, validation: QuestionImportValidation, acknowledgeWarnings: boolean) =>
+  unwrap(`/subjects/${subjectId}/questions/import`, questionImportResultSchema, {
+    method: "POST",
+    body: importForm(file, {
+      ExpectedFileSha256: validation.fileSha256,
+      ExpectedWarningFingerprint: validation.warningFingerprint,
+      AcknowledgeWarnings: acknowledgeWarnings,
+    }),
+  });

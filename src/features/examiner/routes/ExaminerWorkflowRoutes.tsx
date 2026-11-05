@@ -9,6 +9,7 @@ import { Input } from "@/shared/ui/primitives/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/primitives/select";
 import { Textarea } from "@/shared/ui/primitives/textarea";
 import { toast } from "@/shared/ui/primitives/toast";
+export { GradeReleaseRoute } from "./GradeReleaseRoute";
 
 function ComingSoon({ title, capability, nextStep }: { title: string; capability: string; nextStep: string }) {
   return (
@@ -27,7 +28,6 @@ function ComingSoon({ title, capability, nextStep }: { title: string; capability
   );
 }
 
-export function GradeReleaseRoute() { return <ComingSoon title="Grade review & release" capability="Review calculated grades, complete manual grading, and release approved results." nextStep="Continue monitoring active schedules. Grade records will appear here when result processing is available." />; }
 export function IntegrityReviewRoute() { return <ComingSoon title="Synchronized integrity review" capability="Review exam recordings alongside candidate activity and integrity events." nextStep="Use Live Exam Monitoring for current schedules. Recorded review will appear here when exam telemetry is available." />; }
 export function FlaggedSessionsRoute() { return <ComingSoon title="Flagged sessions" capability="Review integrity flags, supporting evidence, and examiner decisions." nextStep="No flagged-session records are available yet. Active exam rooms remain accessible from Live Exam Monitoring." />; }
 export function ExamReportsRoute() { return <ComingSoon title="Exam reports" capability="Review completion, grade distribution, and integrity outcomes across exam schedules." nextStep="Reports and file export will appear here when result aggregation is available." />; }

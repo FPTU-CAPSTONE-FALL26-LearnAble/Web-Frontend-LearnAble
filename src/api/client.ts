@@ -23,6 +23,21 @@ export class ApiFailure extends Error {
 
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
+async function responseFailure(res: Response): Promise<never> {
+  if (res.status === 401) throw new ApiFailure({ kind: "unauthorized" });
+  if (res.status === 404) throw new ApiFailure({ kind: "not_found" });
+  let serverMessage: string | undefined;
+  let serverErrors: string[] | undefined;
+  try {
+    const payload = await res.clone().json() as { message?: unknown; errors?: unknown };
+    if (typeof payload.message === "string") serverMessage = payload.message;
+    if (Array.isArray(payload.errors)) serverErrors = payload.errors.filter((item): item is string => typeof item === "string");
+  } catch {
+    // Some server failures intentionally return an empty body.
+  }
+  throw new ApiFailure({ kind: "server", status: res.status, message: serverMessage, errors: serverErrors });
+}
+
 export async function request<TSchema extends z.ZodTypeAny>(
   path: string,
   schema: TSchema,
@@ -54,18 +69,7 @@ export async function request<TSchema extends z.ZodTypeAny>(
   }
 
   if (!res.ok) {
-    if (res.status === 401) throw new ApiFailure({ kind: "unauthorized" });
-    if (res.status === 404) throw new ApiFailure({ kind: "not_found" });
-    let serverMessage: string | undefined;
-    let serverErrors: string[] | undefined;
-    try {
-      const payload = await res.clone().json() as { message?: unknown; errors?: unknown };
-      if (typeof payload.message === "string") serverMessage = payload.message;
-      if (Array.isArray(payload.errors)) serverErrors = payload.errors.filter((item): item is string => typeof item === "string");
-    } catch {
-      // Some server failures intentionally return an empty body.
-    }
-    throw new ApiFailure({ kind: "server", status: res.status, message: serverMessage, errors: serverErrors });
+    return responseFailure(res);
   }
 
   let data: unknown;
@@ -78,4 +82,24 @@ export async function request<TSchema extends z.ZodTypeAny>(
   const parsed = schema.safeParse(data);
   if (!parsed.success) throw new ApiFailure({ kind: "parse" });
   return parsed.data;
+}
+
+export async function requestBlob(path: string, init?: RequestInit): Promise<{ blob: Blob; fileName: string | null }> {
+  const token = tokenStore.get();
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new ApiFailure({ kind: "network" });
+  }
+  if (!res.ok) return responseFailure(res);
+  const disposition = res.headers.get("Content-Disposition");
+  const fileName = disposition?.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i)?.[1];
+  return { blob: await res.blob(), fileName: fileName ? decodeURIComponent(fileName) : null };
 }
