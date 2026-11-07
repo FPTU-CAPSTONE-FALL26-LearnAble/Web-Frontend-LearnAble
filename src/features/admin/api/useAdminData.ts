@@ -92,11 +92,14 @@ export function useUniversityScope() {
   };
 }
 
+/** The API rejects `PageSize` above 100 with "Invalid pagination." */
+const OPTIONS_PAGE_SIZE = 100;
+
 /** Anonymous lookup, so it also works for admins who cannot list tenants. */
 export function useUniversityOptions(enabled = true) {
   const query = useQuery({
     queryKey: adminKeys.list("universities", ["options"]),
-    queryFn: () => getUniversityLookup({ PageSize: 200 }),
+    queryFn: () => getUniversityLookup({ PageSize: OPTIONS_PAGE_SIZE }),
     enabled,
   });
   useExpiredAdminSession(query.error);
@@ -104,13 +107,13 @@ export function useUniversityOptions(enabled = true) {
 }
 
 /**
- * Reference lists used by the admin forms as foreign keys. They are read at a
- * large page size because the selects need the whole set, not one page.
+ * Reference lists used by the admin forms as foreign keys. They are read at the
+ * largest page size the API allows because the selects need the whole set.
  */
 export function useDepartmentOptions(enabled = true) {
   const query = useQuery({
     queryKey: adminKeys.list("departments", ["options"]),
-    queryFn: () => getDepartments({ PageSize: 200 }),
+    queryFn: () => getDepartments({ PageSize: OPTIONS_PAGE_SIZE }),
     enabled,
   });
   useExpiredAdminSession(query.error);
@@ -120,7 +123,7 @@ export function useDepartmentOptions(enabled = true) {
 export function useMajorOptions(enabled = true) {
   const query = useQuery({
     queryKey: adminKeys.list("majors", ["options"]),
-    queryFn: () => getMajors({ PageSize: 200 }),
+    queryFn: () => getMajors({ PageSize: OPTIONS_PAGE_SIZE }),
     enabled,
   });
   useExpiredAdminSession(query.error);
@@ -131,7 +134,7 @@ export function useCurriculumOptions(majorId?: string) {
   const query = useQuery({
     queryKey: adminKeys.list("curriculums", ["options", majorId ?? "all"]),
     queryFn: () =>
-      getCurriculums({ PageSize: 200, MajorId: majorId || undefined }),
+      getCurriculums({ PageSize: OPTIONS_PAGE_SIZE, MajorId: majorId || undefined }),
   });
   useExpiredAdminSession(query.error);
   return query;
@@ -140,7 +143,7 @@ export function useCurriculumOptions(majorId?: string) {
 export function useSubjectOptions() {
   const query = useQuery({
     queryKey: adminKeys.list("subjects", ["options"]),
-    queryFn: () => getAdminSubjects({ PageSize: 200 }),
+    queryFn: () => getAdminSubjects({ PageSize: OPTIONS_PAGE_SIZE }),
   });
   useExpiredAdminSession(query.error);
   return query;
@@ -149,7 +152,7 @@ export function useSubjectOptions() {
 export function useSemesterOptions() {
   const query = useQuery({
     queryKey: adminKeys.list("semesters", ["options"]),
-    queryFn: () => getAdminSemesters({ PageSize: 200 }),
+    queryFn: () => getAdminSemesters({ PageSize: OPTIONS_PAGE_SIZE }),
   });
   useExpiredAdminSession(query.error);
   return query;
@@ -162,7 +165,7 @@ export function useSemesterOptions() {
 export function useUserOptions(role?: UserRole) {
   const query = useQuery({
     queryKey: adminKeys.list("users", ["options", role ?? "all"]),
-    queryFn: () => getAdminUsers({ PageSize: 200, Role: role }),
+    queryFn: () => getAdminUsers({ PageSize: OPTIONS_PAGE_SIZE, Role: role }),
   });
   useExpiredAdminSession(query.error);
   return query;

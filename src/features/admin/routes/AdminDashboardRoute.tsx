@@ -1,44 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import {
+  Activity,
   ArrowRight,
+  AudioLines,
   Building2,
-  CalendarRange,
   GraduationCap,
+  Keyboard,
   LibraryBig,
-  ListTree,
   University,
-  ScrollText,
   UserCog,
   UserRound,
   Users,
 } from "lucide-react";
 import {
-  getAdminSemesters,
   getAdminSubjects,
-  getAdminTopics,
   getAdminUsers,
-  getCurriculums,
   getDepartments,
   getLecturerProfiles,
   getMajors,
   getStudentProfiles,
   getUniversities,
 } from "@/api/admin";
+import { getSystemHealth } from "@/api/adminSystem";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
 import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/primitives/table";
-import { Table } from "@/shared/ui/primitives/table";
-import {
   PageHeading,
   ReadState,
-  StatusBadge,
   SummaryCard,
 } from "@/components/workbench/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
@@ -47,18 +36,21 @@ import {
   useExpiredAdminSession,
   useUniversityScope,
 } from "../api/useAdminData";
-import { formatDate } from "../components/AdminSurfaces";
+import { HealthBadge, formatDateTime } from "../components/SystemSurfaces";
 
 /**
+ * System-wide report (FR-27). Since 05/11/2026 the academic records behind
+ * these counts are managed by University Staff, so the tiles are read-only
+ * totals: no tile links to a Staff screen.
+ *
  * There is no aggregate endpoint, so each tile reads `totalCount` from a
- * one-row page of the matching list. That is one cheap request per resource
- * rather than a fabricated number.
+ * one-row page of the matching list — one cheap request per resource rather
+ * than a fabricated number.
  */
 const countQueries = [
   {
     key: "universities",
     label: "Universities",
-    path: "/admin/universities",
     icon: University,
     read: () => getUniversities({ PageSize: 1 }),
     superAdminOnly: true,
@@ -66,58 +58,66 @@ const countQueries = [
   {
     key: "users",
     label: "User accounts",
-    path: "/admin/users",
     icon: UserCog,
     read: () => getAdminUsers({ PageSize: 1 }),
   },
   {
+    key: "studentProfiles",
+    label: "Students",
+    icon: UserRound,
+    read: () => getStudentProfiles({ PageSize: 1 }),
+  },
+  {
+    key: "lecturerProfiles",
+    label: "Lecturers",
+    icon: Users,
+    read: () => getLecturerProfiles({ PageSize: 1 }),
+  },
+  {
     key: "departments",
     label: "Departments",
-    path: "/admin/departments",
     icon: Building2,
     read: () => getDepartments({ PageSize: 1 }),
   },
   {
     key: "majors",
     label: "Majors",
-    path: "/admin/majors",
     icon: GraduationCap,
     read: () => getMajors({ PageSize: 1 }),
   },
   {
     key: "subjects",
     label: "Subjects",
-    path: "/admin/subjects",
     icon: LibraryBig,
     read: () => getAdminSubjects({ PageSize: 1 }),
   },
+] as const;
+
+const adminTools = [
   {
-    key: "topics",
-    label: "Topics",
-    path: "/admin/topics",
-    icon: ListTree,
-    read: () => getAdminTopics({ PageSize: 1 }),
+    label: "Universities",
+    description: "Add a university and activate or deactivate it.",
+    path: "/admin/universities",
+    icon: University,
+    superAdminOnly: true,
   },
   {
-    key: "curriculums",
-    label: "Curriculums",
-    path: "/admin/curriculums",
-    icon: ScrollText,
-    read: () => getCurriculums({ PageSize: 1 }),
+    label: "System monitoring",
+    description: "Service health, response times and current usage.",
+    path: "/admin/monitoring",
+    icon: Activity,
   },
   {
-    key: "studentProfiles",
-    label: "Student profiles",
-    path: "/admin/student-profiles",
-    icon: UserRound,
-    read: () => getStudentProfiles({ PageSize: 1 }),
+    label: "Voices and speeds",
+    description: "Which reading voices and speeds students can choose.",
+    path: "/admin/voice-settings",
+    icon: AudioLines,
   },
   {
-    key: "lecturerProfiles",
-    label: "Lecturer profiles",
-    path: "/admin/lecturer-profiles",
-    icon: Users,
-    read: () => getLecturerProfiles({ PageSize: 1 }),
+    label: "Keyboard shortcuts",
+    description: "Keys students use to operate the exam app.",
+    path: "/admin/exam-shortcuts",
+    icon: Keyboard,
   },
 ] as const;
 
@@ -153,195 +153,121 @@ function CountTile({
   );
 }
 
-const semesterTone = (status: string) =>
-  status === "Ongoing"
-    ? ("success" as const)
-    : status === "Planned"
-      ? ("info" as const)
-      : ("neutral" as const);
+function HealthSummary() {
+  const health = useQuery({
+    queryKey: adminKeys.list("system-health", ["dashboard"]),
+    queryFn: getSystemHealth,
+  });
+  useExpiredAdminSession(health.error);
+  return (
+    <Card className="admin-panel shadow-none">
+      <CardContent className="pt-6">
+        <p className="admin-kicker">System status</p>
+        {health.isPending || health.error ? (
+          <ReadState
+            pending={health.isPending}
+            error={health.error}
+            retry={() => void health.refetch()}
+          />
+        ) : (
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <HealthBadge status={health.data.status} />
+            <p className="text-sm text-muted-foreground">
+              {health.data.services.filter((s) => s.status === "Healthy").length}{" "}
+              of {health.data.services.length} services healthy · checked{" "}
+              {formatDateTime(health.data.checkedAt)}
+            </p>
+            <Button asChild variant="outline" className="ml-auto">
+              <Link to="/admin/monitoring">
+                Open monitoring
+                <ArrowRight aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function AdminDashboardRoute() {
   useRouteAnnouncer("Admin Dashboard · LearnAble", "Administration");
   const { isSuperAdmin } = useUniversityScope();
-  // Tenant management is a super-admin capability; other tiles are tenant-scoped.
-  const tiles = countQueries.filter(
-    (item) => isSuperAdmin || !("superAdminOnly" in item),
-  );
-  const semesters = useQuery({
-    queryKey: adminKeys.list("semesters", ["dashboard"]),
-    queryFn: () => getAdminSemesters({ PageSize: 5, SortBy: "-startDate" }),
-  });
-  useExpiredAdminSession(semesters.error);
-  const semesterRows = semesters.data?.items ?? [];
-  const ongoing = semesterRows.find((row) => row.status === "Ongoing");
+  // Tenant management is a super-admin capability.
+  const visible = <T extends object>(items: readonly T[]) =>
+    items.filter((item) => isSuperAdmin || !("superAdminOnly" in item));
 
   return (
     <div className="space-y-6">
       <PageHeading
         title="Administration"
-        description="Academic structure, terms and accounts for your LearnAble university."
+        description="System-wide report and configuration for LearnAble."
       >
-        <Button asChild>
-          <Link to="/admin/users">
-            <UserCog aria-hidden />
-            Manage accounts
-          </Link>
-        </Button>
+        {isSuperAdmin && (
+          <Button asChild>
+            <Link to="/admin/universities">
+              <University aria-hidden />
+              Manage universities
+            </Link>
+          </Button>
+        )}
         <Button asChild variant="outline">
-          <Link to="/admin/semesters">
-            <CalendarRange aria-hidden />
-            Manage semesters
+          <Link to="/admin/monitoring">
+            <Activity aria-hidden />
+            System monitoring
           </Link>
         </Button>
       </PageHeading>
 
-      <Card className="admin-panel shadow-none">
-        <CardContent className="pt-6">
-          <p className="admin-kicker">Current term</p>
-          {semesters.isPending ? (
-            <p role="status" className="mt-3 text-muted-foreground">
-              Loading the current term…
-            </p>
-          ) : semesters.error ? (
-            <ReadState
-              pending={false}
-              error={semesters.error}
-              retry={() => void semesters.refetch()}
+      <HealthSummary />
+
+      <section aria-labelledby="totals-heading" className="space-y-3">
+        <h2 id="totals-heading" className="text-lg font-bold">
+          System totals
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {visible(countQueries).map((item) => (
+            <CountTile
+              key={item.key}
+              label={item.label}
+              icon={item.icon}
+              resource={item.key}
+              read={item.read}
             />
-          ) : ongoing ? (
-            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <div>
-                <p className="text-xl font-extrabold">{ongoing.semesterName}</p>
-                <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-                  {ongoing.semesterCode} · {ongoing.academicYear} ·{" "}
-                  {formatDate(ongoing.startDate)} →{" "}
-                  {formatDate(ongoing.endDate)}
-                </p>
-              </div>
-              <StatusBadge value="Ongoing" tone="success" />
-            </div>
-          ) : (
-            <div className="mt-3">
-              <p className="font-bold">No semester is currently Ongoing.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Start a planned semester to open exam
-                scheduling.
-              </p>
-              <Button asChild variant="outline" className="mt-3">
-                <Link to="/admin/semesters">
-                  Go to semesters
-                  <ArrowRight aria-hidden />
-                </Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <section
-        aria-label="Record counts"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-      >
-        {tiles.map((item) => (
-          <CountTile
-            key={item.key}
-            label={item.label}
-            icon={item.icon}
-            resource={item.key}
-            read={item.read}
-          />
-        ))}
-      </section>
-
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-          <h2 className="text-lg font-bold">Most recent semesters</h2>
-          <Button asChild variant="ghost">
-            <Link to="/admin/semesters">
-              Open semesters
-              <ArrowRight aria-hidden />
-            </Link>
-          </Button>
+          ))}
         </div>
-        <ReadState
-          pending={semesters.isPending}
-          error={semesters.error}
-          retry={() => void semesters.refetch()}
-        />
-        {!semesters.isPending && !semesters.error && (
-          <Table containerLabel="Recent semesters table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Semester</TableHead>
-                <TableHead>Academic year</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {semesterRows.map((row) => (
-                <TableRow key={row.semesterId}>
-                  <TableCell className="font-bold">
-                    {row.semesterCode}
-                  </TableCell>
-                  <TableCell className="whitespace-normal font-bold">
-                    {row.semesterName}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {row.academicYear}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {formatDate(row.startDate)} → {formatDate(row.endDate)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      value={row.status}
-                      tone={semesterTone(row.status)}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!semesterRows.length && (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center">
-                    <p className="font-bold">No semesters recorded yet.</p>
-                    <p className="mt-2 text-muted-foreground">
-                      Create the first academic term to begin.
-                    </p>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
       </section>
 
-      <section
-        aria-label="Administration shortcuts"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
-      >
-        {countQueries.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.key} className="shadow-none">
-              <CardContent className="flex min-h-24 items-center gap-4 pt-6">
-                <span className="summary-icon flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                  <Icon aria-hidden className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={item.path}
-                    className="inline-flex min-h-11 items-center font-bold hover:underline"
-                  >
-                    {item.label}
-                    <ArrowRight aria-hidden className="ml-2 size-4" />
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <section aria-labelledby="tools-heading" className="space-y-3">
+        <h2 id="tools-heading" className="text-lg font-bold">
+          Administration tools
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {visible(adminTools).map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card key={item.path} className="shadow-none">
+                <CardContent className="flex min-h-28 items-start gap-4 pt-6">
+                  <span className="summary-icon flex size-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                    <Icon aria-hidden className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      to={item.path}
+                      className="inline-flex min-h-11 items-center font-bold hover:underline"
+                    >
+                      {item.label}
+                      <ArrowRight aria-hidden className="ml-2 size-4" />
+                    </Link>
+                    <p className="text-sm text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

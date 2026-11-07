@@ -30,15 +30,9 @@ import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
 import { AdminDashboardRoute } from "@/features/admin/routes/AdminDashboardRoute";
 import { UniversitiesRoute } from "@/features/admin/routes/UniversitiesRoute";
-import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
-import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
-import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
-import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
-import { SemestersRoute } from "@/features/admin/routes/SemestersRoute";
-import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
-import { UsersRoute } from "@/features/admin/routes/UsersRoute";
-import { StudentProfilesRoute } from "@/features/admin/routes/StudentProfilesRoute";
-import { LecturerProfilesRoute } from "@/features/admin/routes/LecturerProfilesRoute";
+import { SystemMonitoringRoute } from "@/features/admin/routes/SystemMonitoringRoute";
+import { VoiceSettingsRoute } from "@/features/admin/routes/VoiceSettingsRoute";
+import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
 import { ExaminerLayout } from "@/features/examiner/components/ExaminerLayout";
 import { RequireExaminer } from "@/features/examiner/components/RequireExaminer";
 import {
@@ -152,20 +146,17 @@ export const router = createBrowserRouter([
               { path: "/admin", element: <Navigate to="/admin/dashboard" replace /> },
               { path: "/admin/dashboard", element: <AdminDashboardRoute /> },
               { path: "/admin/universities", element: <UniversitiesRoute /> },
-              { path: "/admin/departments", element: <DepartmentsRoute /> },
-              { path: "/admin/majors", element: <MajorsRoute /> },
-              { path: "/admin/subjects", element: <SubjectsRoute /> },
-              { path: "/admin/topics", element: <TopicsRoute /> },
-              { path: "/admin/semesters", element: <SemestersRoute /> },
-              { path: "/admin/curriculums", element: <CurriculumsRoute /> },
-              { path: "/admin/users", element: <UsersRoute /> },
+              { path: "/admin/monitoring", element: <SystemMonitoringRoute /> },
+              { path: "/admin/voice-settings", element: <VoiceSettingsRoute /> },
+              { path: "/admin/exam-shortcuts", element: <ExamShortcutsRoute /> },
+              /*
+               * Academic data (accounts, departments, majors, subjects, topics,
+               * semesters, curriculums, profiles) moved to University Staff on
+               * 05/11/2026. Old bookmarks land on the dashboard, not a 404.
+               */
               {
-                path: "/admin/student-profiles",
-                element: <StudentProfilesRoute />,
-              },
-              {
-                path: "/admin/lecturer-profiles",
-                element: <LecturerProfilesRoute />,
+                path: "/admin/*",
+                element: <Navigate to="/admin/dashboard" replace />,
               },
             ],
           },
