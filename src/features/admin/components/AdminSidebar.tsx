@@ -1,18 +1,13 @@
 import {
-  Building2,
-  CalendarRange,
+  Activity,
+  AudioLines,
   ChevronDown,
-  GraduationCap,
+  Keyboard,
   LayoutDashboard,
-  LibraryBig,
-  ListTree,
   LogOut,
   Network,
-  ScrollText,
+  Settings2,
   University,
-  UserCog,
-  UserRound,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -33,6 +28,11 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
     path: "/admin/dashboard",
     icon: LayoutDashboard,
   },
+  /*
+   * 05/11/2026 role split: accounts, departments, majors, subjects, topics,
+   * curriculums, semesters and profiles moved to University Staff. Their route
+   * files stay in `features/admin/routes/` until the Staff workspace takes them.
+   */
   groups: [
     {
       label: "Organisation",
@@ -45,43 +45,30 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
           icon: University,
           superAdminOnly: true,
         },
-        { label: "Departments", path: "/admin/departments", icon: Building2 },
-        { label: "Majors", path: "/admin/majors", icon: GraduationCap },
       ],
     },
     {
-      label: "Academic Structure",
-      id: "academic",
-      icon: LibraryBig,
+      label: "System",
+      id: "system",
+      icon: Activity,
       items: [
-        { label: "Subjects", path: "/admin/subjects", icon: LibraryBig },
-        { label: "Topics", path: "/admin/topics", icon: ListTree },
-        { label: "Curriculums", path: "/admin/curriculums", icon: ScrollText },
+        { label: "System monitoring", path: "/admin/monitoring", icon: Activity },
       ],
     },
     {
-      label: "Scheduling",
-      id: "scheduling",
-      icon: CalendarRange,
+      label: "Exam accessibility",
+      id: "accessibility",
+      icon: Settings2,
       items: [
-        { label: "Semesters", path: "/admin/semesters", icon: CalendarRange },
-      ],
-    },
-    {
-      label: "People",
-      id: "people",
-      icon: Users,
-      items: [
-        { label: "User Accounts", path: "/admin/users", icon: UserCog },
         {
-          label: "Student Profiles",
-          path: "/admin/student-profiles",
-          icon: UserRound,
+          label: "Voices and speeds",
+          path: "/admin/voice-settings",
+          icon: AudioLines,
         },
         {
-          label: "Lecturer Profiles",
-          path: "/admin/lecturer-profiles",
-          icon: Users,
+          label: "Keyboard shortcuts",
+          path: "/admin/exam-shortcuts",
+          icon: Keyboard,
         },
       ],
     },
@@ -206,19 +193,23 @@ export function AdminSidebar({
           <DashboardIcon aria-hidden className="size-5 shrink-0" />
           {adminNavigation.dashboard.label}
         </NavLink>
-        {adminNavigation.groups.map((group) => (
-          <NavGroup
-            key={group.id}
-            group={{
-              ...group,
-              items: group.items.filter(
-                (item) => user.isSuperAdmin || !item.superAdminOnly,
-              ),
-            }}
-            activePath={activePath}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {adminNavigation.groups
+          .map((group) => ({
+            ...group,
+            items: group.items.filter(
+              (item) => user.isSuperAdmin || !item.superAdminOnly,
+            ),
+          }))
+          // A group whose every item is hidden would be an empty disclosure.
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
+            <NavGroup
+              key={group.id}
+              group={group}
+              activePath={activePath}
+              onNavigate={onNavigate}
+            />
+          ))}
       </nav>
       <div className="mt-auto pt-8">
         <Separator className="mb-4" />
