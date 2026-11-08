@@ -22,11 +22,13 @@ export const gradebookItemSchema = z.object({
   attemptId: z.string().nullable(), attemptStatus: z.string().nullable(), autoScore: z.number().nullable(),
   manualScore: z.number().nullable(), totalScore: z.number().nullable(), maxScore: z.number().nullable(),
   gradingStatus: z.string().nullable(), lecturerId: z.string().nullable(), reviewedAt: z.string().nullable(), reviewedBy: z.string().nullable(),
+  requiresMarkingConfirmation: z.boolean().default(false), markingCompletedAt: z.string().nullable().optional(), markingCompletedBy: z.string().nullable().optional(),
 });
 export const gradebookSchema = z.object({
   scheduleId: z.string(), revision: z.string(), registered: z.number(), absent: z.number(), active: z.number(),
   submitted: z.number(), ungraded: z.number(), needsManual: z.number(), results: pageSchema(gradebookItemSchema),
   unreviewed: z.number(), canRelease: z.boolean(), blockingReasons: z.array(z.string()), releasedAt: z.string().nullable(), releasedBy: z.string().nullable(),
+  unconfirmedMarking: z.number().default(0),
 });
 export type ExamGradebook = z.infer<typeof gradebookSchema>;
 
@@ -41,11 +43,13 @@ export const gradingDetailSchema = z.object({
   attemptId: z.string(), scheduleId: z.string(), studentId: z.string(), studentName: z.string(), attemptStatus: z.string(), gradingStatus: z.string(),
   autoScore: z.number().nullable(), manualScore: z.number().nullable(), totalScore: z.number().nullable(), maxScore: z.number(), revision: z.string(),
   questions: z.array(questionGradeSchema), reviewedAt: z.string().nullable(), reviewedBy: z.string().nullable(), reviewNote: z.string().nullable(),
+  requiresMarkingConfirmation: z.boolean().default(false), markingCompletedAt: z.string().nullable().optional(), markingCompletedBy: z.string().nullable().optional(),
 });
 export type ExamGradingDetail = z.infer<typeof gradingDetailSchema>;
 
 export const gradingAssignmentSchema = z.object({
   attemptId: z.string(), revision: z.string(), lecturerId: z.string().nullable(), assignedBy: z.string().nullable(), assignedAt: z.string().nullable(), assignmentNote: z.string().nullable(),
+  gradingStatus: z.string().nullable().optional(), markingCompletedAt: z.string().nullable().optional(), markingCompletedBy: z.string().nullable().optional(),
 });
 export const graderCandidateSchema = z.object({ lecturerId: z.string(), userCode: z.string(), fullName: z.string(), departmentId: z.string().nullable() });
 
@@ -68,3 +72,5 @@ export const getLecturerGradingAssignments = () => unwrap("/lecturer/grading-ass
 export const getLecturerAttemptGrading = (attemptId: string) => unwrap(`/lecturer/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
 export const gradeEssayQuestion = (attemptId: string, questionId: string, revision: string, input: { score?: number | null; feedback?: string | null }) =>
   unwrap(`/lecturer/exam-attempts/${attemptId}/grading/questions/${questionId}`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+export const updateMarkingCompletion = (attemptId: string, revision: string, completed: boolean, note?: string | null) =>
+  unwrap(`/lecturer/exam-attempts/${attemptId}/grading/completion`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: { completed, note: note?.trim() || null } });

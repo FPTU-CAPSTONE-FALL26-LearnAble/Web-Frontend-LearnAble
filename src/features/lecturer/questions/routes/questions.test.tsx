@@ -16,6 +16,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { bankQuestions, courses } from "@/features/lecturer/questions/data/fixtures";
 const lecturerApi = vi.hoisted(() => ({
   createQuestionWithOptions: vi.fn(async () => ({ questionId: "created-question", createdOptions: [] })),
+  getQuestion: vi.fn(),
+  updateQuestion: vi.fn(async () => undefined),
+  updateQuestionOption: vi.fn(async () => undefined),
+  deleteQuestionOption: vi.fn(async () => undefined),
+  createQuestionOption: vi.fn(async () => ({ optionId: "new-option" })),
   uploadQuestionAudio: vi.fn(async () => undefined),
   uploadQuestionOptionAudio: vi.fn(async () => undefined),
   setQuestionStatus: vi.fn(async () => undefined),
@@ -118,7 +123,26 @@ function view(element: React.ReactNode, entry = "/") {
     </QueryClientProvider>,
   );
 }
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  lecturerApi.getQuestion.mockResolvedValue({
+    questionId: "edit-1",
+    examTypeId: "exam-type-final",
+    topicId: bankQuestions[0].topic,
+    content: "Original editable question",
+    questionType: "Single",
+    difficulty: "Medium",
+    defaultScore: 1,
+    status: "Draft",
+    createdAt: "2026-09-15",
+    options: [
+      { optionId: "option-1", content: "First answer", isCorrect: true, displayOrder: 1 },
+      { optionId: "option-2", content: "Second answer", isCorrect: false, displayOrder: 2 },
+    ],
+  });
+  lecturerApi.updateQuestion.mockClear();
+  lecturerApi.updateQuestionOption.mockClear();
+});
 beforeAll(() => {
   HTMLElement.prototype.hasPointerCapture = () => false;
   HTMLElement.prototype.setPointerCapture = () => {};
@@ -126,17 +150,17 @@ beforeAll(() => {
   HTMLElement.prototype.scrollIntoView = () => {};
 });
 describe("Lecturer questions", { timeout: 20000 }, () => {
-  it("searches, paginates and selects questions locally", async () => {
+  it("searches and paginates questions through the server query", async () => {
     const user = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const result = view(<QuestionBankRoute purpose="exam" />);
-    expect(await screen.findByText("Showing 10 of 12 questions")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 10 of 12 questions from the server")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Search exam questions"), "EXQ-0012");
     await user.click(screen.getByRole("button", { name: "Search" }));
     expect(
-      await screen.findByText("Showing 1 of 1 questions"),
+      await screen.findByText("Showing 1 of 1 questions from the server"),
     ).toBeInTheDocument();
     await user.click(screen.getByLabelText("Select EXQ-0012"));
     expect(screen.getByText("1 questions selected")).toBeInTheDocument();
@@ -177,6 +201,16 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     fetchSpy.mockRestore();
     await expectNoAxeViolations(result.container);
   });
+  it("loads and updates an existing Backend question and its options", async () => {
+    const user = userEvent.setup();
+    view(<CreateQuestionRoute />, "/?purpose=exam&edit=edit-1");
+    const content = await screen.findByDisplayValue("Original editable question");
+    await user.clear(content);
+    await user.type(content, "Updated editable question");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(lecturerApi.updateQuestion).toHaveBeenCalledWith("edit-1", expect.objectContaining({ content: "Updated editable question" })));
+    expect(lecturerApi.updateQuestionOption).toHaveBeenCalledTimes(2);
+  });
   it("restores a user-scoped draft", () => {
     const draft = createDraft("essay");
     draft.content = "Restored question";
@@ -207,9 +241,9 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     view(<QuestionBankRoute purpose="exam" />);
     await user.click(screen.getByLabelText("Status"));
     await user.click(screen.getByRole("option", { name: "Draft" }));
-    expect(screen.getByText("Showing 5 of 5 questions")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 2 of 2 questions from the server")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reset filters" }));
-    expect(screen.getByText("Showing 10 of 12 questions")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 10 of 12 questions from the server")).toBeInTheDocument();
   });
   it("publishes a supported valid question through the backend API", async () => {
     const draft = createDraft("essay");
@@ -248,7 +282,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("PRQ-0001")).toBeInTheDocument();
     expect(screen.queryByText("EXQ-0001")).not.toBeInTheDocument();
-    expect(screen.getByText("Exam types")).toBeInTheDocument();
+    expect(screen.getByText("Exam type")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Create practice question" }),
     ).toHaveAttribute("href", "/lecturer/questions/new?purpose=practice");

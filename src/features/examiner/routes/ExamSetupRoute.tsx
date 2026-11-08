@@ -56,7 +56,7 @@ export function ExamSetupRoute() {
     mutationFn: async () => {
       let examSubjectId = draft.examSubjectId;
       if (!examSubjectId) {
-        const examSubject = await createExamSubject({ subjectId: draft.subjectId, semesterId: draft.semesterId, examTypeId: draft.examTypeId, name: draft.name.trim(), instructions: draft.instructions.trim(), durationMinutes: draft.durationMinutes, passScore: draft.passScore, shuffleQuestions: true, shuffleOptions: true, scoringPolicy: "AllOrNothing", cameraRequired: true, cameraUnavailablePolicy: "AllowWithFlag" });
+        const examSubject = await createExamSubject({ subjectId: draft.subjectId, semesterId: draft.semesterId, examTypeId: draft.examTypeId, name: draft.name.trim(), instructions: draft.instructions.trim(), durationMinutes: draft.durationMinutes, passScore: draft.passScore, shuffleQuestions: draft.shuffleQuestions, shuffleOptions: draft.shuffleOptions, scoringPolicy: draft.scoringPolicy, cameraRequired: draft.cameraRequired, cameraUnavailablePolicy: draft.cameraUnavailablePolicy });
         examSubjectId = examSubject.examSubjectId;
         setDraft((current) => ({ ...current, examSubjectId }));
       }
@@ -98,7 +98,16 @@ export function ExamSetupRoute() {
           <Field label="Duration (minutes)"><Input type="number" min={1} value={draft.durationMinutes} onChange={(event) => updateConfiguration({ durationMinutes: Number(event.target.value) })} /></Field>
           <Field label="Pass score"><Input type="number" min={0} step="0.25" value={draft.passScore} onChange={(event) => updateConfiguration({ passScore: Number(event.target.value) })} /></Field>
           <div className="sm:col-span-2"><Field label="Student instructions"><Textarea value={draft.instructions} onChange={(event) => updateConfiguration({ instructions: event.target.value })} placeholder="Instructions shown before the exam begins" /></Field></div>
-          <div className="sm:col-span-2 grid gap-3 rounded-xl border border-border bg-muted/40 p-4 text-sm"><label className="flex items-center gap-3"><Checkbox checked disabled /> Shuffle questions</label><label className="flex items-center gap-3"><Checkbox checked disabled /> Shuffle answer options</label><p className="text-xs text-muted-foreground">Scoring uses All-or-Nothing. A camera is required; unavailable cameras are allowed and flagged for review.</p></div>
+          <fieldset className="sm:col-span-2 grid gap-4 rounded-xl border border-border bg-muted/40 p-4">
+            <legend className="px-1 font-semibold">Assessment policy</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex min-h-11 items-center gap-3"><Checkbox checked={draft.shuffleQuestions} onCheckedChange={(checked) => updateConfiguration({ shuffleQuestions: checked === true })} /> Shuffle questions</label>
+              <label className="flex min-h-11 items-center gap-3"><Checkbox checked={draft.shuffleOptions} onCheckedChange={(checked) => updateConfiguration({ shuffleOptions: checked === true })} /> Shuffle answer options</label>
+            </div>
+            <Field label="Scoring policy" hint="The current Backend supports All-or-Nothing scoring."><Select value={draft.scoringPolicy} onValueChange={(scoringPolicy: "AllOrNothing") => updateConfiguration({ scoringPolicy })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="AllOrNothing">All-or-Nothing</SelectItem></SelectContent></Select></Field>
+            <label className="flex min-h-11 items-center gap-3"><Checkbox checked={draft.cameraRequired} onCheckedChange={(checked) => updateConfiguration({ cameraRequired: checked === true })} /> Require a camera for this exam</label>
+            <Field label="If a camera is unavailable"><Select value={draft.cameraUnavailablePolicy} onValueChange={(cameraUnavailablePolicy: "Block" | "AllowWithFlag" | "Allow") => updateConfiguration({ cameraUnavailablePolicy })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Block">Block exam entry</SelectItem><SelectItem value="AllowWithFlag">Allow and flag for review</SelectItem><SelectItem value="Allow">Allow without a flag</SelectItem></SelectContent></Select></Field>
+          </fieldset>
         </div>}
       </section>
       <aside className="examiner-panel p-6">

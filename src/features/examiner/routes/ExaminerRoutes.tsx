@@ -5,6 +5,7 @@ export { QuestionSelectionRoute } from "./QuestionSelectionRoute";
 export { ExamOperationsRoute } from "./ExamOperationsRoute";
 export { ExamReadinessRoute } from "./ExamReadinessRoute";
 export { ExamScheduleDashboardRoute } from "./ExamScheduleDashboardRoute";
+export { ExamScheduleDetailRoute } from "./ExamScheduleDetailRoute";
 export { ScheduleDetailsRoute } from "./ScheduleDetailsRoute";
 export { ScheduleRoomsRoute } from "./ScheduleRoomsRoute";
 export { ScheduleCandidatesRoute } from "./ScheduleCandidatesRoute";
@@ -12,4 +13,5 @@ export { ScheduleReadinessRoute } from "./ScheduleReadinessRoute";
 export { LiveMonitoringRoute } from "./LiveMonitoringRoute";
 export { RoomMonitoringRoute } from "./RoomMonitoringRoute";
 export { CandidateMonitoringRoute } from "./CandidateMonitoringRoute";
+export { InvigilationPeriodsRoute } from "./InvigilationPeriodsRoute";
 

@@ -1,18 +1,27 @@
-/* eslint-disable jsx-a11y/label-has-associated-control, jsx-a11y/no-noninteractive-tabindex -- Radix card labels and named bounded table scrollers are intentional. */
 import { useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CircleDot, Download, FilePlus2, LayoutGrid, List, Search, Upload } from "lucide-react";
+import { CircleDot, Download, FilePlus2, LayoutGrid, List, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/primitives/select";
-import { archiveExamPaper, createExamPaperVersion, getExamPaperBank, publishExamPaper } from "@/api/exams";
+import { archiveExamPaper, createExamPaperVersion, deleteExamPaper, getExamPaperBank, publishExamPaper, type ExamPaper } from "@/api/exams";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/primitives/alert-dialog";
 
 const showPendingAction = (action: "Import" | "Export") =>
   toast({
@@ -175,6 +184,7 @@ export function ExamBankRoute() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [paperToDelete, setPaperToDelete] = useState<ExamPaper | null>(null);
   useRouteAnnouncer("Exam Paper Management", "Exam Paper Management");
   const bank = useQuery({
     queryKey: ["examiner", "exam-paper-bank"],
@@ -190,12 +200,17 @@ export function ExamBankRoute() {
     onError: () => toast({ title: "Publication failed", description: "Review the paper readiness and try again." }),
   });
   const lifecycle = useMutation({
-    mutationFn: ({ id, eTag, action }: { id: string; eTag?: string | null; action: "version" | "archive" }) =>
-      action === "version" ? createExamPaperVersion(id, eTag) : archiveExamPaper(id, eTag),
+    mutationFn: ({ id, eTag, action }: { id: string; eTag?: string | null; action: "version" | "archive" | "delete" }) =>
+      action === "version" ? createExamPaperVersion(id, eTag) : action === "archive" ? archiveExamPaper(id, eTag) : deleteExamPaper(id, eTag),
     onSuccess: async (_, variables) => {
-      toast({ title: variables.action === "version" ? "New version created" : "Exam paper archived", description: variables.action === "version" ? "You can now update the new draft version." : "The paper has been moved out of active use." });
+      setPaperToDelete(null);
+      toast({
+        title: variables.action === "version" ? "New version created" : variables.action === "archive" ? "Exam paper archived" : "Draft paper deleted",
+        description: variables.action === "version" ? "You can now update the new draft version." : variables.action === "archive" ? "The published paper has been moved out of active use." : "The unused draft and its frozen question snapshots were removed.",
+      });
       await bank.refetch();
     },
+    onError: (error) => toast({ title: "Paper could not be updated", description: error instanceof Error ? error.message : "Refresh the paper bank and try again." }),
   });
   const rows = (bank.data ?? []).filter(
     (paper) =>
@@ -257,9 +272,7 @@ export function ExamBankRoute() {
         <div className="grid gap-3 lg:grid-cols-[1fr_200px_auto]">
           <Label className="relative">
             <span className="sr-only">Search exam papers</span>
-            <Search className="absolute left-3 top-3 size-5 text-muted-foreground" />
             <Input
-              className="pl-10"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by code, subject, or title"
@@ -343,12 +356,33 @@ export function ExamBankRoute() {
             </div>
             <div className="mt-5 flex gap-2">
               {paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "version" })}>New version</Button> : null}
-              {paper.status === "Draft" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "archive" })}>Archive</Button> : null}
+              {paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "archive" })}>Archive</Button> : null}
+              {paper.status === "Draft" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => setPaperToDelete(paper)}><Trash2 />Delete</Button> : null}
               {paper.status === "Draft" ? <Button className="flex-1" disabled={publish.isPending} onClick={() => publish.mutate({ id: paper.examPaperId, eTag: paper.eTag })}>Publish</Button> : paper.status === "Published" ? <Button className="flex-1" asChild><Link to="/examiner/schedule/new/details">Schedule</Link></Button> : null}
             </div>
           </article>
         ))}
       </section>
+      <AlertDialog open={Boolean(paperToDelete)} onOpenChange={(open) => { if (!open && !lifecycle.isPending) setPaperToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this draft paper?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes {paperToDelete?.paperCode ?? "the draft"}, its selected questions, and frozen audio snapshots. Published papers must be archived instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={lifecycle.isPending}>Keep draft</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={!paperToDelete || lifecycle.isPending}
+              onClick={() => { if (paperToDelete) lifecycle.mutate({ id: paperToDelete.examPaperId, eTag: paperToDelete.eTag, action: "delete" }); }}
+            >
+              {lifecycle.isPending ? "Deleting…" : "Delete draft"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

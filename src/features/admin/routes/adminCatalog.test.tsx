@@ -11,7 +11,6 @@ import {
   getAdminTopics,
   getUniversities,
   setUniversityActive,
-  updateStudentProfile,
 } from "@/api/admin";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
@@ -128,14 +127,12 @@ vi.mock("@/api/admin", async (importOriginal) => {
           majorId: "m1",
           curriculumId: "c1",
           intakeYear: 2024,
-          currentSemester: 3,
           enrollmentStatus: "Studying",
           createdAt: "2026-01-06T00:00:00Z",
           updatedAt: "2026-01-06T00:00:00Z",
         },
       ]),
     ),
-    updateStudentProfile: vi.fn(async () => undefined),
     changeEnrollmentStatus: vi.fn(async () => undefined),
     deleteStudentProfile: vi.fn(async () => undefined),
     getAdminTopics: vi.fn(async () =>
@@ -236,17 +233,6 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/specialization/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const semester = screen.getByLabelText("Current semester");
-    await user.clear(semester);
-    await user.type(semester, "4");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() =>
-      expect(updateStudentProfile).toHaveBeenCalledWith("u1", {
-        currentSemester: 4,
-      }),
-    );
-
     await user.click(
       screen.getByRole("button", { name: /Delete profile of HE180100/ }),
     );
@@ -282,7 +268,7 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("University code is required.");
     expect(alert).toHaveTextContent("University name is required.");
-    expect(alert).toHaveTextContent("Primary colour must be a hex value");
+    expect(alert).toHaveTextContent("Primary colour must be a six-digit hex value");
     expect(createUniversity).not.toHaveBeenCalled();
   });
 

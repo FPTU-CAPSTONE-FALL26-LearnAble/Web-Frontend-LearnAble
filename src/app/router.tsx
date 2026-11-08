@@ -27,6 +27,7 @@ import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/Upload
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
 import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
 import { LecturerGradingRoute } from "@/features/lecturer/exams/routes/LecturerGradingRoute";
+import { InvigilationAvailabilityRoute } from "@/features/lecturer/exams/routes/InvigilationAvailabilityRoute";
 import { LecturerProfileRoute } from "@/features/lecturer/profile/routes/LecturerProfileRoute";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
@@ -35,6 +36,20 @@ import { UniversitiesRoute } from "@/features/admin/routes/UniversitiesRoute";
 import { SystemMonitoringRoute } from "@/features/admin/routes/SystemMonitoringRoute";
 import { VoiceSettingsRoute } from "@/features/admin/routes/VoiceSettingsRoute";
 import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
+import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
+import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
+import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
+import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
+import { SemestersRoute } from "@/features/admin/routes/SemestersRoute";
+import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
+import { UsersRoute } from "@/features/admin/routes/UsersRoute";
+import { StudentProfilesRoute } from "@/features/admin/routes/StudentProfilesRoute";
+import { LecturerProfilesRoute } from "@/features/admin/routes/LecturerProfilesRoute";
+import { StaffLayout } from "@/features/staff/components/StaffLayout";
+import { RequireStaff } from "@/features/staff/components/RequireStaff";
+import { StaffDashboardRoute } from "@/features/staff/routes/StaffDashboardRoute";
+import { ExamRoomsRoute } from "@/features/staff/routes/ExamRoomsRoute";
+import { StaffPolicyRoute } from "@/features/staff/routes/StaffPolicyRoute";
 import { ExaminerLayout } from "@/features/examiner/components/ExaminerLayout";
 import { RequireExaminer } from "@/features/examiner/components/RequireExaminer";
 import {
@@ -44,6 +59,7 @@ import {
   ExamOperationsRoute,
   ExamReadinessRoute,
   ExamScheduleDashboardRoute,
+  ExamScheduleDetailRoute,
   ExamSetupRoute,
   LiveMonitoringRoute,
   QuestionSelectionRoute,
@@ -52,6 +68,7 @@ import {
   ScheduleDetailsRoute,
   ScheduleReadinessRoute,
   ScheduleRoomsRoute,
+  InvigilationPeriodsRoute,
 } from "@/features/examiner/routes/ExaminerRoutes";
 import {
   AccommodationsRoute,
@@ -64,6 +81,8 @@ import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
 import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
+import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
+import { NotificationManagementRoute } from "@/features/notifications/routes/NotificationManagementRoute";
 
 function LegacyParameterizedRedirect({
   destination,
@@ -145,11 +164,13 @@ export const router = createBrowserRouter([
               },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
               { path: "/lecturer/grading", element: <LecturerGradingRoute /> },
+              { path: "/lecturer/invigilation-availability", element: <InvigilationAvailabilityRoute /> },
               {
                 path: "/lecturer/exams/:examId/attendance",
                 element: <AttendanceRoute />,
               },
               { path: "/lecturer/profile", element: <LecturerProfileRoute /> },
+              { path: "/lecturer/notifications", element: <NotificationsRoute /> },
             ],
           },
         ],
@@ -175,6 +196,27 @@ export const router = createBrowserRouter([
                 path: "/admin/*",
                 element: <Navigate to="/admin/dashboard" replace />,
               },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RequireStaff />,
+        children: [
+          {
+            element: <StaffLayout />,
+            children: [
+              { path: "/staff", element: <Navigate to="/staff/dashboard" replace /> },
+              { path: "/staff/dashboard", element: <StaffDashboardRoute /> },
+              { path: "/staff/users", element: <UsersRoute /> },
+              { path: "/staff/student-profiles", element: <StudentProfilesRoute /> },
+              { path: "/staff/lecturer-profiles", element: <LecturerProfilesRoute /> },
+              { path: "/staff/departments", element: <DepartmentsRoute /> },
+              { path: "/staff/majors", element: <MajorsRoute /> },
+              { path: "/staff/subjects", element: <SubjectsRoute /> },
+              { path: "/staff/curriculums", element: <CurriculumsRoute /> },
+              { path: "/staff/exam-rooms", element: <ExamRoomsRoute /> },
+              { path: "/staff/default-policy", element: <StaffPolicyRoute /> },
             ],
           },
         ],
@@ -211,6 +253,11 @@ export const router = createBrowserRouter([
                 element: <ExamScheduleDashboardRoute />,
               },
               {
+                path: "/examiner/schedule/:scheduleId",
+                element: <ExamScheduleDetailRoute />,
+              },
+              { path: "/examiner/invigilation-periods", element: <InvigilationPeriodsRoute /> },
+              {
                 path: "/examiner/schedule/new/details",
                 element: <ScheduleDetailsRoute />,
               },
@@ -246,6 +293,8 @@ export const router = createBrowserRouter([
                 path: "/examiner/accommodations",
                 element: <AccommodationsRoute />,
               },
+              { path: "/examiner/notifications", element: <NotificationsRoute /> },
+              { path: "/examiner/notifications/manage", element: <NotificationManagementRoute /> },
             ],
           },
         ],

@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives
 import { Input } from "@/shared/ui/primitives/input";
 import { Breadcrumb, PageHeading, ScrollRegion, StatusBadge } from "@/features/lecturer/shared/components/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { checkInStudent, checkOutStudent, getExamSeatMap, getExamStudents, openExamSchedule, undoCheckInStudent, type ExamStudent } from "@/api/exams";
+import { checkInStudent, checkOutStudent, getExamPapers, getExamSchedule, getExamSeatMap, getExamStudents, openExamSchedule, undoCheckInStudent, type ExamStudent } from "@/api/exams";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { toast } from "@/shared/ui/primitives/toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/primitives/select";
 
 function seatStatus(student: ExamStudent | null) {
   if (!student) return "Available";
@@ -23,11 +24,15 @@ export function AttendanceRoute() {
   const { examId } = useParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [examPaperId, setExamPaperId] = useState("");
   const scheduleId = examId ?? "";
   const enabled = Boolean(examId);
   const seatMap = useQuery({ queryKey: ["lecturer", "seat-map", scheduleId], queryFn: () => getExamSeatMap(scheduleId), enabled });
   const students = useQuery({ queryKey: ["lecturer", "exam-students", scheduleId], queryFn: () => getExamStudents(scheduleId), enabled });
-  useExpiredSession(seatMap.error || students.error);
+  const schedule = useQuery({ queryKey: ["lecturer", "exam-schedule", scheduleId], queryFn: () => getExamSchedule(scheduleId), enabled });
+  const papers = useQuery({ queryKey: ["lecturer", "exam-papers", schedule.data?.examSubjectId], queryFn: () => getExamPapers(schedule.data!.examSubjectId), enabled: Boolean(schedule.data?.examSubjectId) });
+  const publishedPapers = (papers.data ?? []).filter((paper) => paper.status === "Published" && paper.questions.length > 0);
+  useExpiredSession(seatMap.error || students.error || schedule.error || papers.error);
   const refresh = async () => { await Promise.all([seatMap.refetch(), students.refetch()]); };
   const attendance = useMutation({
     mutationFn: ({ action, enrollmentId }: { action: "in" | "undo" | "out"; enrollmentId: string }) => action === "in" ? checkInStudent(scheduleId, enrollmentId) : action === "out" ? checkOutStudent(scheduleId, enrollmentId) : undoCheckInStudent(scheduleId, enrollmentId),
@@ -35,13 +40,13 @@ export function AttendanceRoute() {
     onError: () => toast({ title: "Attendance wasn’t updated", description: "Check the student’s current status and try again." }),
   });
   const openSchedule = useMutation({
-    mutationFn: () => openExamSchedule(scheduleId),
+    mutationFn: () => openExamSchedule(scheduleId, examPaperId),
     onSuccess: async () => { toast({ title: "Exam schedule opened", description: "Eligible candidates can now enter the exam." }); await refresh(); },
-    onError: () => toast({ title: "Unable to open exam", description: "Check the schedule window and readiness before trying again." }),
+    onError: () => toast({ title: "Unable to open exam", description: "Confirm the published paper and schedule window, then try again." }),
   });
   if (!examId) return <p role="alert">No exam schedule was selected.</p>;
-  if (seatMap.isPending || students.isPending) return <p role="status" className="p-6">Loading live attendance data…</p>;
-  if (seatMap.error || students.error) return <div role="alert" className="rounded-xl border border-destructive p-6 text-destructive"><p className="font-bold">Unable to load attendance data.</p><Button className="mt-3" variant="outline" onClick={() => void refresh()}>Retry</Button></div>;
+  if (seatMap.isPending || students.isPending || schedule.isPending) return <p role="status" className="p-6">Loading live attendance data…</p>;
+  if (seatMap.error || students.error || schedule.error || papers.error) return <div role="alert" className="rounded-xl border border-destructive p-6 text-destructive"><p className="font-bold">Unable to load attendance data.</p><Button className="mt-3" variant="outline" onClick={() => void refresh()}>Retry</Button></div>;
   if (!seatMap.data) return <p role="status">No seat map is available for this schedule.</p>;
   const rows = (students.data?.items ?? []).filter((student) => `${student.studentCode ?? ""} ${student.studentName ?? ""} ${student.seatCode ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const present = (students.data?.items ?? []).filter((student) => student.attendanceStatus !== "NotCheckedIn" && student.attendanceStatus !== "Absent").length;
@@ -59,7 +64,14 @@ export function AttendanceRoute() {
           {rows.length === 0 ? <p className="py-10 text-center text-muted-foreground">No students match this search.</p> : null}
         </ScrollRegion></CardContent></Card>
       </div>
-      <footer className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"><p className="text-sm font-bold">{present}/{students.data?.totalCount ?? 0} students checked in</p><Button disabled={openSchedule.isPending || seatMap.data.scheduleStatus === "Open"} onClick={() => openSchedule.mutate()}><UnlockKeyhole />{seatMap.data.scheduleStatus === "Open" ? "Exam opened" : "Open exam"}</Button></footer>
+      <footer className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-end justify-between gap-3 border-t border-border bg-background px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <p className="pb-3 text-sm font-bold">{present}/{students.data?.totalCount ?? 0} students checked in</p>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-80">
+          {seatMap.data.scheduleStatus !== "Open" ? <div className="text-sm font-semibold"><span>Published exam paper</span><Select value={examPaperId} onValueChange={setExamPaperId}><SelectTrigger aria-label="Published exam paper" className="mt-1"><SelectValue placeholder={papers.isPending ? "Loading published papers…" : "Select the paper for this room"} /></SelectTrigger><SelectContent>{publishedPapers.map((paper) => <SelectItem key={paper.examPaperId} value={paper.examPaperId}>{paper.paperCode ?? "Paper"} · {paper.name ?? `Version ${paper.version}`}</SelectItem>)}</SelectContent></Select></div> : null}
+          {seatMap.data.scheduleStatus !== "Open" && !papers.isPending && publishedPapers.length === 0 ? <p role="alert" className="text-sm text-destructive">No published paper with questions is available for this exam.</p> : null}
+          <Button disabled={openSchedule.isPending || seatMap.data.scheduleStatus === "Open" || !examPaperId} onClick={() => openSchedule.mutate()}><UnlockKeyhole />{seatMap.data.scheduleStatus === "Open" ? "Exam opened" : openSchedule.isPending ? "Opening exam…" : "Open exam with selected paper"}</Button>
+        </div>
+      </footer>
     </div>
   );
 }

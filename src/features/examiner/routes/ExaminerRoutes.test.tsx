@@ -28,10 +28,19 @@ const examApi = vi.hoisted(() => ({
   getExamSubjects: vi.fn(),
   getAvailableExamQuestions: vi.fn(),
   setExamPaperQuestions: vi.fn(),
+  createExamShift: vi.fn(),
+  createExamSchedule: vi.fn(),
+  cancelExamShift: vi.fn(),
+  cancelExamSchedule: vi.fn(),
+}));
+const invigilationApi = vi.hoisted(() => ({
+  getInvigilationPeriods: vi.fn(),
+  getInvigilationPeriod: vi.fn(),
 }));
 
 vi.mock("@/api/catalog", () => api);
 vi.mock("@/api/exams", () => examApi);
+vi.mock("@/api/invigilation", () => invigilationApi);
 
 vi.mock("@/shared/a11y/useRouteAnnouncer", () => ({
   useRouteAnnouncer: vi.fn(),
@@ -66,6 +75,8 @@ describe("Examiner routes", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
     sessionStorage.clear();
+    invigilationApi.getInvigilationPeriods.mockResolvedValue(page([{ periodId: "period-1", name: "Fall invigilation", status: "Open" }]));
+    invigilationApi.getInvigilationPeriod.mockResolvedValue({ period: { periodId: "period-1", name: "Fall invigilation", status: "Open" }, slots: [{ slotId: "slot-1", periodId: "period-1", name: "Morning", startsAt: "2026-11-08T09:00", endsAt: "2026-11-08T11:00", revision: "revision-1" }], selectedSlotIds: [] });
     api.getQuestions.mockResolvedValue(page([question]));
     api.getQuestion.mockResolvedValue(question);
     api.getSubjects.mockResolvedValue(
@@ -128,12 +139,19 @@ describe("Examiner routes", () => {
         examSubject: { name: "SWE201", status: "Ready", durationMinutes: 90 },
       },
     ]);
-    examApi.getExamRooms.mockResolvedValue(page([{ examRoomId: "room-1", universityId: "university-1", roomCode: "A302", name: "Lab Alpha 302", building: "Alpha", floor: 3, capacity: 35, isActive: true }]));
+    examApi.getExamRooms.mockResolvedValue(page([
+      { examRoomId: "room-1", universityId: "university-1", roomCode: "A302", name: "Lab Alpha 302", building: "Alpha", floor: 3, capacity: 35, isActive: true },
+      { examRoomId: "room-2", universityId: "university-1", roomCode: "B204", name: "Lab Beta 204", building: "Beta", floor: 2, capacity: 30, isActive: true },
+    ]));
     examApi.getExamSchedules.mockResolvedValue(page([{ examScheduleId: "schedule-1", examSubjectId: "exam-subject-1", examName: "SWE201 Final", examShiftId: "shift-1", examRoomId: "room-1", roomName: "Lab Alpha 302", startsAt: "2026-10-26T13:30:00Z", endsAt: "2026-10-26T15:30:00Z", entryOpensAt: "2026-10-26T13:00:00Z", entryClosesAt: "2026-10-26T14:00:00Z", status: "Open" }]));
     examApi.getExamTypes.mockResolvedValue([{ examTypeId: "type-1", code: "FINAL", name: "Final Exam", isActive: true }]);
-    examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready" }]));
+    examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90 }]));
     examApi.getAvailableExamQuestions.mockResolvedValue(page([{ ...question, eligible: true, reasons: [], examTypeId: "type-1" }]));
     examApi.setExamPaperQuestions.mockResolvedValue({ questions: [{ questionId: question.questionId }], totalScore: 0.25, eTag: "etag-2" });
+    examApi.createExamShift.mockImplementation(async ({ examRoomId }: { examRoomId: string }) => ({ examShiftId: `shift-${examRoomId}` }));
+    examApi.createExamSchedule.mockImplementation(async ({ examShiftId }: { examShiftId: string }) => ({ examScheduleId: `schedule-${examShiftId}` }));
+    examApi.cancelExamShift.mockResolvedValue(undefined);
+    examApi.cancelExamSchedule.mockResolvedValue(undefined);
   });
 
   function renderRoute(node: React.ReactNode, entries = ["/"]) {
@@ -171,7 +189,7 @@ describe("Examiner routes", () => {
     renderRoute(<ExaminerDashboardRoute />);
     expect((await screen.findAllByText("Exam schedules are temporarily unavailable.")).length).toBeGreaterThan(0);
     expect(screen.getByText("1 published")).toBeInTheDocument();
-    expect(screen.getByText("1 rooms returned")).toBeInTheDocument();
+    expect(screen.getByText("2 rooms returned")).toBeInTheDocument();
   });
 
   it("loads and filters the exam bank from the backend", async () => {
@@ -193,7 +211,7 @@ describe("Examiner routes", () => {
     expect(
       await screen.findByText("Which process is iterative?", { exact: false }),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("Search questions"), {
+    fireEvent.change(screen.getByPlaceholderText("Search by content or question ID"), {
       target: { value: "iterative" },
     });
     fireEvent.click(screen.getByRole("checkbox"));
@@ -245,6 +263,29 @@ describe("Examiner routes", () => {
       expect(examApi.getExamSubjects).toHaveBeenCalled();
     });
     expect(screen.queryByText("Simulation data.")).not.toBeInTheDocument();
+  });
+
+  it("keeps the selected room pool for the Backend bulk schedule preview", async () => {
+    sessionStorage.setItem("learnable:examiner:schedule-preparation-v3", JSON.stringify({
+      examSubjectId: "exam-subject-1",
+      invigilationPeriodId: "period-1",
+      invigilationSlotId: "slot-1",
+      examRoomIds: ["room-1", "room-2"],
+      shiftName: "Morning shift",
+      startsAt: "2026-11-08T09:00",
+      endsAt: "2026-11-08T11:00",
+      entryOpensAt: "2026-11-08T09:00",
+      entryClosesAt: "2026-11-08T09:30",
+    }));
+    renderRoute(<ScheduleDetailsRoute />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue with 2 rooms" }));
+
+    const stored = JSON.parse(sessionStorage.getItem("learnable:examiner:schedule-preparation-v3") ?? "{}");
+    expect(stored.examRoomIds).toEqual(["room-1", "room-2"]);
+    expect(stored.bulkRequestId).toEqual(expect.any(String));
+    expect(examApi.createExamShift).not.toHaveBeenCalled();
+    expect(examApi.createExamSchedule).not.toHaveBeenCalled();
   });
 
   it("suggests draft paper details from the exam configuration", async () => {

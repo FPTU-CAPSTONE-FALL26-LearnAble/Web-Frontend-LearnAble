@@ -56,6 +56,9 @@ export const questionSchema = z
     content: z.string().nullable(),
     questionType: questionTypeSchema.nullable(),
     difficulty: z.string().nullable(),
+    referenceAnswer: z.string().nullable().optional(),
+    gradingCriteria: z.string().nullable().optional(),
+    maxWords: z.number().nullable().optional(),
     audioHintText: z.string().nullable().optional(),
     defaultScore: z.number(),
     sourceType: z.string().nullable().optional(),
@@ -145,6 +148,9 @@ export type CatalogQuestion = {
   content: string;
   questionType: string;
   difficulty: string;
+  referenceAnswer?: string | null;
+  gradingCriteria?: string | null;
+  maxWords?: number | null;
   audioHintText?: string | null;
   defaultScore: number;
   sourceType?: string | null;

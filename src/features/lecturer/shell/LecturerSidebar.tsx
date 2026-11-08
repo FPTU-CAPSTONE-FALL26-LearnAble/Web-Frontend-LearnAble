@@ -5,10 +5,13 @@ import {
   ClipboardCheck,
   FileQuestion,
   GraduationCap,
+  CalendarCheck,
+  Bell,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
 import type { User } from "@/api/auth";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { DemoDataToggle } from "@/components/DemoDataToggle";
@@ -17,6 +20,7 @@ import { Separator } from "@/shared/ui/primitives/separator";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router";
 import { useEffect, useState } from "react";
+import { getUnreadNotificationCount } from "@/api/notifications";
 
 interface LecturerSidebarProps {
   activePath: string;
@@ -53,6 +57,13 @@ const navigation = [
     path: "/lecturer/grading",
     available: true,
   },
+  {
+    label: "Invigilation Availability",
+    icon: CalendarCheck,
+    path: "/lecturer/invigilation-availability",
+    available: true,
+  },
+  { label: "Notifications", icon: Bell, path: "/lecturer/notifications", available: true },
 ];
 
 export function LecturerSidebar({
@@ -62,6 +73,11 @@ export function LecturerSidebar({
   onNavigate,
 }: LecturerSidebarProps) {
   const questionActive = activePath.startsWith("/lecturer/questions");
+  const unreadNotifications = useQuery({
+    queryKey: ["my-notifications", "unread-count"],
+    queryFn: getUnreadNotificationCount,
+    staleTime: 30_000,
+  });
   const [questionsOpen, setQuestionsOpen] = useState(questionActive);
   useEffect(() => {
     if (questionActive) setQuestionsOpen(true);
@@ -103,7 +119,8 @@ export function LecturerSidebar({
               className={classes}
             >
               <Icon aria-hidden className="size-5 shrink-0" />
-              {item.label}
+              <span className="min-w-0 flex-1">{item.label}</span>
+              {item.path.endsWith("/notifications") && unreadNotifications.data?.unreadCount ? <span aria-label={`${unreadNotifications.data.unreadCount} unread notifications`} className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">{unreadNotifications.data.unreadCount > 99 ? "99+" : unreadNotifications.data.unreadCount}</span> : null}
             </NavLink>
           );
         })}

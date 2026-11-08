@@ -17,9 +17,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from "@/shared/ui/primitives/toast";
 
 const steps = [
-  "Shift & room",
-  "Add students & lecturers",
-  "Automatic seating",
+  "Exam, time & rooms",
+  "People & allocation preview",
   "Validate & publish",
 ];
 
@@ -90,7 +89,7 @@ export function ScheduleReadinessRoute() {
         title="Validate and publish the schedule"
         description="Check room capacity, schedule conflicts, paper readiness, invigilators, enrollments, and seat assignments before publication."
       />
-      <PreparationSteps steps={steps} current={3} />
+      <PreparationSteps steps={steps} current={2} />
       {validations.some((item) => item.error) || publish.error ? (
         <ApiNotice tone="error">
           One or more room schedules could not be validated or published.
@@ -162,9 +161,6 @@ export function ScheduleReadinessRoute() {
           )}
           <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-5">
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" asChild>
-                <Link to="/examiner/schedule/new/candidates">Review assignments</Link>
-              </Button>
               <Button variant="outline" onClick={() => setSeatingOpen(true)}>
                 <Grid3X3 />View seating map
               </Button>

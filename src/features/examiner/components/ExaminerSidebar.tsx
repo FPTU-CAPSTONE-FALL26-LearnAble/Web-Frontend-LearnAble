@@ -10,8 +10,12 @@ import {
   LogOut,
   MonitorCheck,
   TimerReset,
+  CalendarCheck,
+  Bell,
+  BellRing,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import type { User } from "@/api/auth";
@@ -21,6 +25,7 @@ import { Separator } from "@/shared/ui/primitives/separator";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { DemoDataToggle } from "@/components/DemoDataToggle";
 import { cn } from "@/lib/utils";
+import { getUnreadNotificationCount } from "@/api/notifications";
 
 type NavigationItem = {
   label: string;
@@ -41,6 +46,8 @@ const dashboard: NavigationItem = {
   icon: LayoutDashboard,
 };
 
+const notifications: NavigationItem = { label: "Notifications", path: "/examiner/notifications", icon: Bell };
+
 const groups: NavigationGroup[] = [
   {
     id: "preparation",
@@ -49,6 +56,7 @@ const groups: NavigationGroup[] = [
     items: [
       { label: "Exam papers", path: "/examiner/exams", icon: FileStack },
       { label: "Exam schedule", path: "/examiner/schedule", icon: CalendarDays },
+      { label: "Invigilation registration", path: "/examiner/invigilation-periods", icon: CalendarCheck },
     ],
   },
   {
@@ -164,6 +172,11 @@ export function ExaminerSidebar({
   onUnavailable: (label: string) => void;
 }) {
   const { pathname } = useLocation();
+  const unreadNotifications = useQuery({
+    queryKey: ["my-notifications", "unread-count"],
+    queryFn: getUnreadNotificationCount,
+    staleTime: 30_000,
+  });
   const DashboardIcon = dashboard.icon;
   const initials =
     user.fullName
@@ -197,6 +210,8 @@ export function ExaminerSidebar({
           <DashboardIcon className="size-5 shrink-0" aria-hidden />
           {dashboard.label}
         </NavLink>
+        <NavLink to={notifications.path} end onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><Bell className="size-5 shrink-0" aria-hidden /><span className="min-w-0 flex-1">{notifications.label}</span>{unreadNotifications.data?.unreadCount ? <span aria-label={`${unreadNotifications.data.unreadCount} unread notifications`} className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">{unreadNotifications.data.unreadCount > 99 ? "99+" : unreadNotifications.data.unreadCount}</span> : null}</NavLink>
+        <NavLink to="/examiner/notifications/manage" onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><BellRing className="size-5 shrink-0" aria-hidden /><span>Send notifications</span></NavLink>
         {groups.map((group) => (
           <NavigationGroup
             key={group.id}

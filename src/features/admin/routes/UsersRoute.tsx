@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PowerOff, ShieldCheck, UserCog, Users } from "lucide-react";
 import {
+  createLecturerProfile,
+  createStudentProfile,
   createUser,
   deactivateUser,
   getAdminUsers,
+  staffManagedUserRoles,
   updateUser,
   userRoles,
   userStatuses,
@@ -26,10 +29,14 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   useAdminWrite,
+  useCurriculumOptions,
+  useDepartmentOptions,
   useExpiredAdminSession,
+  useMajorOptions,
   useUniversityScope,
 } from "../api/useAdminData";
 import { UniversityField } from "../components/UniversityField";
@@ -53,6 +60,10 @@ type Draft = {
   gender: string;
   role: UserRole;
   password: string;
+  departmentId: string;
+  majorId: string;
+  curriculumId: string;
+  intakeYear: string;
 };
 const emptyDraft: Draft = {
   universityId: "",
@@ -64,6 +75,10 @@ const emptyDraft: Draft = {
   gender: "",
   role: "Student",
   password: "",
+  departmentId: "",
+  majorId: "",
+  curriculumId: "",
+  intakeYear: "",
 };
 const genders = ["Male", "Female", "Other"];
 const unset = "unset";
@@ -78,7 +93,9 @@ const roleTone = (role: string) =>
         : ("neutral" as const);
 
 export function UsersRoute() {
-  useRouteAnnouncer("User Accounts · LearnAble Admin", "User Accounts");
+  useRouteAnnouncer("User Accounts · LearnAble", "User Accounts");
+  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
+  const managedRoles = isStaff ? staffManagedUserRoles : userRoles;
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("all");
@@ -91,6 +108,16 @@ export function UsersRoute() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
+  const [createdAccount, setCreatedAccount] = useState<AdminUser | null>(null);
+  const departments = useDepartmentOptions(isStaff);
+  const majors = useMajorOptions(isStaff);
+  const curriculums = useCurriculumOptions(
+    isStaff && draft.role === "Student" ? draft.majorId || undefined : undefined,
+  );
+  const departmentRows = departments.data?.items ?? [];
+  const majorRows = (majors.data?.items ?? []).filter(
+    (item) => !draft.departmentId || item.departmentId === draft.departmentId,
+  );
 
   const list = useQuery({
     queryKey: adminKeys.list("users", [search, role, status, page, size]),
@@ -99,6 +126,7 @@ export function UsersRoute() {
         SearchTerm: search,
         Role: role === "all" ? undefined : role,
         Status: status === "all" ? undefined : status,
+        UniversityId: isStaff ? scope.universityId : undefined,
         PageNumber: page,
         PageSize: Number(size),
       }),
@@ -110,13 +138,15 @@ export function UsersRoute() {
     setCreating(false);
     setEditing(null);
     setDraft(emptyDraft);
+    setCreatedAccount(null);
     setErrors([]);
   };
   const create = useAdminWrite({
     resource: "users",
     action: "Create account",
-    mutationFn: () =>
-      createUser({
+    alsoInvalidate: ["studentProfiles", "lecturerProfiles"],
+    mutationFn: async () => {
+      const account = createdAccount ?? await createUser({
         universityId: draft.universityId,
         userCode: draft.userCode.trim(),
         fullName: draft.fullName.trim(),
@@ -126,7 +156,24 @@ export function UsersRoute() {
         gender: draft.gender === unset ? null : draft.gender || null,
         role: draft.role,
         password: draft.password,
-      }),
+      });
+      if (!createdAccount) setCreatedAccount(account);
+      if (isStaff && draft.role === "Student") {
+        await createStudentProfile({
+          userId: account.userId,
+          majorId: draft.majorId,
+          curriculumId: draft.curriculumId,
+          intakeYear: Number(draft.intakeYear),
+        });
+      }
+      if (isStaff && draft.role === "Lecturer") {
+        await createLecturerProfile({
+          userId: account.userId,
+          departmentId: draft.departmentId,
+        });
+      }
+      return account;
+    },
     onSuccess: closeForm,
   });
   const update = useAdminWrite({
@@ -162,6 +209,18 @@ export function UsersRoute() {
         found.push("Email must be a valid address.");
       if (draft.password.length < 8)
         found.push("Password must be at least 8 characters.");
+      if (isStaff && draft.role === "Student") {
+        if (!draft.departmentId)
+          found.push("Department is required for a student.");
+        if (!draft.majorId) found.push("Major is required for a student.");
+        if (!draft.curriculumId)
+          found.push("Curriculum is required for a student.");
+        const intakeYear = Number(draft.intakeYear);
+        if (!Number.isInteger(intakeYear) || intakeYear < 1900)
+          found.push("Intake year must be a four-digit year.");
+      }
+      if (isStaff && draft.role === "Lecturer" && !draft.departmentId)
+        found.push("Department is required for a lecturer.");
     }
     setErrors(found);
     if (found.length) return;
@@ -221,7 +280,7 @@ export function UsersRoute() {
         <SummaryCard
           label="Staff on this page"
           value={staffCount}
-          detail="Lecturer, examiner or admin"
+          detail="Lecturer, examiner, staff or admin"
           icon={<UserCog aria-hidden className="size-5" />}
         />
       </section>
@@ -242,7 +301,7 @@ export function UsersRoute() {
           value={role}
           options={[
             { value: "all", label: "All roles" },
-            ...userRoles.map((value) => ({ value, label: value })),
+            ...managedRoles.map((value) => ({ value, label: value })),
           ]}
           onChange={(value) => {
             setRole(value);
@@ -262,6 +321,12 @@ export function UsersRoute() {
           }}
         />
       </FilterPanel>
+
+      {isStaff ? (
+        <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Password reset and account reactivation are included in the Staff workflow, but remain unavailable until their Backend operations are published. Existing account data is still searchable and editable.
+        </p>
+      ) : null}
 
       <TablePanel
         heading="All accounts"
@@ -327,6 +392,7 @@ export function UsersRoute() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
+                    disabled={isStaff && (row.role === "Admin" || row.role === "Staff")}
                     onClick={() => {
                       setEditing(row);
                       setErrors([]);
@@ -340,12 +406,16 @@ export function UsersRoute() {
                         gender: row.gender ?? unset,
                         role: (row.role as UserRole) ?? "Student",
                         password: "",
+                        departmentId: "",
+                        majorId: "",
+                        curriculumId: "",
+                        intakeYear: "",
                       });
                     }}
                   >
                     Edit
                   </Button>
-                  {row.status === "Active" && (
+                  {row.status === "Active" && !(isStaff && (row.role === "Admin" || row.role === "Staff")) && (
                     <Button
                       variant="ghost"
                       onClick={() => setDeactivating(row)}
@@ -353,6 +423,16 @@ export function UsersRoute() {
                       Deactivate
                     </Button>
                   )}
+                  {isStaff && row.status !== "Active" && row.role !== "Admin" && row.role !== "Staff" ? (
+                    <Button disabled variant="outline" title="Reactivation API is not available yet">
+                      Reactivate
+                    </Button>
+                  ) : null}
+                  {isStaff && row.role !== "Admin" && row.role !== "Staff" ? (
+                    <Button disabled variant="ghost" title="Password reset API is not available yet">
+                      Reset password
+                    </Button>
+                  ) : null}
                 </div>
               </TableCell>
             </TableRow>
@@ -378,7 +458,7 @@ export function UsersRoute() {
             ? "User code, email and role are permanent once the account exists."
             : `Update ${editing?.fullName ?? ""}. User code, email and role cannot be changed here.`
         }
-        submitLabel={creating ? "Create account" : "Save changes"}
+        submitLabel={creating ? (createdAccount ? "Retry academic profile" : "Create account") : "Save changes"}
         pending={create.isPending || update.isPending}
         errors={errors}
         onSubmit={submit}
@@ -408,12 +488,76 @@ export function UsersRoute() {
             label="Role"
             value={draft.role}
             disabled={!creating}
-            options={userRoles.map((value) => ({ value, label: value }))}
+            options={managedRoles.map((value) => ({ value, label: value }))}
             onChange={(value) =>
-              setDraft((old) => ({ ...old, role: value as UserRole }))
+              setDraft((old) => ({
+                ...old,
+                role: value as UserRole,
+                departmentId: "",
+                majorId: "",
+                curriculumId: "",
+                intakeYear: "",
+              }))
             }
           />
         </div>
+        {creating && isStaff && (draft.role === "Student" || draft.role === "Lecturer") ? (
+          <ChoiceField
+            label={draft.role === "Student" ? "Department of student" : "Department of lecturer"}
+            value={draft.departmentId}
+            placeholder="Select a department"
+            options={departmentRows.map((row) => ({
+              value: row.departmentId,
+              label: `${row.departmentCode} · ${row.departmentName}`,
+            }))}
+            onChange={(value) =>
+              setDraft((old) => ({
+                ...old,
+                departmentId: value,
+                majorId: "",
+                curriculumId: "",
+              }))
+            }
+          />
+        ) : null}
+        {creating && isStaff && draft.role === "Student" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ChoiceField
+              label="Major of student"
+              value={draft.majorId}
+              placeholder="Select a major"
+              options={majorRows.map((row) => ({
+                value: row.majorId,
+                label: `${row.majorCode} · ${row.majorName}`,
+              }))}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, majorId: value, curriculumId: "" }))
+              }
+            />
+            <ChoiceField
+              label="Curriculum of student"
+              value={draft.curriculumId}
+              placeholder="Select a curriculum"
+              options={(curriculums.data?.items ?? []).map((row) => ({
+                value: row.curriculumId,
+                label: `${row.curriculumCode} · ${row.version} · ${row.intakeYear}`,
+              }))}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, curriculumId: value }))
+              }
+            />
+            <TextField
+              label="Intake year"
+              type="number"
+              min="1900"
+              value={draft.intakeYear}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, intakeYear: value }))
+              }
+              error={errors.find((item) => item.startsWith("Intake year"))}
+            />
+          </div>
+        ) : null}
         <TextField
           label="Full name"
           value={draft.fullName}
@@ -474,21 +618,27 @@ export function UsersRoute() {
         {creating && (
           <p className="text-xs text-muted-foreground">
             The account owner should change this password after their first
-            sign-in. A student or lecturer also needs a matching profile before
-            their workspace is complete.
+            sign-in. For Staff-created students and lecturers, the matching
+            academic profile is created immediately after the account.
           </p>
         )}
+        {createdAccount ? (
+          <p role="status" className="text-sm font-semibold text-warning-foreground">
+            Account {createdAccount.userCode} was created. Retry only creates its missing academic profile and will not duplicate the account.
+          </p>
+        ) : null}
       </FormDialog>
 
       <ConfirmAction
         open={deactivating !== null}
         onOpenChange={(open) => {
-          if (!open) setDeactivating(null);
+          if (!open && !deactivate.isPending) setDeactivating(null);
         }}
         title="Deactivate account?"
         description={`${deactivating?.fullName ?? "This account"} will no longer be able to sign in. The API exposes no reactivation endpoint, so this cannot be undone from this workspace.`}
         confirmLabel="Deactivate"
-        onConfirm={() => deactivating && deactivate.mutate(deactivating.userId)}
+        pending={deactivate.isPending}
+        onConfirm={() => deactivating && !deactivate.isPending && deactivate.mutate(deactivating.userId)}
       />
     </div>
   );

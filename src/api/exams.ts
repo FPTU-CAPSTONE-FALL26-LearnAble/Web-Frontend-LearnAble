@@ -159,8 +159,84 @@ export const examScheduleSchema = z.object({
   openedBy: nullableString,
   closedAt: nullableString,
   status: examScheduleStatusSchema,
+  examPaperId: nullableString,
+  invigilationSlotId: nullableString,
 });
 export type ExamSchedule = z.infer<typeof examScheduleSchema>;
+
+const bulkScheduleStudentSchema = z.object({
+  studentId: z.string(),
+  studentName: nullableString,
+  seatId: z.string(),
+  seatCode: nullableString,
+  rowNumber: z.number(),
+  columnNumber: z.number(),
+  extraTimeMinutes: z.number(),
+  accommodationNotes: nullableString,
+});
+
+const bulkScheduleInvigilatorSchema = z.object({
+  lecturerId: z.string(),
+  lecturerName: nullableString,
+  isChief: z.boolean(),
+});
+
+const bulkScheduleRoomPlanSchema = z.object({
+  roomId: z.string(),
+  roomCode: nullableString,
+  roomName: nullableString,
+  capacity: z.number(),
+  students: z.array(bulkScheduleStudentSchema).nullable().transform((value) => value ?? []),
+  invigilators: z.array(bulkScheduleInvigilatorSchema).nullable().transform((value) => value ?? []),
+});
+
+const bulkScheduleIssueSchema = z.object({
+  code: nullableString,
+  resourceType: nullableString,
+  resourceId: nullableString,
+  conflictingScheduleId: nullableString,
+  message: nullableString,
+});
+
+export const bulkExamSchedulePlanSchema = z.object({
+  requestId: z.string(),
+  isValid: z.boolean(),
+  planHash: nullableString,
+  rooms: z.array(bulkScheduleRoomPlanSchema).nullable().transform((value) => value ?? []),
+  unusedRoomIds: z.array(z.string()).nullable().transform((value) => value ?? []),
+  unusedLecturerIds: z.array(z.string()).nullable().transform((value) => value ?? []),
+  issues: z.array(bulkScheduleIssueSchema).nullable().transform((value) => value ?? []),
+});
+export type BulkExamSchedulePlan = z.infer<typeof bulkExamSchedulePlanSchema>;
+
+export type BulkExamScheduleInput = {
+  requestId: string;
+  examSubjectId: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  entryOpensAt: string;
+  entryClosesAt: string;
+  roomIds: string[];
+  students: Array<{ studentId: string; extraTimeMinutes: number; accommodationNotes?: string | null }>;
+  lecturerIds: string[];
+  invigilationSlotId: string;
+  invigilatorsPerRoom: number;
+};
+
+const bulkExamScheduleCreatedSchema = z.object({
+  requestId: z.string(),
+  planHash: nullableString,
+  createdAt: z.string(),
+  schedules: z.array(z.object({
+    roomId: z.string(),
+    examShiftId: z.string(),
+    examScheduleId: z.string(),
+    studentCount: z.number(),
+    invigilatorCount: z.number(),
+  })).nullable().transform((value) => value ?? []),
+});
+export type BulkExamScheduleCreated = z.infer<typeof bulkExamScheduleCreatedSchema>;
 
 export const myExamScheduleSchema = z.object({
   schedule: examScheduleSchema,
@@ -337,6 +413,8 @@ export const updateExamShift = (shiftId: string, input: { examRoomId: string; na
   unwrap(`/examshifts/${shiftId}`, examShiftSchema, { method: "PUT", json: input });
 export const cancelExamShift = (shiftId: string) =>
   unwrap(`/examshifts/${shiftId}/cancel`, examShiftSchema, { method: "PATCH" });
+export const deleteExamShift = (shiftId: string) =>
+  command(`/examshifts/${shiftId}`, { method: "DELETE" });
 
 export const createExamSchedule = (input: {
   examSubjectId: string;
@@ -345,11 +423,19 @@ export const createExamSchedule = (input: {
   entryClosesAt: string;
 }) => unwrap("/examschedules", examScheduleSchema, { method: "POST", json: input });
 
+export const previewBulkExamSchedules = (input: BulkExamScheduleInput) =>
+  unwrap("/examschedules/bulk/preview", bulkExamSchedulePlanSchema, { method: "POST", json: input });
+
+export const createBulkExamSchedules = (input: BulkExamScheduleInput & { expectedPlanHash: string }) =>
+  unwrap("/examschedules/bulk", bulkExamScheduleCreatedSchema, { method: "POST", json: input });
+
 export const getExamSchedule = (scheduleId: string) => unwrap(`/examschedules/${scheduleId}`, examScheduleSchema);
 export const updateExamSchedule = (scheduleId: string, input: { examSubjectId: string; examShiftId: string; entryOpensAt: string; entryClosesAt: string }) =>
   unwrap(`/examschedules/${scheduleId}`, examScheduleSchema, { method: "PUT", json: input });
 export const cancelExamSchedule = (scheduleId: string) =>
   unwrap(`/examschedules/${scheduleId}/cancel`, examScheduleSchema, { method: "PATCH" });
+export const deleteExamSchedule = (scheduleId: string) =>
+  command(`/examschedules/${scheduleId}`, { method: "DELETE" });
 
 export const addExamEnrollments = (
   scheduleId: string,
@@ -466,7 +552,7 @@ export const checkOutStudent = (scheduleId: string, enrollmentId: string) =>
     { method: "PUT" },
   );
 
-export const openExamSchedule = (scheduleId: string) =>
+export const openExamSchedule = (scheduleId: string, examPaperId: string) =>
   unwrap(
     `/lecturer/exam-schedules/${scheduleId}/open`,
     z.object({
@@ -474,8 +560,9 @@ export const openExamSchedule = (scheduleId: string) =>
       status: examScheduleStatusSchema,
       openedAt: z.string(),
       openedBy: z.string(),
+      examPaperId: nullableString,
     }),
-    { method: "POST" },
+    { method: "POST", json: { examPaperId } },
   );
 
 export const getScheduleValidation = (scheduleId: string) =>

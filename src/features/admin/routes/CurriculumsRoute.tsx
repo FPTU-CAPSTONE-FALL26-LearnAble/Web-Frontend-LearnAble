@@ -26,6 +26,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   majorLabel,
@@ -51,7 +52,6 @@ type Draft = {
   intakeYear: string;
   effectiveFrom: string;
   effectiveTo: string;
-  totalCredits: string;
 };
 const emptyDraft: Draft = {
   majorId: "",
@@ -61,7 +61,6 @@ const emptyDraft: Draft = {
   intakeYear: "",
   effectiveFrom: "",
   effectiveTo: "",
-  totalCredits: "",
 };
 
 const statusTone = (status: string) =>
@@ -74,6 +73,7 @@ const statusTone = (status: string) =>
         : ("info" as const);
 
 export function CurriculumsRoute() {
+  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
   useRouteAnnouncer("Curriculums · LearnAble Admin", "Curriculums");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -134,7 +134,6 @@ export function CurriculumsRoute() {
         intakeYear: Number(draft.intakeYear),
         effectiveFrom: draft.effectiveFrom || null,
         effectiveTo: draft.effectiveTo || null,
-        totalCredits: draft.totalCredits ? Number(draft.totalCredits) : null,
       }),
     onSuccess: closeForm,
   });
@@ -147,7 +146,6 @@ export function CurriculumsRoute() {
         version: draft.version.trim(),
         effectiveFrom: draft.effectiveFrom || null,
         effectiveTo: draft.effectiveTo || null,
-        totalCredits: draft.totalCredits ? Number(draft.totalCredits) : null,
       }),
     onSuccess: closeForm,
   });
@@ -183,8 +181,6 @@ export function CurriculumsRoute() {
       draft.effectiveFrom >= draft.effectiveTo
     )
       found.push("Effective-to date must be after the effective-from date.");
-    if (draft.totalCredits && Number(draft.totalCredits) < 0)
-      found.push("Total credits cannot be negative.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -228,6 +224,11 @@ export function CurriculumsRoute() {
           Create a major first — every curriculum belongs to one.
         </p>
       )}
+      {isStaff ? (
+        <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Curriculum records are connected to majors. Subject-to-curriculum assignment is part of this workspace design and will become editable when the Backend publishes that relationship endpoint.
+        </p>
+      ) : null}
 
       <section
         aria-label="Curriculum summary"
@@ -336,7 +337,6 @@ export function CurriculumsRoute() {
             <TableHead>Major</TableHead>
             <TableHead>Intake</TableHead>
             <TableHead>Effective period</TableHead>
-            <TableHead>Credits</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -359,9 +359,6 @@ export function CurriculumsRoute() {
               <TableCell className="tabular-nums">{row.intakeYear}</TableCell>
               <TableCell className="min-w-48 tabular-nums">
                 {formatDate(row.effectiveFrom)} → {formatDate(row.effectiveTo)}
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {row.totalCredits ?? "Not available"}
               </TableCell>
               <TableCell>
                 <StatusBadge value={row.status} tone={statusTone(row.status)} />
@@ -386,15 +383,16 @@ export function CurriculumsRoute() {
                         intakeYear: String(row.intakeYear),
                         effectiveFrom: toDateInput(row.effectiveFrom),
                         effectiveTo: toDateInput(row.effectiveTo),
-                        totalCredits:
-                          row.totalCredits === null
-                            ? ""
-                            : String(row.totalCredits),
                       });
                     }}
                   >
                     Edit
                   </Button>
+                  {isStaff ? (
+                    <Button disabled variant="outline" title="Curriculum subject assignment API is not available yet">
+                      Manage subjects
+                    </Button>
+                  ) : null}
                   {row.status === "Draft" && (
                     <Button
                       variant="ghost"
@@ -417,7 +415,7 @@ export function CurriculumsRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={8}
+              columns={7}
               title="No curriculums match your filters."
               hint="Try another search, or draft a curriculum for a major intake."
             />
@@ -504,20 +502,6 @@ export function CurriculumsRoute() {
             error={
               errors.some((e) => e.startsWith("Intake year"))
                 ? "Intake year must be a four-digit year."
-                : undefined
-            }
-          />
-          <TextField
-            label="Total credits"
-            type="number"
-            min="0"
-            value={draft.totalCredits}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, totalCredits: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Total credits"))
-                ? "Total credits cannot be negative."
                 : undefined
             }
           />

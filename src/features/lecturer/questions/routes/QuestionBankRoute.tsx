@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Download, FileQuestion, Plus, Search, Upload } from "lucide-react";
 import { Badge } from "@/shared/ui/primitives/badge";
@@ -17,7 +17,6 @@ import {
 } from "@/shared/ui/primitives/table";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import {
-  notConnected,
   PageHeading,
   Pagination,
   StatusBadge,
@@ -28,13 +27,12 @@ import { ChoiceField } from "@/features/lecturer/questions/components/QuestionFi
 import { useQuestionBank } from "@/features/lecturer/questions/api/useQuestionBank";
 
 const defaults = {
-  examType: "all",
+  examType: "",
   subject: "all",
   topic: "all",
   type: "all",
   difficulty: "all",
   status: "all",
-  usage: "all",
 };
 const views = {
   exam: {
@@ -70,39 +68,27 @@ export function QuestionBankRoute({
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [selected, setSelected] = useState<string[]>([]);
-  const { data, examTypes, purposeExamTypes, statusMutation } = useQuestionBank(purpose);
-  const [bulkTopic, setBulkTopic] = useState("");
-  const subjects = [...new Set(data.map((item) => item.subjectCode))];
-  const topics = [
-    ...new Set(
-      data
-        .filter(
-          (item) =>
-            filters.subject === "all" || item.subjectCode === filters.subject,
-        )
-        .map((item) => item.topic),
-    ),
-  ];
-  const filtered = useMemo(
-    () =>
-      data.filter((item) => {
-        const text =
-          `${item.id} ${item.content} ${item.subjectCode} ${item.topic}`.toLowerCase();
-        return (
-          (!search || text.includes(search.toLowerCase())) &&
-          (filters.examType === "all" || item.examTypeId === filters.examType) &&
-          (filters.subject === "all" || item.subjectCode === filters.subject) &&
-          (filters.topic === "all" || item.topic === filters.topic) &&
-          (filters.type === "all" || item.type === filters.type) &&
-          (filters.difficulty === "all" ||
-            item.difficulty === filters.difficulty) &&
-          (filters.status === "all" || item.status === filters.status)
-        );
-      }),
-    [data, filters, search],
-  );
-  const pages = Math.max(1, Math.ceil(filtered.length / Number(size)));
-  const rows = filtered.slice((page - 1) * Number(size), page * Number(size));
+  const bank = useQuestionBank(purpose, {
+    examTypeId: filters.examType,
+    search,
+    topicId: filters.topic === "all" ? "" : filters.topic,
+    questionType: filters.type === "all" ? "" : filters.type,
+    difficulty: filters.difficulty === "all" ? "" : filters.difficulty,
+    status: filters.status === "all" ? "" : filters.status,
+    page,
+    pageSize: Number(size),
+  });
+  const { data, pageData, examTypes, purposeExamTypes, statusMutation } = bank;
+  useEffect(() => {
+    if (purposeExamTypes.length && !purposeExamTypes.some((item) => item.examTypeId === filters.examType)) {
+      setFilters((current) => ({ ...current, examType: purposeExamTypes[0].examTypeId }));
+      setPage(1);
+    }
+  }, [filters.examType, purposeExamTypes]);
+  const subjects = bank.subjects.data?.items ?? [];
+  const topics = (bank.topics.data?.items ?? []).filter((topic) => filters.subject === "all" || topic.subjectId === filters.subject);
+  const pages = Math.max(1, pageData?.totalPages ?? 1);
+  const rows = data;
   const update = (key: keyof typeof filters, value: string) => {
     setFilters((old) => ({
       ...old,
@@ -113,17 +99,17 @@ export function QuestionBankRoute({
     setSelected([]);
   };
   const reset = () => {
-    setFilters(defaults);
+    setFilters({ ...defaults, examType: purposeExamTypes[0]?.examTypeId ?? "" });
     setQuery("");
     setSearch("");
     setPage(1);
     setSelected([]);
   };
   const summary = [
-    ["Total questions", data.length],
-    ["Active questions", data.filter((q) => q.status === "Active").length],
-    ["Draft questions", data.filter((q) => q.status === "Draft").length],
-    ["Exam types", new Set(data.map((q) => q.examTypeId)).size],
+    ["Matching questions", pageData?.totalCount ?? 0],
+    ["Active on page", data.filter((q) => q.status === "Active").length],
+    ["Draft on page", data.filter((q) => q.status === "Draft").length],
+    ["Results on page", data.length],
   ] as const;
   return (
     <div className="space-y-6">
@@ -140,7 +126,7 @@ export function QuestionBankRoute({
           const link = document.createElement("a"); link.href = url; link.download = `${purpose}-questions.csv`; link.click(); URL.revokeObjectURL(url);
         }}>
           <Download aria-hidden />
-          Export
+          Export current page
         </Button>
         <Button asChild>
           <Link to={`/lecturer/questions/new?purpose=${purpose}`}>
@@ -207,7 +193,6 @@ export function QuestionBankRoute({
               label="Exam type"
               value={filters.examType}
               options={[
-                { value: "all", label: "All exam types" },
                 ...purposeExamTypes.map((item) => ({
                   value: item.examTypeId,
                   label: item.code ? `${item.code} · ${item.name ?? "Unnamed"}` : item.name ?? "Unnamed",
@@ -216,32 +201,13 @@ export function QuestionBankRoute({
               onChange={(value) => update("examType", value)}
             />
             <ChoiceField
-              label="Course"
-              value={filters.subject}
-              options={[
-                { value: "all", label: "All courses" },
-                ...subjects.map((value) => ({ value, label: value })),
-              ]}
-              onChange={(value) => update("subject", value)}
-            />
-            <ChoiceField
-              label="Topic"
-              value={filters.topic}
-              options={[
-                { value: "all", label: "All topics" },
-                ...topics.map((value) => ({ value, label: value })),
-              ]}
-              onChange={(value) => update("topic", value)}
-            />
-            <ChoiceField
               label="Question type"
               value={filters.type}
               options={[
                 { value: "all", label: "All types" },
-                "Single Choice",
-                "Multiple Choice",
-                "Essay",
-                "Write Code",
+                { value: "Single", label: "Single Choice" },
+                { value: "Multiple", label: "Multiple Choice" },
+                { value: "Essay", label: "Essay" },
               ]}
               onChange={(value) => update("type", value)}
             />
@@ -268,6 +234,21 @@ export function QuestionBankRoute({
               onChange={(value) => update("status", value)}
             />
           </div>
+          <fieldset className="rounded-xl border border-border p-4">
+            <legend className="px-1 font-semibold">Subject → Topic</legend>
+            <div className="mt-2 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
+              <Button type="button" variant={filters.subject === "all" ? "default" : "outline"} className="justify-start" onClick={() => update("subject", "all")}>All subjects</Button>
+              {subjects.map((subject) => {
+                const subjectTopics = (bank.topics.data?.items ?? []).filter((topic) => topic.subjectId === subject.subjectId);
+                const selectedSubject = filters.subject === subject.subjectId;
+                return <div key={subject.subjectId} className="min-w-0 rounded-xl border border-border p-2">
+                  <Button type="button" variant={selectedSubject && filters.topic === "all" ? "default" : "ghost"} className="w-full justify-start truncate" onClick={() => update("subject", subject.subjectId)}>{subject.subjectCode} · {subject.subjectNameEn ?? "Unnamed subject"}</Button>
+                  {selectedSubject ? <ul className="mt-1 space-y-1 border-l border-border pl-3">{subjectTopics.map((topic) => <li key={topic.topicId}><Button type="button" size="sm" variant={filters.topic === topic.topicId ? "secondary" : "ghost"} className="w-full justify-start whitespace-normal text-left" onClick={() => update("topic", topic.topicId)}>{topic.topicName}</Button></li>)}</ul> : null}
+                </div>;
+              })}
+            </div>
+            {filters.subject !== "all" && topics.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">This subject has no topics.</p> : null}
+          </fieldset>
         </CardContent>
       </Card>
       {selected.length > 0 && (
@@ -275,37 +256,14 @@ export function QuestionBankRoute({
           <p role="status" className="mr-auto text-sm font-bold">
             {selected.length} questions selected
           </p>
-          <Button
-            variant="outline"
-            onClick={() =>
-              notConnected(
-                purpose === "exam"
-                  ? "Add to exam paper"
-                  : "Assign to practice set",
-              )
-            }
-          >
-            {purpose === "exam"
-              ? "Add to exam paper"
-              : "Assign to practice set"}
-          </Button>
-          <div className="flex min-w-64 items-center gap-2">
-            <Input aria-label="Bulk topic" placeholder="New topic" value={bulkTopic} onChange={(event) => setBulkTopic(event.target.value)} />
-            <Button variant="outline" disabled={!bulkTopic.trim()} onClick={() => notConnected("Bulk topic assignment")}>Assign topic</Button>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => notConnected("Bulk status change")}
-          >
-            Change status
-          </Button>
+          <Button variant="outline" onClick={() => setSelected([])}>Clear selection</Button>
         </div>
       )}
       <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
         <div className="border-b border-border p-5">
           <h2 className="text-lg font-bold text-primary">{view.title}</h2>
           <p role="status" className="mt-1 text-sm text-muted-foreground">
-            Showing {rows.length} of {filtered.length} questions
+            Showing {rows.length} of {pageData?.totalCount ?? 0} questions from the server
           </p>
         </div>
         <Table aria-label={`${view.title} table`} className="min-w-[1120px]">
@@ -393,7 +351,9 @@ export function QuestionBankRoute({
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: q.status === "Active" ? "Archived" : "Active" })}>{q.status === "Active" ? "Archive" : "Activate"}</Button>
+                    {q.status !== "Archived" ? <Button variant="outline" asChild><Link to={`/lecturer/questions/new?purpose=${purpose}&edit=${q.id}`}>Edit</Link></Button> : null}
+                    {q.status === "Active" ? <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: "Archived" })}>Archive</Button> : null}
+                    {q.status === "Draft" ? <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: "Active" })}>Activate</Button> : null}
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/label-has-associated-control, shadcn/no-restyle -- Wrapped labels stay associated; this established route retains its existing composed workbench surface classes. */
 import { useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,8 @@ import {
   Search,
   Upload,
   AlertCircle,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
@@ -23,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/primitives/table";
-import { archiveLearningMaterial, getMaterials, publishLearningMaterial } from "@/api/lecturer";
+import { archiveLearningMaterial, deleteLearningMaterial, getMaterials, publishLearningMaterial, replaceLearningMaterialFile, updateLearningMaterial } from "@/api/lecturer";
+import type { LearningMaterial } from "@/api/catalog";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { ChoiceField } from "@/features/lecturer/questions/components/QuestionFields";
 import { useAcademicOptions } from "@/features/lecturer/shared/api/useLecturerData";
@@ -38,6 +42,10 @@ import {
   unavailable,
 } from "@/features/lecturer/shared/components/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/primitives/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/primitives/alert-dialog";
+import { Textarea } from "@/shared/ui/primitives/textarea";
+import { toast } from "@/shared/ui/primitives/toast";
 
 export const formatFileSize = (bytes: number | null) =>
   bytes === null
@@ -55,6 +63,11 @@ export function LearningMaterialsRoute() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<LearningMaterial | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [replacementFile, setReplacementFile] = useState<File | null>(null);
+  const [deleting, setDeleting] = useState<LearningMaterial | null>(null);
   const queryClient = useQueryClient();
   const academic = useAcademicOptions(
     filters.subject === "all" ? undefined : filters.subject,
@@ -95,6 +108,36 @@ export function LearningMaterialsRoute() {
       await queryClient.invalidateQueries({ queryKey: ["lecturer", "materials"] });
     },
   });
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      await updateLearningMaterial(editing.materialId, { title: editTitle.trim(), description: editDescription.trim() || null });
+      if (replacementFile) await replaceLearningMaterialFile(editing.materialId, replacementFile);
+    },
+    onSuccess: async () => {
+      setEditing(null);
+      setReplacementFile(null);
+      await queryClient.invalidateQueries({ queryKey: ["lecturer", "materials"] });
+      toast({ title: "Material updated", description: "The metadata and selected file changes have been saved." });
+    },
+    onError: (error) => toast({ title: "Material could not be updated", description: error instanceof Error ? error.message : "Review the material and try again." }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (materialId: string) => deleteLearningMaterial(materialId),
+    onSuccess: async () => {
+      setDeleting(null);
+      setSelected([]);
+      await queryClient.invalidateQueries({ queryKey: ["lecturer", "materials"] });
+      toast({ title: "Material deleted", description: "The draft material was removed from the learning-material library." });
+    },
+    onError: (error) => toast({ title: "Material could not be deleted", description: error instanceof Error ? error.message : "Only eligible materials can be deleted." }),
+  });
+  const openEditor = (material: LearningMaterial) => {
+    setEditing(material);
+    setEditTitle(material.title);
+    setEditDescription(material.description ?? "");
+    setReplacementFile(null);
+  };
   const topics = academic.topics.data?.items ?? [];
   const subjects = academic.subjects.data?.items ?? [];
   const update = (key: keyof typeof filters, value: string) => {
@@ -378,6 +421,8 @@ export function LearningMaterialsRoute() {
                         >
                           {m.status === "Published" ? "Archive" : "Publish"}
                         </Button>
+                        <Button variant="ghost" aria-label={`Edit ${m.title}`} onClick={() => openEditor(m)}><Pencil aria-hidden /></Button>
+                        <Button variant="ghost" aria-label={`Delete ${m.title}`} disabled={m.status !== "Draft"} onClick={() => setDeleting(m)}><Trash2 aria-hidden /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -414,6 +459,8 @@ export function LearningMaterialsRoute() {
           }}
         />
       </section>
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) setEditing(null); }}><DialogContent><DialogHeader><DialogTitle>Edit learning material</DialogTitle><DialogDescription>Update the title and description, or optionally replace the uploaded file.</DialogDescription></DialogHeader><div className="space-y-4"><label className="block text-sm font-semibold">Title<Input className="mt-2" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} /></label><label className="block text-sm font-semibold">Description<Textarea className="mt-2 min-h-28" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} /></label><label className="block text-sm font-semibold">Replace file (optional)<Input className="mt-2" type="file" accept=".pdf,.docx,.pptx" onChange={(event) => setReplacementFile(event.target.files?.[0] ?? null)} /><span className="mt-1 block text-xs font-normal text-muted-foreground">Leave empty to keep the existing file.</span></label></div><DialogFooter showCloseButton><Button disabled={!editTitle.trim() || editMutation.isPending} onClick={() => editMutation.mutate()}>{editMutation.isPending ? "Saving…" : "Save changes"}</Button></DialogFooter></DialogContent></Dialog>
+      <AlertDialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open) setDeleting(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this draft material?</AlertDialogTitle><AlertDialogDescription>{deleting?.title} will be permanently removed. Published or archived materials must follow their status workflow instead.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep material</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleting && deleteMutation.mutate(deleting.materialId)}>{deleteMutation.isPending ? "Deleting…" : "Delete material"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }

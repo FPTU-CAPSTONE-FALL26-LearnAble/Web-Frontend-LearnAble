@@ -55,7 +55,7 @@ import { ReadState, ScrollRegion } from "@/features/lecturer/shared/components/W
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
-import { createQuestionWithOptions, uploadQuestionAudio, uploadQuestionOptionAudio } from "@/api/lecturer";
+import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
 import { getExamTypes } from "@/api/exams";
 
 export function CreateQuestionRoute() {
@@ -66,15 +66,17 @@ export function CreateQuestionRoute() {
   const [searchParams] = useSearchParams();
   const purpose =
     searchParams.get("purpose") === "practice" ? "practice" : "exam";
+  const editingId = searchParams.get("edit") ?? "";
   const purposeLabel =
     purpose === "exam" ? "Exam question" : "Practice question";
   const bankPath = `/lecturer/questions/${purpose}`;
   const navigate = useNavigate();
-  useRouteAnnouncer(`Create ${purpose} question`, `Create ${purpose} question`);
+  useRouteAnnouncer(`${editingId ? "Edit" : "Create"} ${purpose} question`, `${editingId ? "Edit" : "Create"} ${purpose} question`);
   const userId = useAuthStore((state) => state.user?.id) ?? "anonymous";
   const [draft, setDraft] = useState<QuestionDraft>(
-    () => readDraft(userId, purpose) ?? createDraft(),
+    () => editingId ? createDraft() : readDraft(userId, purpose) ?? createDraft(),
   );
+  const editQuestion = useQuery({ queryKey: ["question", editingId], queryFn: () => getQuestion(editingId), enabled: Boolean(editingId) });
   const academic = useAcademicOptions();
   const examTypes = useQuery({
     queryKey: ["exam-types", "active"],
@@ -84,7 +86,7 @@ export function CreateQuestionRoute() {
     () => examTypesForPurpose(examTypes.data ?? [], purpose),
     [examTypes.data, purpose],
   );
-  const subjects = academic.subjects.data?.items ?? [];
+  const subjects = useMemo(() => academic.subjects.data?.items ?? [], [academic.subjects.data?.items]);
   const courseOptions = subjects.map((subject) => ({
     value: subject.subjectCode,
     label: `${subject.subjectCode} · ${subject.subjectNameEn ?? "Not available"}`,
@@ -131,9 +133,33 @@ export function CreateQuestionRoute() {
   const selectedOptionAudio = useRef(new Map<number, File>());
   const [optionAudioNames, setOptionAudioNames] = useState<Record<number, string>>({});
   const errorRef = useRef<HTMLDivElement>(null);
+  const loadedEditRef = useRef("");
   const dirty =
     JSON.stringify(draft) !== saved || !!files.image || !!files.audio || selectedOptionAudio.current.size > 0;
   const blocker = useBlocker(dirty);
+  useEffect(() => {
+    if (!editingId || !editQuestion.data || loadedEditRef.current === editingId) return;
+    const topic = (academic.topics.data?.items ?? []).find((item) => item.topicId === editQuestion.data?.topicId);
+    const subject = subjects.find((item) => item.subjectId === topic?.subjectId);
+    if (!topic || !subject) return;
+    const source = editQuestion.data;
+    const common = {
+      examTypeId: source.examTypeId,
+      course: subject.subjectCode,
+      topic: topic.topicName,
+      bloom: "Understand",
+      points: String(source.defaultScore),
+      content: source.content,
+    };
+    const type: QuestionType = source.questionType === "Multiple" ? "multiple" : source.questionType === "Essay" ? "essay" : "single";
+    const loaded = type === "essay"
+      ? { ...createDraft("essay", common), instructions: source.referenceAnswer ?? "", rubric: source.gradingCriteria ?? "" }
+      : { ...createDraft(type, common), options: source.options.map((option) => ({ text: option.content, description: "", correct: option.isCorrect })) };
+    setDraft(loaded);
+    setSaved(JSON.stringify(loaded));
+    setRestored(false);
+    loadedEditRef.current = editingId;
+  }, [academic.topics.data?.items, editQuestion.data, editingId, subjects]);
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
       if (dirty) {
@@ -259,17 +285,15 @@ export function CreateQuestionRoute() {
       );
     }
   };
-  const createQuestion = useMutation({
+  const saveQuestion = useMutation({
     mutationFn: async () => {
       if (!selectedTopicId) throw new Error("Topic not found");
       if (!["single", "multiple", "essay"].includes(draft.type)) {
         throw new Error("Unsupported question type");
       }
       const questionType = draft.type === "single" ? "Single" : draft.type === "multiple" ? "Multiple" : "Essay";
-      const question = await createQuestionWithOptions(
-        {
+      const input: Omit<CreateQuestionInput, "topicId" | "sourceType"> = {
           examTypeId: draft.examTypeId,
-          topicId: selectedTopicId,
           content: draft.content.trim(),
           questionType,
           difficulty: "Medium",
@@ -277,15 +301,35 @@ export function CreateQuestionRoute() {
           referenceAnswer: draft.type === "essay" ? draft.instructions : null,
           gradingCriteria: draft.type === "essay" ? draft.rubric : null,
           maxWords: draft.type === "essay" ? 1000 : null,
-        },
-        draft.type === "single" || draft.type === "multiple"
-          ? draft.options.map((option, index) => ({
-              content: option.text.trim(),
-              isCorrect: option.correct,
-              displayOrder: index + 1,
-            }))
-          : [],
-      );
+        };
+      const optionInputs = draft.type === "single" || draft.type === "multiple"
+        ? draft.options.map((option, index) => ({ content: option.text.trim(), isCorrect: option.correct, displayOrder: index + 1 }))
+        : [];
+      const question = editingId
+        ? await (async () => {
+            const existing = editQuestion.data?.options ?? [];
+            if (questionType === "Essay" && existing.length) {
+              await Promise.all(existing.map((option) => deleteQuestionOption(option.optionId)));
+            }
+            await updateQuestion(editingId, input);
+            const optionIds: string[] = [];
+            for (let index = 0; index < optionInputs.length; index += 1) {
+              const option = optionInputs[index];
+              const current = existing[index];
+              if (current) {
+                await updateQuestionOption(current.optionId, option);
+                optionIds.push(current.optionId);
+              } else {
+                const created = await createQuestionOption({ ...option, questionId: editingId });
+                optionIds.push(created.optionId);
+              }
+            }
+            if (questionType !== "Essay") {
+              await Promise.all(existing.slice(optionInputs.length).map((option) => deleteQuestionOption(option.optionId)));
+            }
+            return { questionId: editingId, createdOptions: optionIds.map((optionId) => ({ optionId })) };
+          })()
+        : await createQuestionWithOptions({ ...input, topicId: selectedTopicId }, optionInputs);
       if (selectedFiles.current.audio) {
         await uploadQuestionAudio(question.questionId, selectedFiles.current.audio);
       }
@@ -301,8 +345,8 @@ export function CreateQuestionRoute() {
       localStorage.removeItem(draftKey(userId, purpose));
       setSaved(JSON.stringify(draft));
       toast({
-        title: "Question saved",
-        description: "The question is now available in the question bank.",
+        title: editingId ? "Question updated" : "Question saved",
+        description: editingId ? "The question and its answer options were updated." : "The question is now available in the question bank.",
       });
       void navigate(bankPath);
     },
@@ -321,7 +365,7 @@ export function CreateQuestionRoute() {
       requestAnimationFrame(() => errorRef.current?.focus());
       return;
     }
-    createQuestion.mutate();
+    saveQuestion.mutate();
   };
   return (
     <div className="question-studio">
@@ -345,7 +389,7 @@ export function CreateQuestionRoute() {
           </Link>
           <span aria-hidden>/</span>
           <span aria-current="page" className="font-semibold text-primary">
-            {purposeLabel}
+            {editingId ? `Edit ${purposeLabel}` : purposeLabel}
           </span>
         </nav>
         <div className="flex flex-wrap items-center gap-2">
@@ -415,7 +459,7 @@ export function CreateQuestionRoute() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h1 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-primary">
                 <PencilLine aria-hidden className="size-5 text-primary" />
-                New {purposeLabel} Studio
+                {editingId ? "Edit" : "New"} {purposeLabel} Studio
               </h1>
               <Button
                 variant="ghost"
@@ -434,6 +478,7 @@ export function CreateQuestionRoute() {
                 value={draft.course}
                 options={courseOptions}
                 placeholder="Select course"
+                disabled={Boolean(editingId)}
                 onChange={(course) => update({ ...draft, course, topic: "" })}
               />
               <ChoiceField
@@ -441,7 +486,7 @@ export function CreateQuestionRoute() {
                 value={draft.topic}
                 options={topicOptions}
                 placeholder={subjectId ? "Select topic" : "Select a course first"}
-                disabled={!subjectId}
+                disabled={!subjectId || Boolean(editingId)}
                 onChange={(topic) => update({ ...draft, topic })}
               />
               <ChoiceField
@@ -700,8 +745,8 @@ export function CreateQuestionRoute() {
             <Save aria-hidden />
             Save draft
           </Button>
-          <Button disabled={createQuestion.isPending} onClick={submit}>
-            {createQuestion.isPending ? "Saving…" : "Save to Question Bank"}
+          <Button disabled={saveQuestion.isPending || (Boolean(editingId) && editQuestion.isPending)} onClick={submit}>
+            {saveQuestion.isPending ? "Saving…" : editingId ? "Save changes" : "Save to Question Bank"}
           </Button>
         </div>
       </footer>

@@ -23,6 +23,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   departmentLabel,
@@ -61,7 +62,8 @@ const emptyDraft: Draft = {
 const noDepartment = "none";
 
 export function LecturerProfilesRoute() {
-  useRouteAnnouncer("Lecturer Profiles · LearnAble Admin", "Lecturer Profiles");
+  useRouteAnnouncer("Lecturer Profiles · LearnAble", "Lecturer Profiles");
+  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
@@ -136,6 +138,8 @@ export function LecturerProfilesRoute() {
   const submit = () => {
     const found: string[] = [];
     if (creating && !draft.userId) found.push("Lecturer account is required.");
+    if (isStaff && (!draft.departmentId || draft.departmentId === noDepartment))
+      found.push("Department is required for a lecturer.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -365,7 +369,7 @@ export function LecturerProfilesRoute() {
           value={draft.departmentId || noDepartment}
           placeholder="Select a department"
           options={[
-            { value: noDepartment, label: "No department" },
+            ...(isStaff ? [] : [{ value: noDepartment, label: "No department" }]),
             ...departmentRows.map((row) => ({
               value: row.departmentId,
               label: `${row.departmentCode} · ${row.departmentName}`,

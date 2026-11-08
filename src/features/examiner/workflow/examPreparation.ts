@@ -11,12 +11,18 @@ export type ExamPreparationDraft = {
   instructions: string;
   durationMinutes: number;
   passScore: number;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  scoringPolicy: "AllOrNothing";
+  cameraRequired: boolean;
+  cameraUnavailablePolicy: "Block" | "AllowWithFlag" | "Allow";
   paperCode: string;
   paperName: string;
   selectedQuestions: Array<{ questionId: string; maxScore: number }>;
 };
 
 export type SchedulePreparationDraft = {
+  bulkRequestId: string;
   examSubjectId: string;
   examRoomId: string;
   examRoomIds: string[];
@@ -32,6 +38,8 @@ export type SchedulePreparationDraft = {
   assignedScheduleIds: string[];
   studentIds: string[];
   lecturerIds: string[];
+  invigilationPeriodId: string;
+  invigilationSlotId: string;
 };
 
 const examKey = "learnable:examiner:exam-preparation-v2";
@@ -40,14 +48,16 @@ const scheduleKey = "learnable:examiner:schedule-preparation-v3";
 export const emptyExamPreparation: ExamPreparationDraft = {
   examSubjectId: "", examPaperId: "", paperETag: "", subjectId: "", semesterId: "",
   examTypeId: "", name: "", instructions: "", durationMinutes: 90, passScore: 5,
+  shuffleQuestions: true, shuffleOptions: true, scoringPolicy: "AllOrNothing",
+  cameraRequired: true, cameraUnavailablePolicy: "AllowWithFlag",
   paperCode: "", paperName: "", selectedQuestions: [],
 };
 
 export const emptySchedulePreparation: SchedulePreparationDraft = {
-  examSubjectId: "", examRoomId: "", examRoomIds: [], shiftName: "", startsAt: "", endsAt: "",
+  bulkRequestId: "", examSubjectId: "", examRoomId: "", examRoomIds: [], shiftName: "", startsAt: "", endsAt: "",
   entryOpensAt: "", entryClosesAt: "", examShiftId: "", examScheduleId: "",
   scheduleRooms: [], assignmentsBySchedule: {}, assignedScheduleIds: [],
-  studentIds: [], lecturerIds: [],
+  studentIds: [], lecturerIds: [], invigilationPeriodId: "", invigilationSlotId: "",
 };
 
 function read<T>(key: string, fallback: T): T {

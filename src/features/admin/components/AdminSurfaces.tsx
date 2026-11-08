@@ -113,6 +113,7 @@ export function TablePanel({
   size,
   onPage,
   onSize,
+  tableClassName = "min-w-[1120px]",
   children,
 }: {
   heading: string;
@@ -126,6 +127,7 @@ export function TablePanel({
   size: string;
   onPage: (page: number) => void;
   onSize: (size: string) => void;
+  tableClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -142,7 +144,7 @@ export function TablePanel({
         retry={() => void read.refetch()}
       />
       {!read.isPending && !read.error && (
-        <Table containerLabel={tableLabel} className="min-w-[1120px]">
+        <Table containerLabel={tableLabel} className={tableClassName}>
           {children}
         </Table>
       )}
@@ -270,6 +272,7 @@ export function ConfirmAction({
   title,
   description,
   confirmLabel,
+  pending = false,
   onConfirm,
 }: {
   open: boolean;
@@ -277,6 +280,7 @@ export function ConfirmAction({
   title: string;
   description: string;
   confirmLabel: string;
+  pending?: boolean;
   onConfirm: () => void;
 }) {
   return (
@@ -288,9 +292,12 @@ export function ConfirmAction({
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirm}>
-              {confirmLabel}
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={pending} onClick={onConfirm}>
+              {pending ? (
+                <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+              ) : null}
+              {pending ? "Deleting…" : confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

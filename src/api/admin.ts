@@ -26,7 +26,18 @@ const text = (value: string | null | undefined) => value ?? unavailable;
 
 /** Server enums. Keep in sync with `components.schemas` of the OpenAPI document. */
 export const universityStatuses = ["Active", "Inactive"] as const;
-export const userRoles = ["Student", "Lecturer", "Examiner", "Admin"] as const;
+export const userRoles = [
+  "Student",
+  "Lecturer",
+  "Examiner",
+  "Admin",
+  "Staff",
+] as const;
+export const staffManagedUserRoles = [
+  "Student",
+  "Lecturer",
+  "Examiner",
+] as const;
 export const userStatuses = ["Active", "Inactive"] as const;
 export const semesterStatuses = ["Planned", "Ongoing", "Closed"] as const;
 export const curriculumStatuses = ["Draft", "Active", "Archived"] as const;
@@ -126,7 +137,6 @@ export const curriculumSchema = z
     intakeYear: z.number(),
     effectiveFrom: z.string().nullable(),
     effectiveTo: z.string().nullable(),
-    totalCredits: z.number().nullable(),
     status: z.string().nullable(),
     approvedBy: z.string().nullable(),
     approvedAt: z.string().nullable(),
@@ -172,7 +182,6 @@ export const studentProfileSchema = z
     majorId: z.string(),
     curriculumId: z.string(),
     intakeYear: z.number(),
-    currentSemester: z.number(),
     enrollmentStatus: z.string().nullable(),
     fullName: z.string().nullable().optional(),
     studentCode: z.string().nullable().optional(),
@@ -240,12 +249,12 @@ export const universitySchema = z
     address: z.string().nullable(),
     phone: z.string().nullable(),
     contactEmail: z.string().nullable(),
-    website: z.string().nullable(),
+    website: z.string().nullable().optional(),
     subdomain: z.string().nullable(),
     emailDomain: z.string().nullable(),
-    timezone: z.string().nullable(),
+    timezone: z.string().nullable().optional(),
     logoUrl: z.string().nullable(),
-    primaryColor: z.string().nullable(),
+    primaryColor: z.string().nullable().optional(),
     status: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -282,6 +291,31 @@ export type Curriculum = z.output<typeof curriculumSchema>;
 export type AdminUser = z.output<typeof adminUserSchema>;
 export type StudentProfile = z.output<typeof studentProfileSchema>;
 export type LecturerProfile = z.output<typeof lecturerProfileSchema>;
+
+export const examRoomSchema = z.object({
+  examRoomId: z.string(),
+  universityId: z.string(),
+  roomCode: z.string().nullable(),
+  name: z.string().nullable(),
+  building: z.string().nullable(),
+  floor: z.number().nullable(),
+  isActive: z.boolean(),
+});
+
+export const roomSeatSchema = z.object({
+  seatId: z.string(),
+  examRoomId: z.string(),
+  seatCode: z.string().nullable(),
+  rowNumber: z.number(),
+  columnNumber: z.number(),
+  isAvailable: z.boolean(),
+  hasComputer: z.boolean(),
+  hasCamera: z.boolean(),
+  notes: z.string().nullable(),
+});
+
+export type ExamRoom = z.output<typeof examRoomSchema>;
+export type RoomSeat = z.output<typeof roomSeatSchema>;
 
 /* ------------------------------------------------------------- transport */
 
@@ -346,6 +380,21 @@ async function write(
     body === undefined ? { method } : { method, json: body },
   );
   if (!response.success) throw new ApiFailure({ kind: "server", status: 200 });
+}
+
+/** Writes whose documented response contains the created resource. */
+async function writeOne<T>(
+  resource: string,
+  method: "POST" | "PUT" | "PATCH",
+  body: unknown,
+  item: z.ZodTypeAny,
+): Promise<T> {
+  const response = await request(
+    `/${resource}`,
+    envelope(item),
+    { method, json: body },
+  );
+  return unwrap(response) as T;
 }
 
 /* ---------------------------------------------------------- request bodies */
@@ -425,14 +474,29 @@ export type CreateCurriculumBody = {
   intakeYear: number;
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
-  totalCredits?: number | null;
 };
 export type UpdateCurriculumBody = {
   curriculumName: string;
   version: string;
   effectiveFrom?: string | null;
   effectiveTo?: string | null;
-  totalCredits?: number | null;
+};
+export type ExamRoomBody = {
+  universityId: string;
+  roomCode: string;
+  name: string;
+  building: string;
+  floor?: number | null;
+  isActive: boolean;
+};
+export type RoomSeatBody = {
+  seatCode: string;
+  rowNumber: number;
+  columnNumber: number;
+  isAvailable: boolean;
+  hasComputer: boolean;
+  hasCamera: boolean;
+  notes?: string | null;
 };
 export type CreateTopicBody = {
   subjectId: string;
@@ -468,11 +532,6 @@ export type CreateStudentProfileBody = {
   majorId: string;
   curriculumId: string;
   intakeYear: number;
-  currentSemester: number;
-};
-/** The API accepts only the semester counter after creation. */
-export type UpdateStudentProfileBody = {
-  currentSemester: number;
 };
 export type CreateLecturerProfileBody = {
   userId: string;
@@ -627,7 +686,8 @@ export const getAdminUsers = (filters: ReadFilters = {}) =>
   });
 export const getAdminUser = (id: string) =>
   readOne<AdminUser>("Users", id, adminUserSchema);
-export const createUser = (body: CreateUserBody) => write("Users", "POST", body);
+export const createUser = (body: CreateUserBody) =>
+  writeOne<AdminUser>("Users", "POST", body, adminUserSchema);
 export const updateUser = (id: string, body: UpdateUserBody) =>
   write(`Users/${id}`, "PUT", body);
 /** The document exposes deactivate only — there is no matching activate. */
@@ -646,10 +706,6 @@ export const getStudentProfiles = (filters: ReadFilters = {}) =>
 export const createStudentProfile = (body: CreateStudentProfileBody) =>
   write("StudentProfiles", "POST", body);
 /** Profile endpoints are keyed by the account's `userId`. */
-export const updateStudentProfile = (
-  userId: string,
-  body: UpdateStudentProfileBody,
-) => write(`StudentProfiles/${userId}`, "PUT", body);
 export const changeEnrollmentStatus = (
   userId: string,
   status: EnrollmentStatus,
@@ -674,3 +730,45 @@ export const updateLecturerProfile = (
 ) => write(`LecturerProfiles/${userId}`, "PUT", body);
 export const deleteLecturerProfile = (userId: string) =>
   write(`LecturerProfiles/${userId}`, "DELETE");
+
+/* ------------------------------------------------------------- Exam rooms */
+
+export type ExamRoomFilters = {
+  Page?: number;
+  PageSize?: number;
+  From?: string;
+  To?: string;
+  RoomId?: string;
+  ExamSubjectId?: string;
+};
+
+export const getExamRooms = (filters: ExamRoomFilters = {}) =>
+  readPage<ExamRoom>("examrooms", examRoomSchema, {
+    Page: 1,
+    PageSize: 10,
+    ...filters,
+  });
+export const getExamRoom = (id: string) =>
+  readOne<ExamRoom>("examrooms", id, examRoomSchema);
+export const createExamRoom = (body: ExamRoomBody) =>
+  write("examrooms", "POST", body);
+export const updateExamRoom = (id: string, body: ExamRoomBody) =>
+  write(`examrooms/${id}`, "PUT", body);
+export const deleteExamRoom = (id: string) =>
+  write(`examrooms/${id}`, "DELETE");
+export async function getRoomSeats(roomId: string): Promise<RoomSeat[]> {
+  const response = await request(
+    `/examrooms/${roomId}/seats`,
+    envelope(z.array(roomSeatSchema)),
+  );
+  return unwrap(response) as RoomSeat[];
+}
+export const createRoomSeat = (roomId: string, body: RoomSeatBody) =>
+  write(`examrooms/${roomId}/seats`, "POST", body);
+export const updateRoomSeat = (
+  roomId: string,
+  seatId: string,
+  body: RoomSeatBody,
+) => write(`examrooms/${roomId}/seats/${seatId}`, "PUT", body);
+export const deleteRoomSeat = (roomId: string, seatId: string) =>
+  write(`examrooms/${roomId}/seats/${seatId}`, "DELETE");

@@ -45,7 +45,7 @@ export function useExpiredAdminSession(error: unknown) {
  * refetched so the table shows server truth rather than an optimistic guess; on
  * failure the typed API error is reported and nothing is invalidated.
  */
-export function useAdminWrite<TVariables = void>({
+export function useAdminWrite<TVariables = void, TData = void>({
   resource,
   action,
   mutationFn,
@@ -54,21 +54,21 @@ export function useAdminWrite<TVariables = void>({
 }: {
   resource: string;
   action: string;
-  mutationFn: (variables: TVariables) => Promise<void>;
-  onSuccess?: () => void;
+  mutationFn: (variables: TVariables) => Promise<TData>;
+  onSuccess?: (data: TData) => void;
   alsoInvalidate?: string[];
 }) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => {
+    onSuccess: (data) => {
       for (const name of [resource, ...alsoInvalidate]) {
         void queryClient.invalidateQueries({
           queryKey: adminKeys.resource(name),
         });
       }
       toast({ title: `${action} succeeded` });
-      onSuccess?.();
+      onSuccess?.(data);
     },
     onError: (error: unknown) =>
       toast({

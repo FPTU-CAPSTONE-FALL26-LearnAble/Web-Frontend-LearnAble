@@ -1,19 +1,23 @@
-/* eslint-disable jsx-a11y/label-has-associated-control, jsx-a11y/no-noninteractive-tabindex -- Radix card labels and named bounded table scrollers are intentional. */
 import { Link } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { CalendarDays } from "lucide-react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { CalendarDays, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
-import { getExamRooms, getExamSchedules } from "@/api/exams";
+import { cancelExamSchedule, deleteExamSchedule, getExamInvigilators, getExamRooms, getExamSchedules, type ExamSchedule } from "@/api/exams";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { toast } from "@/shared/ui/primitives/toast";
 import { cn } from "@/lib/utils";
-
-const unavailable = (label: string) =>
-  toast({
-    title: "Coming soon",
-    description: `${label} isn’t available yet. You can continue managing exam schedules here.`,
-  });
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/primitives/alert-dialog";
+import { toast } from "@/shared/ui/primitives/toast";
 
 function ApiState({
   pending,
@@ -123,6 +127,9 @@ function Status({
 }
 
 export function ExamScheduleDashboardRoute() {
+  const [range, setRange] = useState<"day" | "week" | "month">("day");
+  const [pendingAction, setPendingAction] = useState<{ kind: "cancel" | "delete"; schedule: ExamSchedule } | null>(null);
+  const queryClient = useQueryClient();
   useRouteAnnouncer("Exam Schedule", "Exam Schedule and Shift Cockpit");
   const schedules = useQuery({
     queryKey: ["examiner", "exam-schedules"],
@@ -134,7 +141,37 @@ export function ExamScheduleDashboardRoute() {
   });
   useExpiredSession(schedules.error || roomData.error);
   const scheduleRows = schedules.data?.items ?? [];
+  const now = new Date();
+  const rangeEnd = new Date(now);
+  if (range === "day") rangeEnd.setHours(23, 59, 59, 999);
+  if (range === "week") rangeEnd.setDate(rangeEnd.getDate() + 7);
+  if (range === "month") rangeEnd.setMonth(rangeEnd.getMonth() + 1);
+  const visibleSchedules = scheduleRows.filter((schedule) => {
+    const start = new Date(schedule.startsAt);
+    if (range === "day") return start.toDateString() === now.toDateString();
+    return start >= now && start <= rangeEnd;
+  });
+  const invigilatorQueries = useQueries({ queries: scheduleRows.map((schedule) => ({ queryKey: ["examiner", "schedule-invigilators", schedule.examScheduleId], queryFn: () => getExamInvigilators(schedule.examScheduleId) })) });
+  const staffedSchedules = invigilatorQueries.filter((query) => (query.data?.length ?? 0) > 0).length;
   const roomRows = roomData.data?.items ?? [];
+  const lifecycle = useMutation({
+    mutationFn: async (action: { kind: "cancel" | "delete"; schedule: ExamSchedule }) => {
+      if (action.kind === "delete") return deleteExamSchedule(action.schedule.examScheduleId);
+      return cancelExamSchedule(action.schedule.examScheduleId);
+    },
+    onSuccess: async (_, action) => {
+      setPendingAction(null);
+      await queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedules"] });
+      toast({
+        title: action.kind === "delete" ? "Draft schedule deleted" : "Exam schedule cancelled",
+        description: action.kind === "delete" ? "The unused draft and its assignments were removed." : "Assigned students and lecturers were cancelled with the schedule.",
+      });
+    },
+    onError: (error) => toast({
+      title: "Schedule could not be updated",
+      description: error instanceof Error ? error.message : "Refresh the schedule and try again.",
+    }),
+  });
   return (
     <div>
       <PageHeading
@@ -171,27 +208,27 @@ export function ExamScheduleDashboardRoute() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant="outline"
-              className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              variant={range === "day" ? "default" : "secondary"}
+              onClick={() => setRange("day")}
             >
               Day
             </Button>
             <Button
-              variant="ghost"
-              className="text-white hover:bg-white/10 hover:text-white"
+              variant={range === "week" ? "default" : "secondary"}
+              onClick={() => setRange("week")}
             >
               Week
             </Button>
             <Button
-              variant="ghost"
-              className="text-white hover:bg-white/10 hover:text-white"
+              variant={range === "month" ? "default" : "secondary"}
+              onClick={() => setRange("month")}
             >
               Month
             </Button>
           </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-4">
-          {scheduleRows.slice(0, 4).map((schedule) => (
+          {visibleSchedules.slice(0, 4).map((schedule) => (
             <div
               key={schedule.examScheduleId}
               className="rounded-xl border border-white/20 bg-white/5 p-4"
@@ -203,6 +240,7 @@ export function ExamScheduleDashboardRoute() {
               <p className="text-xs text-white/60">{schedule.status}</p>
             </div>
           ))}
+          {!visibleSchedules.length ? <p className="col-span-full rounded-xl border border-white/20 p-5 text-sm text-white/70">No schedules in this {range}.</p> : null}
         </div>
       </section>
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
@@ -229,9 +267,24 @@ export function ExamScheduleDashboardRoute() {
                   {schedule.roomName ?? "Room pending"} · {new Date(schedule.startsAt).toLocaleDateString("en-US")}
                 </p>
               </div>
-              <Status tone={schedule.status === "Open" || schedule.status === "Closed" ? "success" : schedule.status === "Cancelled" ? "danger" : "info"}>
-                {schedule.status}
-              </Status>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Status tone={schedule.status === "Open" || schedule.status === "Closed" ? "success" : schedule.status === "Cancelled" ? "danger" : "info"}>
+                  {schedule.status}
+                </Status>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/examiner/schedule/${schedule.examScheduleId}`}>View details</Link>
+                </Button>
+                {schedule.status === "Draft" ? (
+                  <Button variant="outline" size="sm" onClick={() => setPendingAction({ kind: "delete", schedule })}>
+                    <Trash2 /> Delete draft
+                  </Button>
+                ) : null}
+                {(schedule.status === "Draft" || schedule.status === "Published") && new Date(schedule.startsAt) > now ? (
+                  <Button variant="outline" size="sm" onClick={() => setPendingAction({ kind: "cancel", schedule })}>
+                    <XCircle /> Cancel
+                  </Button>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>
@@ -259,20 +312,36 @@ export function ExamScheduleDashboardRoute() {
           </div>
           <div className="examiner-panel p-5">
             <h2 className="text-lg font-extrabold">Staffing coverage</h2>
-            <p className="mt-3 text-3xl font-extrabold">8/9</p>
+            <p className="mt-3 text-3xl font-extrabold">{invigilatorQueries.some((query) => query.isPending) ? "…" : `${staffedSchedules}/${scheduleRows.length}`}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              One additional invigilator required for the afternoon shift.
+              Schedules with at least one assigned Lecturer.
             </p>
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={() => unavailable("Staff assignment")}
-            >
-              Open assignment
-            </Button>
+            {invigilatorQueries.some((query) => query.isError) ? <p role="alert" className="mt-3 text-sm text-destructive">Some staffing assignments could not be loaded.</p> : null}
           </div>
         </aside>
       </section>
+      <AlertDialog open={Boolean(pendingAction)} onOpenChange={(open) => { if (!open && !lifecycle.isPending) setPendingAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingAction?.kind === "delete" ? "Delete this draft schedule?" : "Cancel this exam schedule?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.kind === "delete"
+                ? "This permanently removes the Draft schedule, its enrollments, lecturer assignments, and generated seating."
+                : "The schedule will remain in history, but its student enrollments and lecturer assignments will be cancelled. This is only allowed before the shift starts."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={lifecycle.isPending}>Keep schedule</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={!pendingAction || lifecycle.isPending}
+              onClick={() => { if (pendingAction) lifecycle.mutate(pendingAction); }}
+            >
+              {lifecycle.isPending ? "Updating…" : pendingAction?.kind === "delete" ? "Delete draft" : "Cancel schedule"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
