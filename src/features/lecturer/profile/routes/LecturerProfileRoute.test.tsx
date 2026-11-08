@@ -10,6 +10,6 @@ describe("LecturerProfileRoute", () => {
     expect(screen.getByRole("heading", { name: "Lecturer One" })).toBeInTheDocument();
     expect(screen.getByText("lecturer@fpt.edu.vn")).toBeInTheDocument();
     expect(screen.queryByText("LEC0001")).not.toBeInTheDocument();
-    expect(screen.getByText(/profile endpoint/i)).toBeInTheDocument();
+    expect(screen.getByText(/additional academic profile details are not available/i)).toBeInTheDocument();
   });
 });
