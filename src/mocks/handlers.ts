@@ -1,5 +1,6 @@
 import { HttpResponse, delay, http } from "msw";
 import { mockExamResults, mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
+import { adminSystemHandlers } from "@/mocks/adminSystem";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
@@ -112,4 +113,7 @@ export const handlers = [
       ? HttpResponse.json(found)
       : HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
+
+  // Admin system configuration — proposed contract, not yet in the backend.
+  ...adminSystemHandlers,
 ];
