@@ -39,8 +39,6 @@ import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
 import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
-import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
-import { SemestersRoute } from "@/features/admin/routes/SemestersRoute";
 import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
 import { UsersRoute } from "@/features/admin/routes/UsersRoute";
 import { StudentProfilesRoute } from "@/features/admin/routes/StudentProfilesRoute";
