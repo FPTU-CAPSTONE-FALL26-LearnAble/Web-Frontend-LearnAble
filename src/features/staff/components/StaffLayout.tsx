@@ -1,6 +1,7 @@
 import { Menu } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
+import { getCurrentUser } from "@/api/auth";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { SkipLink } from "@/shared/a11y/SkipLink";
@@ -13,13 +14,32 @@ import {
 } from "@/shared/ui/primitives/sheet";
 import { StaffSidebar } from "./StaffSidebar";
 import "@/features/admin/components/admin-theme.css";
+import "./staff-theme.css";
 
 export function StaffLayout() {
   const [open, setOpen] = useState(false);
   const user = useAuthStore((state) => state.user)!;
+  const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  // A persisted session can predate the tenant fields added to /auth/me.
+  // Refresh Staff scope here so tenant-owned forms always receive universityId.
+  useEffect(() => {
+    let active = true;
+    void getCurrentUser()
+      .then((currentUser) => {
+        if (active && currentUser.role.toLowerCase() === "staff")
+          setUser(currentUser);
+      })
+      .catch(() => {
+        // Route-level requests surface authentication and network failures.
+      });
+    return () => {
+      active = false;
+    };
+  }, [setUser]);
   const sidebarProps = {
     activePath: pathname,
     user,
@@ -29,27 +49,41 @@ export function StaffLayout() {
     },
   };
   return (
-    <div className="admin-shell min-h-screen bg-white lg:flex">
+    <div className="staff-shell admin-shell min-h-screen bg-white lg:flex">
       <SkipLink />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
         <StaffSidebar {...sidebarProps} />
       </aside>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
-        <Button size="icon" variant="outline" aria-label="Open navigation" onClick={() => setOpen(true)}>
+        <Button
+          size="icon"
+          variant="outline"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
           <Menu />
         </Button>
-        <BrandIdentity lecturer compact roleLabel="Staff" />
-        <span className="max-w-24 truncate text-xs font-bold">{user.fullName}</span>
+        <BrandIdentity compact />
+        <span className="max-w-24 truncate text-xs font-bold">
+          {user.fullName}
+        </span>
       </header>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent>
           <SheetTitle className="sr-only">Staff navigation</SheetTitle>
-          <SheetDescription className="sr-only">Navigate between staff operations.</SheetDescription>
+          <SheetDescription className="sr-only">
+            Navigate between staff operations.
+          </SheetDescription>
           <StaffSidebar {...sidebarProps} onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
-      <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-8">
-        <div className="mx-auto max-w-[1440px]"><Outlet /></div>
+      <main
+        id="main"
+        className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-8"
+      >
+        <div className="mx-auto max-w-[1440px]">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

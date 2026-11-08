@@ -42,16 +42,27 @@ pre {
 /* The perimeter is the toast's visible lifetime: a complete green circuit
    coincides with Sonner's automatic dismissal. */
 [data-sonner-toast].cn-toast[data-styled="true"] {
-  border: 2px solid transparent;
+  --toast-progress-color: var(--success-border);
+  --toast-track-color: var(--border);
+  border: 3px solid transparent;
   background:
     linear-gradient(var(--normal-bg), var(--normal-bg)) padding-box,
     conic-gradient(
         from -90deg,
-        var(--success-border) 0turn var(--toast-progress),
-        var(--normal-border) var(--toast-progress) 1turn
+        var(--toast-progress-color) 0turn var(--toast-progress),
+        var(--toast-track-color) var(--toast-progress) 1turn
       )
       border-box;
   animation: toast-border-progress var(--toast-duration, 5000ms) linear forwards;
+}
+
+[data-sonner-toast].cn-toast[data-type="error"] {
+  --toast-progress-color: var(--destructive);
+  --toast-track-color: color-mix(
+    in oklab,
+    var(--destructive) 24%,
+    var(--border)
+  );
 }
 
 [data-sonner-toaster]:hover [data-sonner-toast].cn-toast,

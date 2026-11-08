@@ -21,6 +21,12 @@ const studentRoutes = [
   "/settings/accessibility",
 ];
 
+export function isStudentPath(path: string) {
+  return studentRoutes.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
+
 export function normalizeSupportedRole(
   role?: string | null,
 ): SupportedRole | null {
@@ -39,9 +45,7 @@ export function isPathAllowedForRole(role: SupportedRole, path: string) {
   if (role === "examiner") return path.startsWith("/examiner/");
   if (role === "admin") return path.startsWith("/admin/");
   if (role === "staff") return path.startsWith("/staff/");
-  return studentRoutes.some(
-    (route) => path === route || path.startsWith(`${route}/`),
-  );
+  return isStudentPath(path);
 }
 
 export function getRoleDestination(

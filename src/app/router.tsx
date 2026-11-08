@@ -4,6 +4,7 @@ import { AppLayout } from "@/app/AppLayout";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { RequireStudent } from "@/features/auth/components/RequireStudent";
 import { LoginRoute } from "@/features/auth/routes/LoginRoute";
+import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
@@ -18,9 +19,11 @@ import { LecturerDashboardRoute } from "@/features/lecturer/dashboard/routes/Lec
 import { QuestionBankRoute } from "@/features/lecturer/questions/routes/QuestionBankRoute";
 import { ImportQuestionsRoute } from "@/features/lecturer/questions/routes/ImportQuestionsRoute";
 const CreateQuestionRoute = lazy(() =>
-  import("@/features/lecturer/questions/routes/CreateQuestionRoute").then((module) => ({
-    default: module.CreateQuestionRoute,
-  })),
+  import("@/features/lecturer/questions/routes/CreateQuestionRoute").then(
+    (module) => ({
+      default: module.CreateQuestionRoute,
+    }),
+  ),
 );
 import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/LearningMaterialsRoute";
 import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
@@ -40,7 +43,10 @@ import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
 import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
-import { UsersRoute } from "@/features/admin/routes/UsersRoute";
+import {
+  ExaminerRecordsRoute,
+  UsersRoute,
+} from "@/features/admin/routes/UsersRoute";
 import { StudentProfilesRoute } from "@/features/admin/routes/StudentProfilesRoute";
 import { LecturerProfilesRoute } from "@/features/admin/routes/LecturerProfilesRoute";
 import { StaffLayout } from "@/features/staff/components/StaffLayout";
@@ -106,6 +112,7 @@ export const router = createBrowserRouter([
   { path: "/demo/exam", element: <ExamDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   { path: "/login", element: <LoginRoute /> },
+  { path: "/student/login", element: <StudentLoginRoute /> },
   { path: "/register", element: <Navigate to="/login" replace /> },
   { path: "/forgot-password", element: <ForgotPasswordRoute /> },
   { path: "/dang-nhap", element: <Navigate to="/login" replace /> },
@@ -162,13 +169,19 @@ export const router = createBrowserRouter([
               },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
               { path: "/lecturer/grading", element: <LecturerGradingRoute /> },
-              { path: "/lecturer/invigilation-availability", element: <InvigilationAvailabilityRoute /> },
+              {
+                path: "/lecturer/invigilation-availability",
+                element: <InvigilationAvailabilityRoute />,
+              },
               {
                 path: "/lecturer/exams/:examId/attendance",
                 element: <AttendanceRoute />,
               },
               { path: "/lecturer/profile", element: <LecturerProfileRoute /> },
-              { path: "/lecturer/notifications", element: <NotificationsRoute /> },
+              {
+                path: "/lecturer/notifications",
+                element: <NotificationsRoute />,
+              },
             ],
           },
         ],
@@ -179,12 +192,21 @@ export const router = createBrowserRouter([
           {
             element: <AdminLayout />,
             children: [
-              { path: "/admin", element: <Navigate to="/admin/dashboard" replace /> },
+              {
+                path: "/admin",
+                element: <Navigate to="/admin/dashboard" replace />,
+              },
               { path: "/admin/dashboard", element: <AdminDashboardRoute /> },
               { path: "/admin/universities", element: <UniversitiesRoute /> },
               { path: "/admin/monitoring", element: <SystemMonitoringRoute /> },
-              { path: "/admin/voice-settings", element: <VoiceSettingsRoute /> },
-              { path: "/admin/exam-shortcuts", element: <ExamShortcutsRoute /> },
+              {
+                path: "/admin/voice-settings",
+                element: <VoiceSettingsRoute />,
+              },
+              {
+                path: "/admin/exam-shortcuts",
+                element: <ExamShortcutsRoute />,
+              },
               /*
                * Academic data (accounts, departments, majors, subjects, topics,
                * semesters, curriculums, profiles) moved to University Staff on
@@ -204,11 +226,24 @@ export const router = createBrowserRouter([
           {
             element: <StaffLayout />,
             children: [
-              { path: "/staff", element: <Navigate to="/staff/dashboard" replace /> },
+              {
+                path: "/staff",
+                element: <Navigate to="/staff/dashboard" replace />,
+              },
               { path: "/staff/dashboard", element: <StaffDashboardRoute /> },
               { path: "/staff/users", element: <UsersRoute /> },
-              { path: "/staff/student-profiles", element: <StudentProfilesRoute /> },
-              { path: "/staff/lecturer-profiles", element: <LecturerProfilesRoute /> },
+              {
+                path: "/staff/student-profiles",
+                element: <StudentProfilesRoute />,
+              },
+              {
+                path: "/staff/lecturer-profiles",
+                element: <LecturerProfilesRoute />,
+              },
+              {
+                path: "/staff/examiner-records",
+                element: <ExaminerRecordsRoute />,
+              },
               { path: "/staff/departments", element: <DepartmentsRoute /> },
               { path: "/staff/majors", element: <MajorsRoute /> },
               { path: "/staff/subjects", element: <SubjectsRoute /> },
@@ -254,7 +289,10 @@ export const router = createBrowserRouter([
                 path: "/examiner/schedule/:scheduleId",
                 element: <ExamScheduleDetailRoute />,
               },
-              { path: "/examiner/invigilation-periods", element: <InvigilationPeriodsRoute /> },
+              {
+                path: "/examiner/invigilation-periods",
+                element: <InvigilationPeriodsRoute />,
+              },
               {
                 path: "/examiner/schedule/new/details",
                 element: <ScheduleDetailsRoute />,
@@ -291,8 +329,14 @@ export const router = createBrowserRouter([
                 path: "/examiner/accommodations",
                 element: <AccommodationsRoute />,
               },
-              { path: "/examiner/notifications", element: <NotificationsRoute /> },
-              { path: "/examiner/notifications/manage", element: <NotificationManagementRoute /> },
+              {
+                path: "/examiner/notifications",
+                element: <NotificationsRoute />,
+              },
+              {
+                path: "/examiner/notifications/manage",
+                element: <NotificationManagementRoute />,
+              },
             ],
           },
         ],

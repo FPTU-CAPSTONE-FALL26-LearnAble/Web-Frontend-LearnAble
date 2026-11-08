@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PowerOff, ShieldCheck, UserCog, Users } from "lucide-react";
+import { describeError } from "@/app/providers";
 import {
   createLecturerProfile,
   createStudentProfile,
@@ -30,6 +31,10 @@ import {
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import {
+  DayMonthYearField,
+  RevealablePasswordField,
+} from "@/components/workbench/AccountFields";
 import {
   adminKeys,
   useAdminWrite,
@@ -92,13 +97,21 @@ const roleTone = (role: string) =>
         ? ("info" as const)
         : ("neutral" as const);
 
-export function UsersRoute() {
-  useRouteAnnouncer("User Accounts · LearnAble", "User Accounts");
-  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
+type UsersRouteProps = {
+  fixedRole?: UserRole;
+};
+
+export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
+  const examinerRecords = fixedRole === "Examiner";
+  const pageTitle = examinerRecords ? "Examiner Records" : "User Accounts";
+  useRouteAnnouncer(`${pageTitle} · LearnAble`, pageTitle);
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const managedRoles = isStaff ? staffManagedUserRoles : userRoles;
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("all");
+  const [role, setRole] = useState(fixedRole ?? "all");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
@@ -109,10 +122,13 @@ export function UsersRoute() {
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
   const [createdAccount, setCreatedAccount] = useState<AdminUser | null>(null);
+  const [staffDateError, setStaffDateError] = useState<string | null>(null);
   const departments = useDepartmentOptions(isStaff);
   const majors = useMajorOptions(isStaff);
   const curriculums = useCurriculumOptions(
-    isStaff && draft.role === "Student" ? draft.majorId || undefined : undefined,
+    isStaff && draft.role === "Student"
+      ? draft.majorId || undefined
+      : undefined,
   );
   const departmentRows = departments.data?.items ?? [];
   const majorRows = (majors.data?.items ?? []).filter(
@@ -120,15 +136,23 @@ export function UsersRoute() {
   );
 
   const list = useQuery({
-    queryKey: adminKeys.list("users", [search, role, status, page, size]),
+    queryKey: adminKeys.list("users", [
+      search,
+      fixedRole ?? role,
+      status,
+      page,
+      size,
+      isStaff,
+    ]),
     queryFn: () =>
       getAdminUsers({
         SearchTerm: search,
-        Role: role === "all" ? undefined : role,
+        Role: fixedRole ?? (role === "all" ? undefined : role),
         Status: status === "all" ? undefined : status,
         UniversityId: isStaff ? scope.universityId : undefined,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -139,6 +163,7 @@ export function UsersRoute() {
     setEditing(null);
     setDraft(emptyDraft);
     setCreatedAccount(null);
+    setStaffDateError(null);
     setErrors([]);
   };
   const create = useAdminWrite({
@@ -146,17 +171,19 @@ export function UsersRoute() {
     action: "Create account",
     alsoInvalidate: ["studentProfiles", "lecturerProfiles"],
     mutationFn: async () => {
-      const account = createdAccount ?? await createUser({
-        universityId: draft.universityId,
-        userCode: draft.userCode.trim(),
-        fullName: draft.fullName.trim(),
-        email: draft.email.trim(),
-        phone: draft.phone.trim() || null,
-        dateOfBirth: draft.dateOfBirth || null,
-        gender: draft.gender === unset ? null : draft.gender || null,
-        role: draft.role,
-        password: draft.password,
-      });
+      const account =
+        createdAccount ??
+        (await createUser({
+          universityId: draft.universityId,
+          userCode: draft.userCode.trim(),
+          fullName: draft.fullName.trim(),
+          email: draft.email.trim(),
+          phone: draft.phone.trim() || null,
+          dateOfBirth: draft.dateOfBirth || null,
+          gender: draft.gender === unset ? null : draft.gender || null,
+          role: draft.role,
+          password: draft.password,
+        }));
       if (!createdAccount) setCreatedAccount(account);
       if (isStaff && draft.role === "Student") {
         await createStudentProfile({
@@ -175,6 +202,7 @@ export function UsersRoute() {
       return account;
     },
     onSuccess: closeForm,
+    onError: (error) => setErrors([describeError(error)]),
   });
   const update = useAdminWrite({
     resource: "users",
@@ -199,9 +227,9 @@ export function UsersRoute() {
 
   const submit = () => {
     const found: string[] = [];
-    if (creating && !draft.universityId)
-      found.push("University is required.");
+    if (creating && !draft.universityId) found.push("University is required.");
     if (!draft.fullName.trim()) found.push("Full name is required.");
+    if (isStaff && staffDateError) found.push(staffDateError);
     if (creating) {
       if (!draft.userCode.trim()) found.push("User code is required.");
       if (!draft.email.trim()) found.push("Email is required.");
@@ -230,29 +258,42 @@ export function UsersRoute() {
   const reset = () => {
     setQuery("");
     setSearch("");
-    setRole("all");
+    setRole(fixedRole ?? "all");
     setStatus("all");
     setPage(1);
   };
   const activeCount = rows.filter((row) => row.status === "Active").length;
-  const staffCount = rows.filter((row) => row.role !== "Student").length;
+  const examinerCount = rows.filter((row) => row.role === "Examiner").length;
+  const startCreate = (role: UserRole = fixedRole ?? "Student") => {
+    setDraft({
+      ...emptyDraft,
+      universityId: scope.universityId,
+      role,
+    });
+    setErrors([]);
+    setCreating(true);
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeading
-        title="User Accounts"
-        description="Every LearnAble sign-in. A role decides which workspace the account reaches after login."
-      >
-        <Button
-          onClick={() => {
-            setDraft({ ...emptyDraft, universityId: scope.universityId });
-            setErrors([]);
-            setCreating(true);
-          }}
-        >
-          <UserCog aria-hidden />
-          New account
-        </Button>
+      <PageHeading title={pageTitle}>
+        {examinerRecords ? (
+          <Button onClick={() => startCreate("Examiner")}>
+            <ShieldCheck aria-hidden />
+            New examiner
+          </Button>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => startCreate("Examiner")}>
+              <ShieldCheck aria-hidden />
+              New examiner
+            </Button>
+            <Button onClick={() => startCreate()}>
+              <UserCog aria-hidden />
+              New account
+            </Button>
+          </div>
+        )}
       </PageHeading>
 
       <section
@@ -260,28 +301,26 @@ export function UsersRoute() {
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
         <SummaryCard
-          label="Total accounts"
+          label={examinerRecords ? "Total examiners" : "Total accounts"}
           value={list.data?.totalCount ?? "Not available"}
-          detail="Matching your current query"
           icon={<Users aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Active on this page"
           value={activeCount}
-          detail={`Of ${rows.length} rows shown`}
           icon={<ShieldCheck aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Inactive on this page"
           value={rows.length - activeCount}
-          detail="Cannot sign in"
           icon={<PowerOff aria-hidden className="size-5" />}
         />
         <SummaryCard
-          label="Staff on this page"
-          value={staffCount}
-          detail="Lecturer, examiner, staff or admin"
-          icon={<UserCog aria-hidden className="size-5" />}
+          label={
+            examinerRecords ? "Examiners on this page" : "Examiner accounts"
+          }
+          value={examinerRecords ? rows.length : examinerCount}
+          icon={<ShieldCheck aria-hidden className="size-5" />}
         />
       </section>
 
@@ -296,18 +335,20 @@ export function UsersRoute() {
         }}
         onReset={reset}
       >
-        <ChoiceField
-          label="Role"
-          value={role}
-          options={[
-            { value: "all", label: "All roles" },
-            ...managedRoles.map((value) => ({ value, label: value })),
-          ]}
-          onChange={(value) => {
-            setRole(value);
-            setPage(1);
-          }}
-        />
+        {!fixedRole && (
+          <ChoiceField
+            label="Role"
+            value={role}
+            options={[
+              { value: "all", label: "All roles" },
+              ...managedRoles.map((value) => ({ value, label: value })),
+            ]}
+            onChange={(value) => {
+              setRole(value);
+              setPage(1);
+            }}
+          />
+        )}
         <ChoiceField
           label="Account status"
           value={status}
@@ -322,18 +363,14 @@ export function UsersRoute() {
         />
       </FilterPanel>
 
-      {isStaff ? (
-        <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          Password reset and account reactivation are included in the Staff workflow, but remain unavailable until their Backend operations are published. Existing account data is still searchable and editable.
-        </p>
-      ) : null}
-
       <TablePanel
-        heading="All accounts"
+        heading={examinerRecords ? "All examiner accounts" : "All accounts"}
         shown={rows.length}
         total={list.data?.totalCount ?? 0}
-        noun="accounts"
-        tableLabel="User accounts table"
+        noun={examinerRecords ? "examiners" : "accounts"}
+        tableLabel={
+          examinerRecords ? "Examiner accounts table" : "User accounts table"
+        }
         read={list}
         page={page}
         pages={list.data?.totalPages ?? 1}
@@ -389,10 +426,12 @@ export function UsersRoute() {
                 {formatDate(row.createdAt)}
               </TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-max flex-nowrap gap-2">
                   <Button
                     variant="outline"
-                    disabled={isStaff && (row.role === "Admin" || row.role === "Staff")}
+                    disabled={
+                      isStaff && (row.role === "Admin" || row.role === "Staff")
+                    }
                     onClick={() => {
                       setEditing(row);
                       setErrors([]);
@@ -415,21 +454,36 @@ export function UsersRoute() {
                   >
                     Edit
                   </Button>
-                  {row.status === "Active" && !(isStaff && (row.role === "Admin" || row.role === "Staff")) && (
+                  {row.status === "Active" &&
+                    !(
+                      isStaff &&
+                      (row.role === "Admin" || row.role === "Staff")
+                    ) && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setDeactivating(row)}
+                      >
+                        Deactivate
+                      </Button>
+                    )}
+                  {isStaff &&
+                  row.status !== "Active" &&
+                  row.role !== "Admin" &&
+                  row.role !== "Staff" ? (
                     <Button
-                      variant="ghost"
-                      onClick={() => setDeactivating(row)}
+                      disabled
+                      variant="outline"
+                      title="Available when the Backend publishes account reactivation."
                     >
-                      Deactivate
-                    </Button>
-                  )}
-                  {isStaff && row.status !== "Active" && row.role !== "Admin" && row.role !== "Staff" ? (
-                    <Button disabled variant="outline" title="Reactivation API is not available yet">
                       Reactivate
                     </Button>
                   ) : null}
                   {isStaff && row.role !== "Admin" && row.role !== "Staff" ? (
-                    <Button disabled variant="ghost" title="Password reset API is not available yet">
+                    <Button
+                      disabled
+                      variant="ghost"
+                      title="Available when the Backend publishes password reset."
+                    >
                       Reset password
                     </Button>
                   ) : null}
@@ -440,8 +494,16 @@ export function UsersRoute() {
           {!rows.length && (
             <EmptyRow
               columns={7}
-              title="No accounts match your filters."
-              hint="Try another search, or create the account you need."
+              title={
+                examinerRecords
+                  ? "No examiner accounts match your filters."
+                  : "No accounts match your filters."
+              }
+              hint={
+                examinerRecords
+                  ? "Try another search, or create an examiner account."
+                  : "Try another search, or create the account you need."
+              }
             />
           )}
         </TableBody>
@@ -452,15 +514,28 @@ export function UsersRoute() {
         onOpenChange={(open) => {
           if (!open) closeForm();
         }}
-        title={creating ? "New account" : "Edit account"}
+        title={
+          creating
+            ? examinerRecords
+              ? "New examiner"
+              : "New account"
+            : "Edit account"
+        }
         description={
           creating
             ? "User code, email and role are permanent once the account exists."
             : `Update ${editing?.fullName ?? ""}. User code, email and role cannot be changed here.`
         }
-        submitLabel={creating ? (createdAccount ? "Retry academic profile" : "Create account") : "Save changes"}
+        submitLabel={
+          creating
+            ? createdAccount
+              ? "Retry academic profile"
+              : "Create account"
+            : "Save changes"
+        }
         pending={create.isPending || update.isPending}
         errors={errors}
+        errorsBelowActions={isStaff}
         onSubmit={submit}
       >
         <UniversityField
@@ -487,8 +562,11 @@ export function UsersRoute() {
           <ChoiceField
             label="Role"
             value={draft.role}
-            disabled={!creating}
-            options={managedRoles.map((value) => ({ value, label: value }))}
+            disabled={!creating || Boolean(fixedRole)}
+            options={(fixedRole ? [fixedRole] : managedRoles).map((value) => ({
+              value,
+              label: value,
+            }))}
             onChange={(value) =>
               setDraft((old) => ({
                 ...old,
@@ -501,9 +579,15 @@ export function UsersRoute() {
             }
           />
         </div>
-        {creating && isStaff && (draft.role === "Student" || draft.role === "Lecturer") ? (
+        {creating &&
+        isStaff &&
+        (draft.role === "Student" || draft.role === "Lecturer") ? (
           <ChoiceField
-            label={draft.role === "Student" ? "Department of student" : "Department of lecturer"}
+            label={
+              draft.role === "Student"
+                ? "Department of student"
+                : "Department of lecturer"
+            }
             value={draft.departmentId}
             placeholder="Select a department"
             options={departmentRows.map((row) => ({
@@ -531,7 +615,11 @@ export function UsersRoute() {
                 label: `${row.majorCode} · ${row.majorName}`,
               }))}
               onChange={(value) =>
-                setDraft((old) => ({ ...old, majorId: value, curriculumId: "" }))
+                setDraft((old) => ({
+                  ...old,
+                  majorId: value,
+                  curriculumId: "",
+                }))
               }
             />
             <ChoiceField
@@ -576,35 +664,58 @@ export function UsersRoute() {
           onChange={(value) => setDraft((old) => ({ ...old, email: value }))}
           error={errors.find((e) => e.startsWith("Email"))}
         />
-        {creating && (
-          <TextField
-            label="Initial password"
-            type="password"
-            value={draft.password}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, password: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Password"))
-                ? "Password must be at least 8 characters."
-                : undefined
-            }
-          />
-        )}
+        {creating &&
+          (isStaff ? (
+            <RevealablePasswordField
+              value={draft.password}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, password: value }))
+              }
+              error={
+                errors.some((e) => e.startsWith("Password"))
+                  ? "Password must be at least 8 characters."
+                  : undefined
+              }
+            />
+          ) : (
+            <TextField
+              label="Initial password"
+              type="password"
+              value={draft.password}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, password: value }))
+              }
+              error={
+                errors.some((e) => e.startsWith("Password"))
+                  ? "Password must be at least 8 characters."
+                  : undefined
+              }
+            />
+          ))}
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             label="Phone number"
             value={draft.phone}
             onChange={(value) => setDraft((old) => ({ ...old, phone: value }))}
           />
-          <TextField
-            label="Date of birth"
-            type="date"
-            value={draft.dateOfBirth}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, dateOfBirth: value }))
-            }
-          />
+          {isStaff ? (
+            <DayMonthYearField
+              value={draft.dateOfBirth}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, dateOfBirth: value }))
+              }
+              onValidityChange={setStaffDateError}
+            />
+          ) : (
+            <TextField
+              label="Date of birth"
+              type="date"
+              value={draft.dateOfBirth}
+              onChange={(value) =>
+                setDraft((old) => ({ ...old, dateOfBirth: value }))
+              }
+            />
+          )}
         </div>
         <ChoiceField
           label="Gender"
@@ -623,8 +734,12 @@ export function UsersRoute() {
           </p>
         )}
         {createdAccount ? (
-          <p role="status" className="text-sm font-semibold text-warning-foreground">
-            Account {createdAccount.userCode} was created. Retry only creates its missing academic profile and will not duplicate the account.
+          <p
+            role="status"
+            className="text-sm font-semibold text-warning-foreground"
+          >
+            Account {createdAccount.userCode} was created. Retry only creates
+            its missing academic profile and will not duplicate the account.
           </p>
         ) : null}
       </FormDialog>
@@ -638,8 +753,16 @@ export function UsersRoute() {
         description={`${deactivating?.fullName ?? "This account"} will no longer be able to sign in. The API exposes no reactivation endpoint, so this cannot be undone from this workspace.`}
         confirmLabel="Deactivate"
         pending={deactivate.isPending}
-        onConfirm={() => deactivating && !deactivate.isPending && deactivate.mutate(deactivating.userId)}
+        onConfirm={() =>
+          deactivating &&
+          !deactivate.isPending &&
+          deactivate.mutate(deactivating.userId)
+        }
       />
     </div>
   );
+}
+
+export function ExaminerRecordsRoute() {
+  return <UsersRoute fixedRole="Examiner" />;
 }

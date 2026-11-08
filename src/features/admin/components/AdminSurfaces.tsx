@@ -190,6 +190,7 @@ export function FormDialog({
   submitLabel,
   pending,
   errors,
+  errorsBelowActions = false,
   onSubmit,
   children,
 }: {
@@ -200,6 +201,7 @@ export function FormDialog({
   submitLabel: string;
   pending: boolean;
   errors: string[];
+  errorsBelowActions?: boolean;
   onSubmit: () => void;
   children: ReactNode;
 }) {
@@ -225,7 +227,7 @@ export function FormDialog({
             tooltip instead, which the accessibility contract forbids.
           */}
           <form onSubmit={submit} noValidate className="space-y-5">
-            {errors.length > 0 && (
+            {errors.length > 0 && !errorsBelowActions && (
               <div
                 id="admin-form-errors"
                 role="alert"
@@ -258,6 +260,20 @@ export function FormDialog({
                 {pending ? "Saving…" : submitLabel}
               </Button>
             </div>
+            {errors.length > 0 && errorsBelowActions && (
+              <div
+                id="admin-form-errors"
+                role="alert"
+                className="rounded-xl border border-destructive bg-destructive/10 p-4 text-destructive"
+              >
+                <p className="font-bold">Couldn’t save this account:</p>
+                <ul className="mt-2 list-inside list-disc text-sm">
+                  {errors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </form>
         </DialogContent>
       ) : null}
@@ -295,7 +311,10 @@ export function ConfirmAction({
             <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
             <AlertDialogAction disabled={pending} onClick={onConfirm}>
               {pending ? (
-                <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+                <Loader2
+                  aria-hidden
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
               ) : null}
               {pending ? "Deleting…" : confirmLabel}
             </AlertDialogAction>

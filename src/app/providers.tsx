@@ -1,5 +1,9 @@
 import { type ReactNode } from "react";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { LiveRegion } from "@/shared/a11y/LiveRegion";
 import { Toaster, toast } from "@/shared/ui/primitives/toast";
 import { announce } from "@/shared/a11y/announcer";
@@ -16,8 +20,14 @@ export function describeError(error: unknown): string {
         return vi.errors.unauthorized;
       case "not_found":
         return vi.errors.notFound;
-      case "server":
+      case "server": {
+        const detail =
+          error.detail.errors?.find(Boolean) ?? error.detail.message;
+        if (detail) return detail;
+        if (error.detail.status === 409)
+          return "An account with the same user code or email already exists.";
         return vi.errors.server;
+      }
       case "parse":
         return vi.errors.unknown;
     }

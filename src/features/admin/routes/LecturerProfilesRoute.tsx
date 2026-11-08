@@ -4,6 +4,7 @@ import { BadgeCheck, Building2, Trash2, UserPlus, Users } from "lucide-react";
 import {
   createLecturerProfile,
   deleteLecturerProfile,
+  getAdminUsers,
   getLecturerProfiles,
   updateLecturerProfile,
   type LecturerProfile,
@@ -23,6 +24,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { describeError } from "@/app/providers";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
@@ -63,21 +65,40 @@ const noDepartment = "none";
 
 export function LecturerProfilesRoute() {
   useRouteAnnouncer("Lecturer Profiles · LearnAble", "Lecturer Profiles");
-  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
+  const [lecturerAccountSearch, setLecturerAccountSearch] = useState("");
   const [editing, setEditing] = useState<LecturerProfile | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [removing, setRemoving] = useState<LecturerProfile | null>(null);
 
   const lecturers = useUserOptions("Lecturer");
+  const lecturerCandidates = useQuery({
+    queryKey: adminKeys.list("users", [
+      "lecturer-profile-candidates",
+      lecturerAccountSearch,
+    ]),
+    queryFn: () =>
+      getAdminUsers({
+        Role: "Lecturer",
+        Status: "Active",
+        SearchTerm: lecturerAccountSearch.trim(),
+        PageNumber: 1,
+        PageSize: 25,
+      }),
+    enabled: creating && lecturerAccountSearch.trim().length >= 2,
+  });
   const departments = useDepartmentOptions();
   const lecturerRows = lecturers.data?.items ?? [];
+  const lecturerCandidateRows = lecturerCandidates.data?.items ?? [];
   const departmentRows = departments.data?.items ?? [];
 
   const list = useQuery({
@@ -86,6 +107,7 @@ export function LecturerProfilesRoute() {
       department,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getLecturerProfiles({
@@ -93,6 +115,7 @@ export function LecturerProfilesRoute() {
         DepartmentId: department === "all" ? undefined : department,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -100,6 +123,7 @@ export function LecturerProfilesRoute() {
 
   const closeForm = () => {
     setCreating(false);
+    setLecturerAccountSearch("");
     setEditing(null);
     setDraft(emptyDraft);
     setErrors([]);
@@ -124,8 +148,7 @@ export function LecturerProfilesRoute() {
   const update = useAdminWrite({
     resource: "lecturerProfiles",
     action: "Update lecturer profile",
-    mutationFn: () =>
-      updateLecturerProfile(editing!.userId, body()),
+    mutationFn: () => updateLecturerProfile(editing!.userId, body()),
     onSuccess: closeForm,
   });
   const remove = useAdminWrite<string>({
@@ -166,6 +189,7 @@ export function LecturerProfilesRoute() {
           onClick={() => {
             setDraft(emptyDraft);
             setErrors([]);
+            setLecturerAccountSearch("");
             setCreating(true);
           }}
         >
@@ -353,15 +377,47 @@ export function LecturerProfilesRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        {creating && (
+          <>
+            <TextField
+              label="Find lecturer account"
+              value={lecturerAccountSearch}
+              placeholder="Search by lecturer code or full name"
+              onChange={(value) => {
+                setLecturerAccountSearch(value);
+                setDraft((old) => ({ ...old, userId: "" }));
+              }}
+            />
+            {lecturerCandidates.error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {describeError(lecturerCandidates.error)}
+              </p>
+            ) : !lecturerAccountSearch.trim() ? (
+              <p className="text-sm text-muted-foreground">
+                Enter at least 2 characters to search active lecturer accounts.
+              </p>
+            ) : lecturerAccountSearch.trim().length < 2 ? (
+              <p className="text-sm text-muted-foreground">
+                Type one more character to start the search.
+              </p>
+            ) : null}
+          </>
+        )}
         <ChoiceField
           label="Lecturer account"
           value={draft.userId}
           placeholder="Select a lecturer account"
-          disabled={!creating}
-          options={lecturerRows.map((row) => ({
-            value: row.userId,
-            label: `${row.userCode} · ${row.fullName}`,
-          }))}
+          disabled={
+            !creating ||
+            lecturerAccountSearch.trim().length < 2 ||
+            lecturerCandidates.isPending
+          }
+          options={(creating ? lecturerCandidateRows : lecturerRows).map(
+            (row) => ({
+              value: row.userId,
+              label: `${row.userCode} · ${row.fullName}`,
+            }),
+          )}
           onChange={(value) => setDraft((old) => ({ ...old, userId: value }))}
         />
         <ChoiceField
@@ -369,7 +425,9 @@ export function LecturerProfilesRoute() {
           value={draft.departmentId || noDepartment}
           placeholder="Select a department"
           options={[
-            ...(isStaff ? [] : [{ value: noDepartment, label: "No department" }]),
+            ...(isStaff
+              ? []
+              : [{ value: noDepartment, label: "No department" }]),
             ...departmentRows.map((row) => ({
               value: row.departmentId,
               label: `${row.departmentCode} · ${row.departmentName}`,

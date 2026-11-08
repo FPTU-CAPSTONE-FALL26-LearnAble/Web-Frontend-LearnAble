@@ -50,12 +50,14 @@ export function useAdminWrite<TVariables = void, TData = void>({
   action,
   mutationFn,
   onSuccess,
+  onError,
   alsoInvalidate = [],
 }: {
   resource: string;
   action: string;
   mutationFn: (variables: TVariables) => Promise<TData>;
   onSuccess?: (data: TData) => void;
+  onError?: (error: unknown) => void;
   alsoInvalidate?: string[];
 }) {
   const queryClient = useQueryClient();
@@ -70,12 +72,14 @@ export function useAdminWrite<TVariables = void, TData = void>({
       toast({ title: `${action} succeeded` });
       onSuccess?.(data);
     },
-    onError: (error: unknown) =>
+    onError: (error: unknown) => {
       toast({
         title: `${action} failed`,
         description: `${describeError(error)} No change has been saved.`,
         variant: "error",
-      }),
+      });
+      onError?.(error);
+    },
   });
 }
 
@@ -134,7 +138,10 @@ export function useCurriculumOptions(majorId?: string) {
   const query = useQuery({
     queryKey: adminKeys.list("curriculums", ["options", majorId ?? "all"]),
     queryFn: () =>
-      getCurriculums({ PageSize: OPTIONS_PAGE_SIZE, MajorId: majorId || undefined }),
+      getCurriculums({
+        PageSize: OPTIONS_PAGE_SIZE,
+        MajorId: majorId || undefined,
+      }),
   });
   useExpiredAdminSession(query.error);
   return query;

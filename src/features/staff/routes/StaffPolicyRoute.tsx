@@ -81,7 +81,7 @@ export function StaffPolicyRoute() {
                 <Save aria-hidden /> Save defaults
               </Button>
               <p id="policy-api-status" className="text-xs text-muted-foreground">
-                Saving becomes available when the university default-policy API is published.
+                Saving this policy will be available in a future update.
               </p>
             </div>
           </CardContent>

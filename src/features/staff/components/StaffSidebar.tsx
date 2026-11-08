@@ -9,6 +9,7 @@ import {
   Network,
   ScrollText,
   Settings2,
+  ShieldCheck,
   UserCog,
   UserRoundCheck,
   Users,
@@ -38,8 +39,21 @@ const groups: Group[] = [
     icon: Users,
     items: [
       { label: "User Accounts", path: "/staff/users", icon: UserCog },
-      { label: "Student Records", path: "/staff/student-profiles", icon: GraduationCap },
-      { label: "Lecturer Records", path: "/staff/lecturer-profiles", icon: UserRoundCheck },
+      {
+        label: "Student Records",
+        path: "/staff/student-profiles",
+        icon: GraduationCap,
+      },
+      {
+        label: "Lecturer Records",
+        path: "/staff/lecturer-profiles",
+        icon: UserRoundCheck,
+      },
+      {
+        label: "Examiner Records",
+        path: "/staff/examiner-records",
+        icon: ShieldCheck,
+      },
     ],
   },
   {
@@ -58,7 +72,11 @@ const groups: Group[] = [
     items: [
       { label: "Subjects", path: "/staff/subjects", icon: LibraryBig },
       { label: "Curriculums", path: "/staff/curriculums", icon: ScrollText },
-      { label: "Default Exam Policy", path: "/staff/default-policy", icon: Settings2 },
+      {
+        label: "Default Exam Policy",
+        path: "/staff/default-policy",
+        icon: Settings2,
+      },
     ],
   },
   {
@@ -66,7 +84,11 @@ const groups: Group[] = [
     id: "facilities",
     icon: DoorOpen,
     items: [
-      { label: "Exam Rooms & Seats", path: "/staff/exam-rooms", icon: DoorOpen },
+      {
+        label: "Exam Rooms & Seats",
+        path: "/staff/exam-rooms",
+        icon: DoorOpen,
+      },
     ],
   },
 ];
@@ -90,7 +112,8 @@ function StaffNavGroup({
   onNavigate?: () => void;
 }) {
   const active = group.items.some(
-    (item) => item.path === activePath || activePath.startsWith(`${item.path}/`),
+    (item) =>
+      item.path === activePath || activePath.startsWith(`${item.path}/`),
   );
   const [open, setOpen] = useState(active);
   useEffect(() => {
@@ -114,7 +137,10 @@ function StaffNavGroup({
         />
       </button>
       {open ? (
-        <div id={`staff-nav-${group.id}`} className="ml-5 mt-1 space-y-1 border-l border-border pl-3">
+        <div
+          id={`staff-nav-${group.id}`}
+          className="ml-5 mt-1 space-y-1 border-l border-border pl-3"
+        >
           {group.items.map((item) => {
             const ItemIcon = item.icon;
             return (
@@ -158,34 +184,45 @@ export function StaffSidebar({
   return (
     <div className="admin-scroll flex h-full flex-col overflow-y-auto bg-white px-4 py-4">
       <div className="border-b border-border px-1 pb-4">
-        <BrandIdentity lecturer roleLabel="Staff" />
-      </div>
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
-        <Avatar size="lg">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold">{user.fullName}</p>
-          <p className="text-xs text-muted-foreground">Academic operations</p>
-        </div>
+        <BrandIdentity />
       </div>
       <nav aria-label="Staff navigation" className="mt-5 space-y-1">
-        <NavLink to={dashboard.path} end onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}>
+        <NavLink
+          to={dashboard.path}
+          end
+          onClick={onNavigate}
+          className={({ isActive }) => itemClasses(isActive)}
+        >
           <DashboardIcon aria-hidden className="size-5 shrink-0" />
           {dashboard.label}
         </NavLink>
         {groups.map((group) => (
-          <StaffNavGroup key={group.id} group={group} activePath={activePath} onNavigate={onNavigate} />
+          <StaffNavGroup
+            key={group.id}
+            group={group}
+            activePath={activePath}
+            onNavigate={onNavigate}
+          />
         ))}
       </nav>
       <div className="mt-auto pt-8">
         <Separator className="mb-4" />
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent p-3">
+          <Avatar size="lg">
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user.fullName}</p>
-            <p className="truncate text-xs text-muted-foreground">University staff</p>
+            <p className="truncate text-xs text-muted-foreground">
+              Staff workspace
+            </p>
           </div>
-          <Button variant="ghost" size="icon" aria-label="Sign out" onClick={onSignOut}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Sign out"
+            onClick={onSignOut}
+          >
             <LogOut aria-hidden />
           </Button>
         </div>

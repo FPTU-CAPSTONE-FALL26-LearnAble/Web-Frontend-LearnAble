@@ -73,7 +73,9 @@ const statusTone = (status: string) =>
         : ("info" as const);
 
 export function CurriculumsRoute() {
-  const isStaff = useAuthStore((state) => state.user?.role?.toLowerCase() === "staff");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   useRouteAnnouncer("Curriculums · LearnAble Admin", "Curriculums");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -102,6 +104,7 @@ export function CurriculumsRoute() {
       appliedIntake,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getCurriculums({
@@ -111,6 +114,7 @@ export function CurriculumsRoute() {
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -224,12 +228,6 @@ export function CurriculumsRoute() {
           Create a major first — every curriculum belongs to one.
         </p>
       )}
-      {isStaff ? (
-        <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          Curriculum records are connected to majors. Subject-to-curriculum assignment is part of this workspace design and will become editable when the Backend publishes that relationship endpoint.
-        </p>
-      ) : null}
-
       <section
         aria-label="Curriculum summary"
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
@@ -389,7 +387,11 @@ export function CurriculumsRoute() {
                     Edit
                   </Button>
                   {isStaff ? (
-                    <Button disabled variant="outline" title="Curriculum subject assignment API is not available yet">
+                    <Button
+                      disabled
+                      variant="outline"
+                      title="Curriculum subject assignment API is not available yet"
+                    >
                       Manage subjects
                     </Button>
                   ) : null}

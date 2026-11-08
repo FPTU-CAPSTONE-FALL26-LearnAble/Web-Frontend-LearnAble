@@ -6,6 +6,7 @@ import {
   createStudentProfile,
   deleteStudentProfile,
   enrollmentStatuses,
+  getAdminUsers,
   getStudentProfiles,
   type EnrollmentStatus,
   type StudentProfile,
@@ -26,6 +27,8 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { describeError } from "@/app/providers";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   curriculumLabel,
@@ -72,6 +75,9 @@ const statusTone = (status: string) =>
 
 export function StudentProfilesRoute() {
   useRouteAnnouncer("Student Profiles · LearnAble", "Student Profiles");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const [major, setMajor] = useState("all");
   const [curriculum, setCurriculum] = useState("all");
   const [enrollment, setEnrollment] = useState("all");
@@ -80,6 +86,7 @@ export function StudentProfilesRoute() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
+  const [studentAccountSearch, setStudentAccountSearch] = useState("");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [statusChange, setStatusChange] = useState<{
@@ -89,6 +96,21 @@ export function StudentProfilesRoute() {
   const [removing, setRemoving] = useState<StudentProfile | null>(null);
 
   const students = useUserOptions("Student");
+  const studentCandidates = useQuery({
+    queryKey: adminKeys.list("users", [
+      "student-profile-candidates",
+      studentAccountSearch,
+    ]),
+    queryFn: () =>
+      getAdminUsers({
+        Role: "Student",
+        Status: "Active",
+        SearchTerm: studentAccountSearch.trim(),
+        PageNumber: 1,
+        PageSize: 25,
+      }),
+    enabled: creating && studentAccountSearch.trim().length >= 2,
+  });
   const majors = useMajorOptions();
   // Draft narrows its own curriculum options to the chosen major.
   const draftMajor = creating ? draft.majorId : undefined;
@@ -96,6 +118,7 @@ export function StudentProfilesRoute() {
   const allCurriculums = useCurriculumOptions();
 
   const studentRows = students.data?.items ?? [];
+  const studentCandidateRows = studentCandidates.data?.items ?? [];
   const majorRows = majors.data?.items ?? [];
   const curriculumRows = allCurriculums.data?.items ?? [];
 
@@ -107,6 +130,7 @@ export function StudentProfilesRoute() {
       appliedIntake,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getStudentProfiles({
@@ -116,6 +140,7 @@ export function StudentProfilesRoute() {
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -123,6 +148,7 @@ export function StudentProfilesRoute() {
 
   const closeForm = () => {
     setCreating(false);
+    setStudentAccountSearch("");
     setDraft(emptyDraft);
     setErrors([]);
   };
@@ -188,15 +214,13 @@ export function StudentProfilesRoute() {
 
   return (
     <div className="space-y-6">
-      <PageHeading
-        title="Student Profiles"
-        description="The academic record behind a student account: major, curriculum, intake and enrollment status."
-      >
+      <PageHeading title="Student Profiles">
         <Button
           disabled={!studentRows.length || !majorRows.length}
           onClick={() => {
             setDraft(emptyDraft);
             setErrors([]);
+            setStudentAccountSearch("");
             setCreating(true);
           }}
         >
@@ -221,25 +245,21 @@ export function StudentProfilesRoute() {
         <SummaryCard
           label="Total profiles"
           value={list.data?.totalCount ?? "Not available"}
-          detail="Matching your current query"
           icon={<UserRound aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Studying on this page"
           value={count("Studying")}
-          detail="Currently enrolled"
           icon={<GraduationCap aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Reserved on this page"
           value={count("Reserved")}
-          detail="Temporarily paused"
           icon={<UserRound aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Graduated on this page"
           value={count("Graduated")}
-          detail="Programme completed"
           icon={<GraduationCap aria-hidden className="size-5" />}
         />
       </section>
@@ -420,11 +440,37 @@ export function StudentProfilesRoute() {
         errors={errors}
         onSubmit={submit}
       >
+        <TextField
+          label="Find student account"
+          value={studentAccountSearch}
+          placeholder="Search by student code or full name"
+          onChange={(value) => {
+            setStudentAccountSearch(value);
+            setDraft((old) => ({ ...old, userId: "" }));
+          }}
+        />
+        {studentCandidates.error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {describeError(studentCandidates.error)}
+          </p>
+        ) : !studentAccountSearch.trim() ? (
+          <p className="text-sm text-muted-foreground">
+            Enter at least 2 characters to search active student accounts.
+          </p>
+        ) : studentAccountSearch.trim().length < 2 ? (
+          <p className="text-sm text-muted-foreground">
+            Type one more character to start the search.
+          </p>
+        ) : null}
         <ChoiceField
           label="Student account"
           value={draft.userId}
           placeholder="Select a student account"
-          options={studentRows.map((row) => ({
+          disabled={
+            studentAccountSearch.trim().length < 2 ||
+            studentCandidates.isPending
+          }
+          options={studentCandidateRows.map((row) => ({
             value: row.userId,
             label: `${row.userCode} · ${row.fullName}`,
           }))}

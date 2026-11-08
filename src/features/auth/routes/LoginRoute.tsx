@@ -285,6 +285,15 @@ export function LoginRoute() {
                 Services or campus IT if you need account support.
               </p>
             </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                <Link
+                  to="/student/login"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Student accessible sign-in
+                </Link>
+              </p>
           </div>
         </section>
       </div>
