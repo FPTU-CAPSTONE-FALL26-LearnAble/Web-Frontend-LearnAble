@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import {
   createDepartment,
+  createUser,
   getDepartments,
   getAdminUsers,
   setDepartmentActive,
@@ -32,7 +33,10 @@ vi.mock("@/api/admin", async (importOriginal) => {
   return {
     ...actual,
     getUniversityLookup: vi.fn(async () =>
-      page([{ universityId: "uni-fpt", code: "FPTU", name: "FPT University" }]),
+      page([
+        { universityId: "uni-fpt", code: "FPTU", name: "FPT University" },
+        { universityId: "uni-hust", code: "HUST", name: "Hanoi University" },
+      ]),
     ),
     getDepartments: vi.fn(async () => ({
       items: [
@@ -84,6 +88,7 @@ vi.mock("@/api/admin", async (importOriginal) => {
       page([
         {
           userId: "u1",
+          universityId: "uni-fpt",
           userCode: "HE180100",
           email: "student@fpt.edu.vn",
           fullName: "Nguyen Minh Long",
@@ -109,7 +114,6 @@ function view(element: ReactNode) {
       email: "admin@fpt.edu.vn",
       role: "Admin",
       universityId: "uni-fpt",
-      isSuperAdmin: false,
     },
   });
   const router = createMemoryRouter([{ path: "/", element }], {
@@ -210,7 +214,7 @@ describe("Admin workspaces", { timeout: 30000 }, () => {
     );
   });
 
-  it("locks the university of a regular admin to their own tenant", async () => {
+  it("locks the university of an admin to their own tenant", async () => {
     const user = userEvent.setup();
     view(<DepartmentsRoute />);
     await screen.findByText("Software Engineering");
@@ -249,6 +253,38 @@ describe("Admin workspaces", { timeout: 30000 }, () => {
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Start" }));
     await waitFor(() => expect(startSemester).toHaveBeenCalledWith("s1"));
+  });
+
+  it("creates a Staff account for another university", async () => {
+    const user = userEvent.setup();
+    view(<UsersRoute />);
+    await screen.findByText("Nguyen Minh Long");
+    expect(await screen.findByText("FPTU · FPT University")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "New account" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByLabelText("University"));
+    await user.click(
+      await screen.findByRole("option", { name: "HUST · Hanoi University" }),
+    );
+    await user.click(within(dialog).getByLabelText("Role"));
+    await user.click(await screen.findByRole("option", { name: "Staff" }));
+    await user.type(screen.getByLabelText("Full name"), "Tran Thi Mai");
+    await user.type(screen.getByLabelText("User code"), "STF001");
+    await user.type(screen.getByLabelText("Email address"), "mai@hust.edu.vn");
+    await user.type(screen.getByLabelText("Initial password"), "Staff1234");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          universityId: "uni-hust",
+          role: "Staff",
+          userCode: "STF001",
+          email: "mai@hust.edu.vn",
+        }),
+      ),
+    );
   });
 
   it("requires a valid email and an 8-character password for a new account", async () => {

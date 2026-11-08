@@ -30,6 +30,7 @@ import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
 import { AdminDashboardRoute } from "@/features/admin/routes/AdminDashboardRoute";
 import { UniversitiesRoute } from "@/features/admin/routes/UniversitiesRoute";
+import { UsersRoute } from "@/features/admin/routes/UsersRoute";
 import { SystemMonitoringRoute } from "@/features/admin/routes/SystemMonitoringRoute";
 import { VoiceSettingsRoute } from "@/features/admin/routes/VoiceSettingsRoute";
 import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
@@ -146,12 +147,13 @@ export const router = createBrowserRouter([
               { path: "/admin", element: <Navigate to="/admin/dashboard" replace /> },
               { path: "/admin/dashboard", element: <AdminDashboardRoute /> },
               { path: "/admin/universities", element: <UniversitiesRoute /> },
+              { path: "/admin/users", element: <UsersRoute /> },
               { path: "/admin/monitoring", element: <SystemMonitoringRoute /> },
               { path: "/admin/voice-settings", element: <VoiceSettingsRoute /> },
               { path: "/admin/exam-shortcuts", element: <ExamShortcutsRoute /> },
               /*
-               * Academic data (accounts, departments, majors, subjects, topics,
-               * semesters, curriculums, profiles) moved to University Staff on
+               * Academic data (departments, majors, subjects, topics, semesters,
+               * curriculums, profiles) moved to University Staff on
                * 05/11/2026. Old bookmarks land on the dashboard, not a 404.
                */
               {

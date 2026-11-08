@@ -360,7 +360,6 @@ export function SemestersRoute() {
       >
         <UniversityField
           value={draft.universityId}
-          disabled={!creating}
           onChange={(value) =>
             setDraft((old) => ({ ...old, universityId: value }))
           }
