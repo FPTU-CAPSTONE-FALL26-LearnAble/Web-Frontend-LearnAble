@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiFailure, request } from "@/api/client";
+import { envelopeFailure, request } from "@/api/client";
 import {
   pageSchema,
   queryString,
@@ -13,8 +13,8 @@ import {
  * Curriculums, Users, StudentProfiles, LecturerProfiles).
  *
  * The API is multi-tenant: Departments, Subjects, Semesters and Users belong
- * to a university, and their create bodies carry `universityId`. A regular
- * admin writes into their own university; a super admin may pick one.
+ * to a university, and their create bodies carry `universityId`. An admin
+ * writes into their own university.
  *
  * Reads keep the `catalog.ts` conventions: paged envelope, null → "Not
  * available". Writes are real backend calls — no local simulation — so a
@@ -30,8 +30,8 @@ export const userRoles = [
   "Student",
   "Lecturer",
   "Examiner",
-  "Admin",
   "Staff",
+  "Admin",
 ] as const;
 export const staffManagedUserRoles = [
   "Student",
@@ -249,12 +249,9 @@ export const universitySchema = z
     address: z.string().nullable(),
     phone: z.string().nullable(),
     contactEmail: z.string().nullable(),
-    website: z.string().nullable().optional(),
     subdomain: z.string().nullable(),
     emailDomain: z.string().nullable(),
-    timezone: z.string().nullable().optional(),
     logoUrl: z.string().nullable(),
-    primaryColor: z.string().nullable().optional(),
     status: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -332,10 +329,15 @@ function envelope<T extends z.ZodTypeAny>(data: T) {
 function unwrap<T>(response: {
   success: boolean;
   message?: string | null;
+  errors?: string[] | null;
   data?: T | null;
 }): T {
-  if (!response.success || response.data === null || response.data === undefined) {
-    throw new ApiFailure({ kind: "server", status: 200 });
+  if (
+    !response.success ||
+    response.data === null ||
+    response.data === undefined
+  ) {
+    throw envelopeFailure(response);
   }
   return response.data;
 }
@@ -379,7 +381,7 @@ async function write(
     }),
     body === undefined ? { method } : { method, json: body },
   );
-  if (!response.success) throw new ApiFailure({ kind: "server", status: 200 });
+  if (!response.success) throw envelopeFailure(response);
 }
 
 /** Writes whose documented response contains the created resource. */
@@ -389,11 +391,10 @@ async function writeOne<T>(
   body: unknown,
   item: z.ZodTypeAny,
 ): Promise<T> {
-  const response = await request(
-    `/${resource}`,
-    envelope(item),
-    { method, json: body },
-  );
+  const response = await request(`/${resource}`, envelope(item), {
+    method,
+    json: body,
+  });
   return unwrap(response) as T;
 }
 
@@ -407,12 +408,9 @@ export type CreateUniversityBody = {
   address?: string | null;
   phone?: string | null;
   contactEmail?: string | null;
-  website?: string | null;
   subdomain?: string | null;
   emailDomain?: string | null;
-  timezone?: string | null;
   logoUrl?: string | null;
-  primaryColor?: string | null;
 };
 /** Code, subdomain and email domain are fixed once the tenant exists. */
 export type UpdateUniversityBody = Omit<
@@ -599,7 +597,8 @@ export const getMajors = (filters: ReadFilters = {}) =>
     SortBy: "majorCode",
     ...filters,
   });
-export const getMajor = (id: string) => readOne<Major>("Majors", id, majorSchema);
+export const getMajor = (id: string) =>
+  readOne<Major>("Majors", id, majorSchema);
 export const createMajor = (body: CreateMajorBody) =>
   write("Majors", "POST", body);
 export const updateMajor = (id: string, body: UpdateMajorBody) =>

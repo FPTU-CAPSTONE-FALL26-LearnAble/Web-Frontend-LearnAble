@@ -85,14 +85,12 @@ export function useAdminWrite<TVariables = void, TData = void>({
 
 /**
  * Tenant scope of the signed-in admin. Tenant-owned creates (departments,
- * subjects, semesters, users) default to the admin's own university; only a
- * super admin may choose another one.
+ * subjects, semesters, users) use the admin's own university.
  */
 export function useUniversityScope() {
   const user = useAuthStore((state) => state.user);
   return {
     universityId: user?.universityId ?? "",
-    isSuperAdmin: user?.isSuperAdmin ?? false,
   };
 }
 

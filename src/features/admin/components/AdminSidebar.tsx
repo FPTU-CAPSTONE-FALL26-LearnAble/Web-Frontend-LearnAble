@@ -8,6 +8,8 @@ import {
   Network,
   Settings2,
   University,
+  UserCog,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,7 +21,7 @@ import { Button } from "@/shared/ui/primitives/button";
 import { Separator } from "@/shared/ui/primitives/separator";
 import { cn } from "@/lib/utils";
 
-type Item = { label: string; path: string; icon: LucideIcon; superAdminOnly?: boolean };
+type Item = { label: string; path: string; icon: LucideIcon };
 type Group = { label: string; id: string; icon: LucideIcon; items: Item[] };
 
 export const adminNavigation: { dashboard: Item; groups: Group[] } = {
@@ -29,9 +31,9 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
     icon: LayoutDashboard,
   },
   /*
-   * 05/11/2026 role split: accounts, departments, majors, subjects, topics,
-   * curriculums, semesters and profiles moved to University Staff. Their route
-   * files stay in `features/admin/routes/` until the Staff workspace takes them.
+   * 05/11/2026 role split: departments, majors, subjects, topics, curriculums,
+   * semesters and profiles moved to University Staff. Their route files stay in
+   * `features/admin/routes/` until the Staff workspace takes them.
    */
   groups: [
     {
@@ -43,9 +45,14 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
           label: "Universities",
           path: "/admin/universities",
           icon: University,
-          superAdminOnly: true,
         },
       ],
+    },
+    {
+      label: "People",
+      id: "people",
+      icon: Users,
+      items: [{ label: "User accounts", path: "/admin/users", icon: UserCog }],
     },
     {
       label: "System",
@@ -193,23 +200,14 @@ export function AdminSidebar({
           <DashboardIcon aria-hidden className="size-5 shrink-0" />
           {adminNavigation.dashboard.label}
         </NavLink>
-        {adminNavigation.groups
-          .map((group) => ({
-            ...group,
-            items: group.items.filter(
-              (item) => user.isSuperAdmin || !item.superAdminOnly,
-            ),
-          }))
-          // A group whose every item is hidden would be an empty disclosure.
-          .filter((group) => group.items.length > 0)
-          .map((group) => (
-            <NavGroup
-              key={group.id}
-              group={group}
-              activePath={activePath}
-              onNavigate={onNavigate}
-            />
-          ))}
+        {adminNavigation.groups.map((group) => (
+          <NavGroup
+            key={group.id}
+            group={group}
+            activePath={activePath}
+            onNavigate={onNavigate}
+          />
+        ))}
       </nav>
       <div className="mt-auto pt-8">
         <Separator className="mb-4" />
@@ -217,7 +215,7 @@ export function AdminSidebar({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user.fullName}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {user.isSuperAdmin ? "Super administrator" : "University administrator"}
+              System administrator
             </p>
           </div>
           <Button

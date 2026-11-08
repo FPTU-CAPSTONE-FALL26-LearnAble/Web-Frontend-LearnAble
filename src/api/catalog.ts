@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiFailure, request } from "@/api/client";
+import { envelopeFailure, request } from "@/api/client";
 
 const unavailable = "Not available";
 const questionTypeSchema = z.enum(["Single", "Multiple", "Essay"]);
@@ -245,7 +245,7 @@ async function readPage<T>(
     envelope,
   );
   if (!response.success || !response.data) {
-    throw new ApiFailure({ kind: "server", status: 200 });
+    throw envelopeFailure(response);
   }
   return response.data as Page<T>;
 }
@@ -262,7 +262,7 @@ export async function getQuestion(questionId: string) {
   });
   const response = await request(`/Questions/${questionId}`, envelope);
   if (!response.success || !response.data) {
-    throw new ApiFailure({ kind: "server", status: 200 });
+    throw envelopeFailure(response);
   }
   return response.data as CatalogQuestion;
 }

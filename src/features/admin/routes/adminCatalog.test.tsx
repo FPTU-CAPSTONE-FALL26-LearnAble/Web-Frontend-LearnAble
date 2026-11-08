@@ -7,11 +7,14 @@ import {
   changeEnrollmentStatus,
   createTopic,
   createUniversity,
+  getUniversities,
+  universitySchema,
+  updateUniversity,
   deleteStudentProfile,
   getAdminTopics,
-  getUniversities,
   setUniversityActive,
 } from "@/api/admin";
+import { ApiFailure } from "@/api/client";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
 import { StudentProfilesRoute } from "./StudentProfilesRoute";
@@ -51,12 +54,9 @@ const university = {
   address: null,
   phone: null,
   contactEmail: "contact@fpt.edu.vn",
-  website: null,
   subdomain: "fpt",
   emailDomain: "fpt.edu.vn",
-  timezone: "Asia/Ho_Chi_Minh",
   logoUrl: null,
-  primaryColor: null,
   status: "Active",
   createdAt: "2026-01-06T00:00:00Z",
   updatedAt: "2026-01-06T00:00:00Z",
@@ -83,6 +83,7 @@ vi.mock("@/api/admin", async (importOriginal) => {
     getUniversities: vi.fn(async () => page([university])),
     getUniversityLookup: vi.fn(async () => page([university])),
     createUniversity: vi.fn(async () => undefined),
+    updateUniversity: vi.fn(async () => undefined),
     setUniversityActive: vi.fn(async () => undefined),
     getMajors: vi.fn(async () =>
       page([
@@ -155,7 +156,7 @@ vi.mock("@/api/admin", async (importOriginal) => {
   };
 });
 
-function view(element: ReactNode, { isSuperAdmin = false } = {}) {
+function view(element: ReactNode) {
   useAuthStore.setState({
     user: {
       id: "admin-test",
@@ -163,7 +164,6 @@ function view(element: ReactNode, { isSuperAdmin = false } = {}) {
       email: "admin@fpt.edu.vn",
       role: "Admin",
       universityId: "uni-fpt",
-      isSuperAdmin,
     },
   });
   const router = createMemoryRouter([{ path: "/", element }], {
@@ -203,7 +203,6 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
         expect.objectContaining({ SubjectId: "sub1" }),
       ),
     );
-
   });
 
   it("rejects a negative display order before calling the API", async () => {
@@ -237,21 +236,17 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
       screen.getByRole("button", { name: /Delete profile of HE180100/ }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Delete profile" }));
-    await waitFor(() => expect(deleteStudentProfile).toHaveBeenCalledWith("u1"));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete profile" }),
+    );
+    await waitFor(() =>
+      expect(deleteStudentProfile).toHaveBeenCalledWith("u1"),
+    );
     expect(changeEnrollmentStatus).not.toHaveBeenCalled();
   });
 
-  it("keeps tenant management away from a regular admin", async () => {
-    view(<UniversitiesRoute />);
-    expect(
-      await screen.findByText(/Only a super administrator can manage universities/),
-    ).toBeInTheDocument();
-    expect(getUniversities).not.toHaveBeenCalled();
-  });
-
-  it("lists universities for a super admin and stays accessible", async () => {
-    const result = view(<UniversitiesRoute />, { isSuperAdmin: true });
+  it("lists universities for an admin and stays accessible", async () => {
+    const result = view(<UniversitiesRoute />);
     expect(await screen.findByText("FPT University")).toBeInTheDocument();
     expect(screen.getByText("fpt.edu.vn")).toBeInTheDocument();
     await expectNoAxeViolations(result.container);
@@ -259,27 +254,111 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
 
   it("validates a new university before calling the API", async () => {
     const user = userEvent.setup();
-    view(<UniversitiesRoute />, { isSuperAdmin: true });
+    view(<UniversitiesRoute />);
     await screen.findByText("FPT University");
     await user.click(screen.getByRole("button", { name: "New university" }));
-    await user.type(screen.getByLabelText("Primary colour"), "orange");
+    await user.type(screen.getByLabelText("Contact email"), "not-an-email");
     await user.click(screen.getByRole("button", { name: "Create university" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("University code is required.");
     expect(alert).toHaveTextContent("University name is required.");
-    expect(alert).toHaveTextContent("Primary colour must be a six-digit hex value");
+    expect(alert).toHaveTextContent("Contact email must be a valid address.");
     expect(createUniversity).not.toHaveBeenCalled();
+  });
+
+  it("shows the reason the API gave for a failed read", async () => {
+    vi.mocked(getUniversities).mockRejectedValue(
+      new ApiFailure(
+        { kind: "server", status: 403 },
+        "You cannot view universities.",
+      ),
+    );
+    view(<UniversitiesRoute />);
+    expect(
+      await screen.findByText("You cannot view universities."),
+    ).toBeInTheDocument();
+    vi.mocked(getUniversities).mockResolvedValue(page([university]));
+  });
+
+  it("reads a university in the shape the API returns", () => {
+    expect(universitySchema.safeParse(university).success).toBe(true);
+  });
+
+  it("offers only the fields the API stores", async () => {
+    const user = userEvent.setup();
+    view(<UniversitiesRoute />);
+    await screen.findByText("FPT University");
+    await user.click(screen.getByRole("button", { name: "New university" }));
+    await screen.findByLabelText("Logo URL");
+    for (const label of ["Website", "Timezone", "Primary colour"]) {
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    }
+  });
+
+  it("creates a university with the API request body", async () => {
+    const user = userEvent.setup();
+    view(<UniversitiesRoute />);
+    await screen.findByText("FPT University");
+    await user.click(screen.getByRole("button", { name: "New university" }));
+    await user.type(screen.getByLabelText("University code"), " HUST ");
+    await user.type(
+      screen.getByLabelText("University name"),
+      "Hanoi University",
+    );
+    await user.type(screen.getByLabelText("Subdomain"), "hust");
+    await user.click(screen.getByRole("button", { name: "Create university" }));
+
+    await waitFor(() =>
+      expect(createUniversity).toHaveBeenCalledWith({
+        code: "HUST",
+        name: "Hanoi University",
+        shortName: null,
+        nameEn: null,
+        address: null,
+        phone: null,
+        contactEmail: null,
+        subdomain: "hust",
+        emailDomain: null,
+        logoUrl: null,
+      }),
+    );
+  });
+
+  it("updates a university without its fixed identifiers", async () => {
+    const user = userEvent.setup();
+    view(<UniversitiesRoute />);
+    await screen.findByText("FPT University");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const name = await screen.findByLabelText("University name");
+    expect(screen.getByLabelText("Subdomain")).toBeDisabled();
+    await user.clear(name);
+    await user.type(name, "FPT University Hanoi");
+    await user.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() =>
+      expect(updateUniversity).toHaveBeenCalledWith("uni-fpt", {
+        name: "FPT University Hanoi",
+        shortName: "FPTU",
+        nameEn: null,
+        address: null,
+        phone: null,
+        contactEmail: "contact@fpt.edu.vn",
+        logoUrl: null,
+      }),
+    );
   });
 
   it("confirms before deactivating a university", async () => {
     const user = userEvent.setup();
-    view(<UniversitiesRoute />, { isSuperAdmin: true });
+    view(<UniversitiesRoute />);
     await screen.findByText("FPT University");
     await user.click(screen.getByRole("button", { name: "Deactivate" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(setUniversityActive).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Deactivate" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Deactivate" }),
+    );
     await waitFor(() =>
       expect(setUniversityActive).toHaveBeenCalledWith("uni-fpt", false),
     );

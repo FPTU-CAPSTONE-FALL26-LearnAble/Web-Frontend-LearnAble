@@ -36,6 +36,7 @@ type LoginForm = z.infer<typeof loginFormSchema>;
 
 function describeLoginError(error: unknown) {
   if (error instanceof ApiFailure) {
+    if (error.serverMessage) return error.serverMessage;
     if (error.detail.kind === "unauthorized") return en.auth.errInvalid;
     if (error.detail.kind === "network") return en.auth.errNetwork;
   }

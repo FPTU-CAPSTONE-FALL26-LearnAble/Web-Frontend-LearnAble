@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiFailure, request } from "@/api/client";
+import { envelopeFailure, request } from "@/api/client";
 
 /**
  * System administration contract (role Admin, after the 05/11/2026 split that
@@ -29,7 +29,7 @@ function envelope<T extends z.ZodTypeAny>(data: T) {
 async function read<T>(path: string, schema: z.ZodType<T>): Promise<T> {
   const response = await request(path, envelope(schema));
   if (!response.success || response.data === null || response.data === undefined) {
-    throw new ApiFailure({ kind: "server", status: 200 });
+    throw envelopeFailure(response);
   }
   return response.data as T;
 }
@@ -44,7 +44,7 @@ async function write<T>(
     json: body,
   });
   if (!response.success || response.data === null || response.data === undefined) {
-    throw new ApiFailure({ kind: "server", status: 200 });
+    throw envelopeFailure(response);
   }
   return response.data as T;
 }

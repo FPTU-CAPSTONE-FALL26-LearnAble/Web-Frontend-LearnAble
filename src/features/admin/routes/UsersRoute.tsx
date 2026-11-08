@@ -40,8 +40,10 @@ import {
   useAdminWrite,
   useCurriculumOptions,
   useDepartmentOptions,
-  useExpiredAdminSession,
   useMajorOptions,
+  universityLabel,
+  useExpiredAdminSession,
+  useUniversityOptions,
   useUniversityScope,
 } from "../api/useAdminData";
 import { UniversityField } from "../components/UniversityField";
@@ -118,6 +120,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const scope = useUniversityScope();
+  const universities = useUniversityOptions();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
@@ -385,6 +388,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
           <TableRow>
             <TableHead>User code</TableHead>
             <TableHead>Account</TableHead>
+            <TableHead>University</TableHead>
             <TableHead>Contact</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
@@ -406,6 +410,12 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
                     ? formatDate(row.dateOfBirth)
                     : "Date of birth not recorded"}
                 </p>
+              </TableCell>
+              <TableCell className="min-w-48 whitespace-normal">
+                {universityLabel(
+                  universities.data?.items ?? [],
+                  row.universityId,
+                ) ?? "Not available"}
               </TableCell>
               <TableCell className="min-w-56 whitespace-normal">
                 <p className="break-all">{row.email}</p>
@@ -493,7 +503,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={7}
+              columns={8}
               title={
                 examinerRecords
                   ? "No examiner accounts match your filters."
@@ -540,7 +550,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
       >
         <UniversityField
           value={draft.universityId}
-          disabled={!creating}
+          selectable={creating}
           onChange={(value) =>
             setDraft((old) => ({ ...old, universityId: value }))
           }

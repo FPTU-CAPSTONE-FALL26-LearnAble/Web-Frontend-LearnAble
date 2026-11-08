@@ -321,7 +321,6 @@ export function DepartmentsRoute() {
       >
         <UniversityField
           value={draft.universityId}
-          disabled={!creating}
           onChange={(value) =>
             setDraft((old) => ({ ...old, universityId: value }))
           }
