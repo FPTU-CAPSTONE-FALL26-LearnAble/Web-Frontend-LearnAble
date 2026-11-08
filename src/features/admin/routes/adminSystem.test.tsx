@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
 import { AdminSidebar } from "../components/AdminSidebar";
+import { AdminDashboardRoute } from "./AdminDashboardRoute";
 import { ExamShortcutsRoute } from "./ExamShortcutsRoute";
 import { SystemMonitoringRoute } from "./SystemMonitoringRoute";
 import { VoiceSettingsRoute, validateVoiceSettings } from "./VoiceSettingsRoute";
@@ -43,6 +44,21 @@ const shortcuts = (activeExamSessions = 0): ShortcutConfig => ({
     { actionKey: "question.next", actionName: "Next question", description: "Moves on.", keys: "Alt+N" },
     { actionKey: "question.previous", actionName: "Previous question", description: "Moves back.", keys: "Alt+P" },
   ],
+});
+
+vi.mock("@/api/admin", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/admin")>();
+  const empty = vi.fn(async () => ({ items: [], totalCount: 0 }));
+  return {
+    ...actual,
+    getAdminSubjects: empty,
+    getAdminUsers: empty,
+    getDepartments: empty,
+    getLecturerProfiles: empty,
+    getMajors: empty,
+    getStudentProfiles: empty,
+    getUniversities: empty,
+  };
 });
 
 vi.mock("@/api/adminSystem", async (importOriginal) => {
@@ -84,7 +100,7 @@ beforeEach(() => {
     usage: { activeUsers: 214, activeExamSessions: 0, activeUniversities: 3, storageUsedGb: null, storageQuotaGb: 100 },
   });
   useAuthStore.setState({
-    user: { id: "u1", fullName: "System Admin", email: "a@x.vn", role: "Admin", isSuperAdmin: true },
+    user: { id: "u1", fullName: "System Admin", email: "a@x.vn", role: "Admin" },
   });
 });
 beforeAll(() => {
@@ -104,7 +120,7 @@ describe("Admin navigation after the Staff split", () => {
             element: (
               <AdminSidebar
                 activePath="/admin/dashboard"
-                user={{ id: "u1", fullName: "System Admin", email: "", role: "Admin", isSuperAdmin: true }}
+                user={{ id: "u1", fullName: "System Admin", email: "", role: "Admin" }}
                 onSignOut={() => {}}
               />
             ),
@@ -113,15 +129,14 @@ describe("Admin navigation after the Staff split", () => {
       />,
     );
     const nav = screen.getByRole("navigation", { name: "Admin navigation" });
-    for (const group of ["Organisation", "System", "Exam accessibility"]) {
+    for (const group of ["Organisation", "People", "System", "Exam accessibility"]) {
       within(nav).getByRole("button", { name: group });
     }
-    expect(within(nav).queryByText("User Accounts")).not.toBeInTheDocument();
     expect(within(nav).queryByText("Departments")).not.toBeInTheDocument();
     expect(within(nav).queryByText("Semesters")).not.toBeInTheDocument();
   });
 
-  it("hides an empty group from a non-super administrator", () => {
+  it("gives every admin a way to reach university configuration", () => {
     render(
       <RouterProvider
         router={createMemoryRouter([
@@ -129,8 +144,8 @@ describe("Admin navigation after the Staff split", () => {
             path: "/",
             element: (
               <AdminSidebar
-                activePath="/admin/dashboard"
-                user={{ id: "u2", fullName: "Admin", email: "", role: "Admin", isSuperAdmin: false }}
+                activePath="/admin/universities"
+                user={{ id: "u1", fullName: "System Admin", email: "", role: "Admin" }}
                 onSignOut={() => {}}
               />
             ),
@@ -138,7 +153,42 @@ describe("Admin navigation after the Staff split", () => {
         ])}
       />,
     );
-    expect(screen.queryByRole("button", { name: "Organisation" })).not.toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Admin navigation" });
+    expect(within(nav).getByRole("link", { name: "Universities" })).toHaveAttribute(
+      "href",
+      "/admin/universities",
+    );
+  });
+
+  it("gives every admin a way to reach user accounts", () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter([
+          {
+            path: "/",
+            element: (
+              <AdminSidebar
+                activePath="/admin/users"
+                user={{ id: "u1", fullName: "System Admin", email: "", role: "Admin" }}
+                onSignOut={() => {}}
+              />
+            ),
+          },
+        ])}
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Admin navigation" });
+    expect(within(nav).getByRole("link", { name: "User accounts" })).toHaveAttribute(
+      "href",
+      "/admin/users",
+    );
+  });
+
+  it("links to university configuration from the dashboard", async () => {
+    view(<AdminDashboardRoute />);
+    expect(
+      await screen.findByRole("link", { name: "Manage universities" }),
+    ).toHaveAttribute("href", "/admin/universities");
   });
 });
 

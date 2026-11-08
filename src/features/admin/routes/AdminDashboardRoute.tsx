@@ -31,11 +31,7 @@ import {
   SummaryCard,
 } from "@/components/workbench/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import {
-  adminKeys,
-  useExpiredAdminSession,
-  useUniversityScope,
-} from "../api/useAdminData";
+import { adminKeys, useExpiredAdminSession } from "../api/useAdminData";
 import { HealthBadge, formatDateTime } from "../components/SystemSurfaces";
 
 /**
@@ -53,7 +49,6 @@ const countQueries = [
     label: "Universities",
     icon: University,
     read: () => getUniversities({ PageSize: 1 }),
-    superAdminOnly: true,
   },
   {
     key: "users",
@@ -99,7 +94,12 @@ const adminTools = [
     description: "Add a university and activate or deactivate it.",
     path: "/admin/universities",
     icon: University,
-    superAdminOnly: true,
+  },
+  {
+    label: "User accounts",
+    description: "Create Staff accounts and manage every other role.",
+    path: "/admin/users",
+    icon: UserCog,
   },
   {
     label: "System monitoring",
@@ -192,10 +192,6 @@ function HealthSummary() {
 
 export function AdminDashboardRoute() {
   useRouteAnnouncer("Admin Dashboard · LearnAble", "Administration");
-  const { isSuperAdmin } = useUniversityScope();
-  // Tenant management is a super-admin capability.
-  const visible = <T extends object>(items: readonly T[]) =>
-    items.filter((item) => isSuperAdmin || !("superAdminOnly" in item));
 
   return (
     <div className="space-y-6">
@@ -203,14 +199,12 @@ export function AdminDashboardRoute() {
         title="Administration"
         description="System-wide report and configuration for LearnAble."
       >
-        {isSuperAdmin && (
-          <Button asChild>
-            <Link to="/admin/universities">
-              <University aria-hidden />
-              Manage universities
-            </Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link to="/admin/universities">
+            <University aria-hidden />
+            Manage universities
+          </Link>
+        </Button>
         <Button asChild variant="outline">
           <Link to="/admin/monitoring">
             <Activity aria-hidden />
@@ -226,7 +220,7 @@ export function AdminDashboardRoute() {
           System totals
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {visible(countQueries).map((item) => (
+          {countQueries.map((item) => (
             <CountTile
               key={item.key}
               label={item.label}
@@ -243,7 +237,7 @@ export function AdminDashboardRoute() {
           Administration tools
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {visible(adminTools).map((item) => {
+          {adminTools.map((item) => {
             const Icon = item.icon;
             return (
               <Card key={item.path} className="shadow-none">

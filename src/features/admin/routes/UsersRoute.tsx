@@ -29,7 +29,9 @@ import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import {
   adminKeys,
   useAdminWrite,
+  universityLabel,
   useExpiredAdminSession,
+  useUniversityOptions,
   useUniversityScope,
 } from "../api/useAdminData";
 import { UniversityField } from "../components/UniversityField";
@@ -88,6 +90,7 @@ export function UsersRoute() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const scope = useUniversityScope();
+  const universities = useUniversityOptions();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
@@ -176,7 +179,7 @@ export function UsersRoute() {
     setPage(1);
   };
   const activeCount = rows.filter((row) => row.status === "Active").length;
-  const staffCount = rows.filter((row) => row.role !== "Student").length;
+  const nonStudentCount = rows.filter((row) => row.role !== "Student").length;
 
   return (
     <div className="space-y-6">
@@ -219,9 +222,9 @@ export function UsersRoute() {
           icon={<PowerOff aria-hidden className="size-5" />}
         />
         <SummaryCard
-          label="Staff on this page"
-          value={staffCount}
-          detail="Lecturer, examiner or admin"
+          label="Non-students on this page"
+          value={nonStudentCount}
+          detail="Lecturer, examiner, staff or admin"
           icon={<UserCog aria-hidden className="size-5" />}
         />
       </section>
@@ -283,6 +286,7 @@ export function UsersRoute() {
           <TableRow>
             <TableHead>User code</TableHead>
             <TableHead>Account</TableHead>
+            <TableHead>University</TableHead>
             <TableHead>Contact</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
@@ -304,6 +308,10 @@ export function UsersRoute() {
                     ? formatDate(row.dateOfBirth)
                     : "Date of birth not recorded"}
                 </p>
+              </TableCell>
+              <TableCell className="min-w-48 whitespace-normal">
+                {universityLabel(universities.data?.items ?? [], row.universityId) ??
+                  "Not available"}
               </TableCell>
               <TableCell className="min-w-56 whitespace-normal">
                 <p className="break-all">{row.email}</p>
@@ -359,7 +367,7 @@ export function UsersRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={7}
+              columns={8}
               title="No accounts match your filters."
               hint="Try another search, or create the account you need."
             />
@@ -385,7 +393,7 @@ export function UsersRoute() {
       >
         <UniversityField
           value={draft.universityId}
-          disabled={!creating}
+          selectable={creating}
           onChange={(value) =>
             setDraft((old) => ({ ...old, universityId: value }))
           }

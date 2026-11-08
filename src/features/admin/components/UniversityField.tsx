@@ -6,24 +6,23 @@ import {
 } from "../api/useAdminData";
 
 /**
- * University of a tenant-owned record. A super admin chooses it; a regular
- * admin always writes into their own university, so the field is shown read-only
- * to make the scope visible without offering a choice the API would reject.
+ * University of a tenant-owned record. It is read-only by default, which shows
+ * the scope without offering a choice. `selectable` is for accounts, because an
+ * admin creates accounts for any university.
  */
 export function UniversityField({
   value,
   onChange,
-  disabled,
+  selectable = false,
 }: {
   value: string;
   onChange: (value: string) => void;
-  disabled?: boolean;
+  selectable?: boolean;
 }) {
-  const { universityId, isSuperAdmin } = useUniversityScope();
+  const { universityId } = useUniversityScope();
   const universities = useUniversityOptions();
   const rows = universities.data?.items ?? [];
-  const locked = disabled || !isSuperAdmin;
-  const shown = locked ? value || universityId : value;
+  const shown = selectable ? value : value || universityId;
   return (
     <ChoiceField
       label="University"
@@ -31,7 +30,7 @@ export function UniversityField({
       placeholder={
         universities.isPending ? "Loading universities" : "Select a university"
       }
-      disabled={locked}
+      disabled={!selectable}
       options={
         rows.length
           ? rows.map((row) => ({

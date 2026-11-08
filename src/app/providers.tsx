@@ -9,6 +9,7 @@ import { ApiFailure } from "@/api/client";
 /** Mọi lỗi query đều announce — lỗi im lặng là vô hình với sinh viên khiếm thị (§10). */
 export function describeError(error: unknown): string {
   if (error instanceof ApiFailure) {
+    if (error.serverMessage) return error.serverMessage;
     switch (error.detail.kind) {
       case "network":
         return vi.errors.network;

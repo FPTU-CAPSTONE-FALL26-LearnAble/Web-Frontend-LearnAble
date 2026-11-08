@@ -28,7 +28,6 @@ import {
   adminKeys,
   useAdminWrite,
   useExpiredAdminSession,
-  useUniversityScope,
 } from "../api/useAdminData";
 import {
   ConfirmAction,
@@ -47,12 +46,9 @@ type Draft = {
   address: string;
   phone: string;
   contactEmail: string;
-  website: string;
   subdomain: string;
   emailDomain: string;
-  timezone: string;
   logoUrl: string;
-  primaryColor: string;
 };
 const emptyDraft: Draft = {
   code: "",
@@ -62,20 +58,15 @@ const emptyDraft: Draft = {
   address: "",
   phone: "",
   contactEmail: "",
-  website: "",
   subdomain: "",
   emailDomain: "",
-  timezone: "Asia/Ho_Chi_Minh",
   logoUrl: "",
-  primaryColor: "",
 };
 const optional = (value: string) => value.trim() || null;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const colorPattern = /^#[0-9a-fA-F]{6}$/;
 
 export function UniversitiesRoute() {
   useRouteAnnouncer("Universities · LearnAble Admin", "Universities");
-  const { isSuperAdmin } = useUniversityScope();
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -96,8 +87,6 @@ export function UniversitiesRoute() {
         PageNumber: page,
         PageSize: Number(size),
       }),
-    // Tenant management is a super-admin capability; skip a read that would 403.
-    enabled: isSuperAdmin,
   });
   useExpiredAdminSession(list.error);
   const rows = list.data?.items ?? [];
@@ -115,10 +104,7 @@ export function UniversitiesRoute() {
     address: optional(draft.address),
     phone: optional(draft.phone),
     contactEmail: optional(draft.contactEmail),
-    website: optional(draft.website),
-    timezone: optional(draft.timezone),
     logoUrl: optional(draft.logoUrl),
-    primaryColor: optional(draft.primaryColor),
   });
   const create = useAdminWrite({
     resource: "universities",
@@ -152,8 +138,6 @@ export function UniversitiesRoute() {
     if (!draft.name.trim()) found.push("University name is required.");
     if (draft.contactEmail.trim() && !emailPattern.test(draft.contactEmail.trim()))
       found.push("Contact email must be a valid address.");
-    if (draft.primaryColor.trim() && !colorPattern.test(draft.primaryColor.trim()))
-      found.push("Primary colour must be a six-digit hex value.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -171,24 +155,6 @@ export function UniversitiesRoute() {
     errors.find((e) => e.startsWith(prefix));
   const set = (key: keyof Draft) => (value: string) =>
     setDraft((old) => ({ ...old, [key]: value }));
-
-  if (!isSuperAdmin) {
-    return (
-      <div className="space-y-6">
-        <PageHeading
-          title="Universities"
-          description="Tenants that own departments, subjects, semesters and accounts."
-        />
-        <p
-          role="status"
-          className="rounded-xl border border-warning-foreground/30 bg-warning p-4 text-sm text-warning-foreground"
-        >
-          Only a super administrator can manage universities. Your account works
-          inside its own university.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -288,18 +254,7 @@ export function UniversitiesRoute() {
             const active = row.status === "Active";
             return (
               <TableRow key={row.universityId}>
-                <TableCell className="font-bold">
-                  <span className="inline-flex items-center gap-2">
-                    {row.primaryColor && (
-                      <span
-                        aria-hidden
-                        className="size-3 rounded-full border border-border"
-                        style={{ background: row.primaryColor }}
-                      />
-                    )}
-                    {row.code}
-                  </span>
-                </TableCell>
+                <TableCell className="font-bold">{row.code}</TableCell>
                 <TableCell className="min-w-72 max-w-md whitespace-normal">
                   <p className="font-bold leading-relaxed">{row.name}</p>
                   {(row.nameEn || row.contactEmail) && (
@@ -338,12 +293,9 @@ export function UniversitiesRoute() {
                           address: row.address ?? "",
                           phone: row.phone ?? "",
                           contactEmail: row.contactEmail ?? "",
-                          website: row.website ?? "",
                           subdomain: row.subdomain ?? "",
                           emailDomain: row.emailDomain ?? "",
-                          timezone: row.timezone ?? "",
                           logoUrl: row.logoUrl ?? "",
-                          primaryColor: row.primaryColor ?? "",
                         });
                       }}
                     >
@@ -433,23 +385,7 @@ export function UniversitiesRoute() {
           <TextField label="Phone" value={draft.phone} onChange={set("phone")} />
         </div>
         <TextField label="Address" value={draft.address} onChange={set("address")} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label="Website" value={draft.website} onChange={set("website")} />
-          <TextField
-            label="Timezone"
-            value={draft.timezone}
-            onChange={set("timezone")}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField label="Logo URL" value={draft.logoUrl} onChange={set("logoUrl")} />
-          <TextField
-            label="Primary colour"
-            value={draft.primaryColor}
-            onChange={set("primaryColor")}
-            error={fieldError("Primary colour")}
-          />
-        </div>
+        <TextField label="Logo URL" value={draft.logoUrl} onChange={set("logoUrl")} />
       </FormDialog>
 
       <ConfirmAction
