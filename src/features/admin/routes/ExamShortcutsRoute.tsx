@@ -1,12 +1,23 @@
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Keyboard, Lock, Pencil, RotateCcw, Save } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getShortcutConfig,
-  saveShortcutConfig,
-  type ShortcutBinding,
-  type ShortcutConfig,
-} from "@/api/adminSystem";
+  CircleCheck,
+  CircleOff,
+  Info,
+  Keyboard,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import {
+  createShortcut,
+  deleteShortcut,
+  getShortcutCatalog,
+  getShortcuts,
+  updateShortcut,
+  type Shortcut,
+  type ShortcutAction,
+} from "@/api/shortcuts";
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
@@ -27,14 +38,19 @@ import {
   comboFromEvent,
   comboParts,
   normalizeCombo,
+  sameCombo,
   validateCombo,
+  type ShortcutRules,
 } from "../shortcuts/shortcutKeys";
+import { ShortcutTester } from "../shortcuts/ShortcutTester";
+
+const RESOURCE = "exam-shortcuts";
 
 export function KeyCombo({ combo }: { combo: string }) {
   const parts = comboParts(combo);
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
-      {/* Read as one phrase ("Alt+N"), not key by key. */}
+      {/* Read as one phrase ("Ctrl+N"), not key by key. */}
       <span className="sr-only">{combo}</span>
       {parts.map((part, index) => (
         <span key={`${part}-${index}`} className="inline-flex items-center gap-1" aria-hidden>
@@ -57,10 +73,15 @@ function ShortcutCaptureField({
   value,
   onChange,
   error,
+  preview,
+  rules,
 }: {
   value: string | null;
   onChange: (value: string | null) => void;
   error: string | null;
+  /** What saving the recorded combination will do, once it is valid. */
+  preview: string | null;
+  rules: ShortcutRules;
 }) {
   const id = useId();
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -72,7 +93,7 @@ function ShortcutCaptureField({
       onChange(null);
       return;
     }
-    const combo = comboFromEvent(event.nativeEvent);
+    const combo = comboFromEvent(event.nativeEvent, rules);
     if (combo) onChange(combo);
   };
   return (
@@ -89,12 +110,16 @@ function ShortcutCaptureField({
         className="font-mono text-base font-bold"
       />
       <p id={`${id}-help`} className="text-sm text-muted-foreground">
-        Focus the field and press the combination, for example Alt and N
+        Focus the field, hold Ctrl and press the key, for example Ctrl and N
         together. Press Backspace to clear it. Tab still moves to the next
-        control.
+        control. If nothing appears, the browser or operating system has taken
+        that combination; choose another.
+      </p>
+      <p role="status" className="min-h-6 text-sm font-bold">
+        {!error && preview ? preview : ""}
       </p>
       {error && (
-        <p id={`${id}-error`} className="text-sm text-destructive">
+        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
@@ -102,139 +127,193 @@ function ShortcutCaptureField({
   );
 }
 
-type Draft = Record<string, string>;
+/** One catalog action and the shortcut configured for it, if any. */
+type Row = { action: ShortcutAction; shortcut: Shortcut | null };
 
-/** Exam keyboard shortcuts (FE: Huy · gestures: Duy · backend: Cường). */
+/** Exam keyboard shortcuts — FR-52 (FE: Huy · desktop: Duy · backend: Cường). */
 export function ExamShortcutsRoute() {
   useRouteAnnouncer("Keyboard shortcuts · LearnAble Admin", "Keyboard shortcuts");
-  const config = useQuery({
-    queryKey: adminKeys.list("exam-shortcuts"),
-    queryFn: getShortcutConfig,
+  const queryClient = useQueryClient();
+  const catalog = useQuery({
+    queryKey: adminKeys.list(RESOURCE, ["catalog"]),
+    queryFn: getShortcutCatalog,
   });
-  useExpiredAdminSession(config.error);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [editing, setEditing] = useState<ShortcutBinding | null>(null);
+  const shortcuts = useQuery({
+    queryKey: adminKeys.list(RESOURCE, ["list"]),
+    queryFn: getShortcuts,
+  });
+  useExpiredAdminSession(catalog.error ?? shortcuts.error);
+
+  const [editingCode, setEditingCode] = useState<string | null>(null);
   const [captured, setCaptured] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  const [removingCode, setRemovingCode] = useState<string | null>(null);
 
-  const data: ShortcutConfig | undefined = config.data;
-  const locked = (data?.activeExamSessions ?? 0) > 0;
-  const keysOf = (binding: ShortcutBinding) =>
-    draft?.[binding.actionKey] ?? binding.keys;
-  const changed = useMemo(
-    () =>
-      (data?.bindings ?? []).filter(
-        (binding) =>
-          draft?.[binding.actionKey] !== undefined &&
-          normalizeCombo(draft[binding.actionKey]) !== normalizeCombo(binding.keys),
+  const rules: ShortcutRules | null = catalog.data ?? null;
+  const rows = useMemo<Row[]>(() => {
+    if (!catalog.data || !shortcuts.data) return [];
+    const byAction = new Map(shortcuts.data.map((item) => [item.actionCode, item]));
+    const listed: Row[] = catalog.data.actions.map((action) => ({
+      action,
+      shortcut: byAction.get(action.code) ?? null,
+    }));
+    // A shortcut whose action left the catalog still occupies its keys, so it
+    // stays visible and removable instead of silently blocking a combination.
+    const known = new Set(catalog.data.actions.map((action) => action.code));
+    const orphans: Row[] = shortcuts.data
+      .filter((item) => !known.has(item.actionCode))
+      .map((item) => ({
+        action: {
+          code: item.actionCode,
+          name: item.actionCode || "Unknown action",
+          description: "This action is no longer in the exam app.",
+        },
+        shortcut: item,
+      }));
+    return [...listed, ...orphans];
+  }, [catalog.data, shortcuts.data]);
+
+  const editing = rows.find((row) => row.action.code === editingCode) ?? null;
+  const removing = rows.find((row) => row.action.code === removingCode) ?? null;
+  const lastChanged = (shortcuts.data ?? [])
+    .map((item) => item.updatedAt)
+    .filter((value): value is string => !!value)
+    .sort()
+    .at(-1);
+
+  /**
+   * A refused write usually means the list on screen is stale (someone else
+   * edited it, or an exam started), so the rows and their ETags are reloaded.
+   */
+  const refreshOnFailure = async (work: Promise<unknown>) => {
+    try {
+      await work;
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.resource(RESOURCE) });
+      throw error;
+    }
+  };
+
+  const save = useAdminWrite<{ row: Row; combo: string }>({
+    resource: RESOURCE,
+    action: "Save shortcut",
+    mutationFn: ({ row, combo }) =>
+      refreshOnFailure(
+        row.shortcut
+          ? updateShortcut(
+              row.shortcut.shortcutId,
+              {
+                actionCode: row.action.code,
+                keyCombination: combo,
+                isEnabled: row.shortcut.isEnabled,
+              },
+              row.shortcut.eTag,
+            )
+          : createShortcut({
+              actionCode: row.action.code,
+              keyCombination: combo,
+              isEnabled: true,
+            }),
       ),
-    [data, draft],
-  );
-
-  const save = useAdminWrite({
-    resource: "exam-shortcuts",
-    action: "Publish keyboard shortcuts",
-    mutationFn: async () => {
-      await saveShortcutConfig({
-        version: data!.version,
-        bindings: data!.bindings.map((binding) => ({
-          actionKey: binding.actionKey,
-          keys: normalizeCombo(keysOf(binding)) ?? binding.keys,
-        })),
-      });
-    },
-    onSuccess: () => {
-      setConfirming(false);
-      setDraft(null);
-    },
+    onSuccess: () => setEditingCode(null),
   });
 
-  const openEditor = (binding: ShortcutBinding) => {
-    setEditing(binding);
-    setCaptured(keysOf(binding));
+  const toggle = useAdminWrite<Shortcut>({
+    resource: RESOURCE,
+    action: "Update shortcut",
+    mutationFn: (shortcut) =>
+      refreshOnFailure(
+        updateShortcut(
+          shortcut.shortcutId,
+          {
+            actionCode: shortcut.actionCode,
+            keyCombination: shortcut.keyCombination,
+            isEnabled: !shortcut.isEnabled,
+          },
+          shortcut.eTag,
+        ),
+      ),
+  });
+
+  const remove = useAdminWrite<Shortcut>({
+    resource: RESOURCE,
+    action: "Remove shortcut",
+    mutationFn: (shortcut) =>
+      refreshOnFailure(deleteShortcut(shortcut.shortcutId, shortcut.eTag)),
+  });
+
+  const busy = save.isPending || toggle.isPending || remove.isPending;
+
+  const openEditor = (row: Row) => {
+    setEditingCode(row.action.code);
+    setCaptured(row.shortcut?.keyCombination || null);
     setCaptureError(null);
   };
-  const applyEdit = () => {
-    if (!editing || !data) return;
+
+  /** Why the combination cannot be given to the action being edited, if so. */
+  const problemWith = (combo: string | null) => {
+    if (!editing || !rules) return null;
     const taken = new Map(
-      data.bindings
-        .filter((binding) => binding.actionKey !== editing.actionKey)
-        .map((binding) => [normalizeCombo(keysOf(binding)) ?? "", binding.actionName]),
+      rows
+        .filter((row) => row.shortcut && row.action.code !== editing.action.code)
+        .map((row) => [row.shortcut!.keyCombination, row.action.name]),
     );
-    const problem = validateCombo(captured, taken);
-    setCaptureError(problem);
-    if (problem) return;
-    setDraft((old) => ({ ...old, [editing.actionKey]: normalizeCombo(captured!)! }));
-    setEditing(null);
+    return validateCombo(combo, taken, rules);
   };
+
+  const submitEdit = () => {
+    if (!editing || !rules) return;
+    const problem = problemWith(captured);
+    setCaptureError(problem);
+    if (problem || !captured) return;
+    if (editing.shortcut && sameCombo(editing.shortcut.keyCombination, captured)) {
+      setEditingCode(null);
+      return;
+    }
+    save.mutate({ row: editing, combo: normalizeCombo(captured, rules) ?? captured });
+  };
+
+  const pending = catalog.isPending || shortcuts.isPending;
+  const error = catalog.error ?? shortcuts.error;
 
   return (
     <div className="space-y-6">
       <PageHeading
         title="Keyboard shortcuts"
-        description="Keys students use to operate the exam and practice app. Every student gets the same set."
-      >
-        <Button
-          variant="outline"
-          disabled={!changed.length || save.isPending}
-          onClick={() => setDraft(null)}
-        >
-          <RotateCcw aria-hidden />
-          Discard changes
-        </Button>
-        <Button
-          disabled={!changed.length || locked || save.isPending}
-          onClick={() => setConfirming(true)}
-        >
-          <Save aria-hidden />
-          Publish changes
-        </Button>
-      </PageHeading>
+        description="Keys students use to operate the exam and practice app."
+      />
 
-      {(config.isPending || config.error) && (
+      {(pending || error) && (
         <ReadState
-          pending={config.isPending}
-          error={config.error}
-          retry={() => void config.refetch()}
+          pending={pending}
+          error={error}
+          retry={() => {
+            void catalog.refetch();
+            void shortcuts.refetch();
+          }}
         />
       )}
 
-      {data && (
+      {!pending && !error && rules && (
         <>
-          {locked ? (
-            <div
-              role="status"
-              className="flex items-start gap-3 rounded-xl border border-warning-foreground/30 bg-warning p-4 text-warning-foreground"
-            >
-              <Lock aria-hidden className="mt-0.5 size-5 shrink-0" />
-              <div>
-                <p className="font-bold">Editing is locked while exams are running.</p>
-                <p className="mt-1 text-sm">
-                  {data.activeExamSessions} exam{" "}
-                  {data.activeExamSessions === 1 ? "session is" : "sessions are"} in
-                  progress. Changing keys now would break the exam those
-                  students are taking. Try again when they have finished.
-                </p>
-              </div>
+          <div className="flex items-start gap-3 rounded-xl border border-border p-4">
+            <Info aria-hidden className="mt-0.5 size-5 shrink-0" />
+            <div className="text-sm">
+              <p className="font-bold">Each change is saved as soon as you confirm it.</p>
+              <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                <li>Every shortcut holds Ctrl, so it cannot clash with typing or with NVDA.</li>
+                <li>Two actions cannot share the same keys.</li>
+                <li>
+                  Shortcuts cannot be changed while an exam session is running. The
+                  save is refused; try again when the exam has finished.
+                </li>
+              </ul>
             </div>
-          ) : (
-            <p className="rounded-xl border border-border p-4 text-sm text-muted-foreground">
-              Publishing creates a new version. Students must download the new
-              exam app before their next exam, and they are notified on the
-              web and by email.
-            </p>
-          )}
+          </div>
 
-          <p className="text-sm text-muted-foreground tabular-nums">
-            Version {data.version} · last published {formatDateTime(data.updatedAt)}
-            {data.updatedBy ? ` by ${data.updatedBy}` : ""}
-          </p>
-
-          {changed.length > 0 && (
-            <p role="status" className="font-bold">
-              {changed.length} unpublished{" "}
-              {changed.length === 1 ? "change" : "changes"}.
+          {lastChanged && (
+            <p className="text-sm text-muted-foreground tabular-nums">
+              Last changed {formatDateTime(lastChanged)}
             </p>
           )}
 
@@ -249,41 +328,84 @@ export function ExamShortcutsRoute() {
                   <TableHead>Action</TableHead>
                   <TableHead>What it does</TableHead>
                   <TableHead>Shortcut</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>
-                    <span className="sr-only">Edit</span>
+                    <span className="sr-only">Manage</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.bindings.map((binding) => {
-                  const keys = keysOf(binding);
-                  const isChanged = changed.includes(binding);
+                {rows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      The exam app has no configurable actions yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {rows.map((row) => {
+                  const { action, shortcut } = row;
                   return (
-                    <TableRow key={binding.actionKey}>
-                      <TableCell className="font-bold">{binding.actionName}</TableCell>
+                    <TableRow key={action.code}>
+                      <TableCell className="font-bold">{action.name}</TableCell>
                       <TableCell className="whitespace-normal text-muted-foreground">
-                        {binding.description ?? "No description"}
+                        {action.description ?? "No description"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <KeyCombo combo={keys} />
-                          {isChanged && (
-                            <span className="text-xs font-bold text-muted-foreground">
-                              (was {binding.keys})
-                            </span>
+                        {shortcut?.keyCombination ? (
+                          <KeyCombo combo={shortcut.keyCombination} />
+                        ) : (
+                          <span className="text-muted-foreground">Not set</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {/* The word and the icon shape carry the state, not colour. */}
+                        {!shortcut ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : shortcut.isEnabled ? (
+                          <span className="inline-flex items-center gap-1.5 font-bold">
+                            <CircleCheck aria-hidden className="size-4" />
+                            On
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 font-bold text-muted-foreground">
+                            <CircleOff aria-hidden className="size-4" />
+                            Off
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            disabled={busy}
+                            aria-label={`${shortcut ? "Change" : "Set"} shortcut for ${action.name}`}
+                            onClick={() => openEditor(row)}
+                          >
+                            {shortcut ? <Pencil aria-hidden /> : <Plus aria-hidden />}
+                            {shortcut ? "Change" : "Set"}
+                          </Button>
+                          {shortcut && (
+                            <>
+                              <Button
+                                variant="outline"
+                                disabled={busy}
+                                aria-label={`Turn ${shortcut.isEnabled ? "off" : "on"} shortcut for ${action.name}`}
+                                onClick={() => toggle.mutate(shortcut)}
+                              >
+                                {shortcut.isEnabled ? "Turn off" : "Turn on"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                disabled={busy}
+                                aria-label={`Remove shortcut for ${action.name}`}
+                                onClick={() => setRemovingCode(action.code)}
+                              >
+                                <Trash2 aria-hidden />
+                                Remove
+                              </Button>
+                            </>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          disabled={locked}
-                          aria-label={`Change shortcut for ${binding.actionName}`}
-                          onClick={() => openEditor(binding)}
-                        >
-                          <Pencil aria-hidden />
-                          Change
-                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -291,38 +413,67 @@ export function ExamShortcutsRoute() {
               </TableBody>
             </Table>
           </section>
+
+          <ShortcutTester
+            rules={rules}
+            shortcuts={rows
+              .filter((row) => !!row.shortcut?.keyCombination)
+              .map((row) => ({
+                actionCode: row.action.code,
+                actionName: row.action.name,
+                keyCombination: row.shortcut!.keyCombination,
+                isEnabled: row.shortcut!.isEnabled,
+              }))}
+          />
         </>
       )}
 
-      <FormDialog
-        open={!!editing}
-        onOpenChange={(open) => !open && setEditing(null)}
-        title={editing ? `Shortcut for “${editing.actionName}”` : ""}
-        description={
-          editing ? `Current shortcut: ${keysOf(editing)}.` : ""
-        }
-        submitLabel="Use this shortcut"
-        pending={false}
-        errors={[]}
-        onSubmit={applyEdit}
-      >
-        <ShortcutCaptureField
-          value={captured}
-          onChange={(value) => {
-            setCaptured(value);
-            setCaptureError(null);
-          }}
-          error={captureError}
-        />
-      </FormDialog>
+      {rules && (
+        <FormDialog
+          open={!!editing}
+          onOpenChange={(open) => !open && setEditingCode(null)}
+          title={editing ? `Shortcut for “${editing.action.name}”` : ""}
+          description={
+            editing?.shortcut?.keyCombination
+              ? `Current shortcut: ${editing.shortcut.keyCombination}.`
+              : "This action has no shortcut yet."
+          }
+          submitLabel="Save shortcut"
+          pending={save.isPending}
+          errors={[]}
+          onSubmit={submitEdit}
+        >
+          <ShortcutCaptureField
+            value={captured}
+            onChange={(value) => {
+              setCaptured(value);
+              // Checked on every key press, so the admin tests a combination
+              // before saving instead of finding out from a refused save.
+              setCaptureError(value ? problemWith(value) : null);
+            }}
+            error={captureError}
+            preview={
+              captured && editing
+                ? editing.shortcut && sameCombo(editing.shortcut.keyCombination, captured)
+                  ? `${captured} is the current shortcut for “${editing.action.name}”.`
+                  : `${captured} is free. Saving makes it trigger “${editing.action.name}”.`
+                : null
+            }
+            rules={rules}
+          />
+        </FormDialog>
+      )}
 
       <ConfirmAction
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Publish version ${(data?.version ?? 0) + 1}?`}
-        description={`${changed.length} ${changed.length === 1 ? "shortcut changes" : "shortcuts change"}. Students must download the new exam app before their next exam and will be notified on the web and by email.`}
-        confirmLabel="Publish"
-        onConfirm={() => save.mutate()}
+        open={!!removing?.shortcut}
+        onOpenChange={(open) => !open && setRemovingCode(null)}
+        title={`Remove the shortcut for “${removing?.action.name ?? ""}”?`}
+        description={`${removing?.shortcut?.keyCombination ?? "This shortcut"} will no longer trigger this action in the exam app. You can set a new shortcut afterwards.`}
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (removing?.shortcut) remove.mutate(removing.shortcut);
+          setRemovingCode(null);
+        }}
       />
     </div>
   );

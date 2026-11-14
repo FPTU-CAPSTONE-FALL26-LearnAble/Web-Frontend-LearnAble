@@ -1,6 +1,7 @@
 import { HttpResponse, delay, http } from "msw";
 import { mockExamResults, mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
 import { adminSystemHandlers } from "@/mocks/adminSystem";
+import { shortcutHandlers } from "@/mocks/shortcuts";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
@@ -116,4 +117,7 @@ export const handlers = [
 
   // Admin system configuration — proposed contract, not yet in the backend.
   ...adminSystemHandlers,
+
+  // Exam keyboard shortcuts (FR-52) — mirrors the deployed MyShortcuts API.
+  ...shortcutHandlers,
 ];
