@@ -1,7 +1,5 @@
 import { HttpResponse, delay, http } from "msw";
 import type {
-  ShortcutConfig,
-  ShortcutConfigBody,
   SystemHealth,
   VoiceSettings,
   VoiceSettingsBody,
@@ -9,8 +7,8 @@ import type {
 
 /**
  * Mock of the proposed system-administration API (see `src/api/adminSystem.ts`).
- * It doubles as the contract handed to backend: FFCB-203 (voice settings),
- * FFCB-151 (health) and the exam-shortcut endpoint. `*` matches any API host.
+ * It doubles as the contract handed to backend: FFCB-203 (voice settings)
+ * and FFCB-151 (health). `*` matches any API host.
  */
 
 const ok = <T,>(data: T) =>
@@ -36,23 +34,6 @@ let voiceSettings: VoiceSettings = {
   updatedBy: "System Admin",
 };
 
-let shortcutConfig: ShortcutConfig = {
-  version: 3,
-  updatedAt: "2026-10-28T14:00:00Z",
-  updatedBy: "System Admin",
-  activeExamSessions: 0,
-  bindings: [
-    { actionKey: "question.next", actionName: "Next question", description: "Moves to the next question.", keys: "Alt+N" },
-    { actionKey: "question.previous", actionName: "Previous question", description: "Moves to the previous question.", keys: "Alt+P" },
-    { actionKey: "question.repeat", actionName: "Repeat question", description: "Reads the question aloud again.", keys: "Alt+R" },
-    { actionKey: "options.read", actionName: "Read answer options", description: "Reads every answer option in order.", keys: "Alt+O" },
-    { actionKey: "question.flag", actionName: "Flag for review", description: "Marks the question to come back to.", keys: "Alt+F" },
-    { actionKey: "exam.overview", actionName: "Question list", description: "Opens the list of questions and their status.", keys: "Alt+L" },
-    { actionKey: "exam.time", actionName: "Time remaining", description: "Reads the time left in the exam.", keys: "Alt+T" },
-    { actionKey: "exam.submit", actionName: "Submit exam", description: "Opens the submit confirmation.", keys: "Ctrl+Shift+Enter" },
-  ],
-};
-
 const health = (): SystemHealth => ({
   status: "Degraded",
   checkedAt: new Date().toISOString(),
@@ -73,7 +54,7 @@ const health = (): SystemHealth => ({
   },
   usage: {
     activeUsers: 214,
-    activeExamSessions: shortcutConfig.activeExamSessions,
+    activeExamSessions: 0,
     activeUniversities: 3,
     storageUsedGb: 38.4,
     storageQuotaGb: 100,
@@ -99,34 +80,5 @@ export const adminSystemHandlers = [
   http.get("*/admin/system/health", async () => {
     await delay(250);
     return ok(health());
-  }),
-
-  http.get("*/admin/exam-shortcuts", async () => {
-    await delay(250);
-    return ok(shortcutConfig);
-  }),
-  http.put("*/admin/exam-shortcuts", async ({ request }) => {
-    await delay(400);
-    const body = (await request.json()) as ShortcutConfigBody;
-    if (shortcutConfig.activeExamSessions > 0) {
-      return HttpResponse.json(
-        { success: false, message: "Exam sessions are in progress.", data: null, errors: ["EXAM_IN_PROGRESS"] },
-        { status: 409 },
-      );
-    }
-    if (body.version !== shortcutConfig.version) {
-      return HttpResponse.json(
-        { success: false, message: "Shortcuts changed since you opened them.", data: null, errors: ["VERSION_CONFLICT"] },
-        { status: 409 },
-      );
-    }
-    const keys = new Map(body.bindings.map((b) => [b.actionKey, b.keys]));
-    shortcutConfig = {
-      ...shortcutConfig,
-      version: shortcutConfig.version + 1,
-      updatedAt: new Date().toISOString(),
-      bindings: shortcutConfig.bindings.map((b) => ({ ...b, keys: keys.get(b.actionKey) ?? b.keys })),
-    };
-    return ok(shortcutConfig);
   }),
 ];
