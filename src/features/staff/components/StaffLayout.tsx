@@ -4,6 +4,8 @@ import { Outlet, useLocation, useNavigate } from "react-router";
 import { getCurrentUser } from "@/api/auth";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import { cn } from "@/lib/utils";
+import { useSidebarCollapsed } from "@/lib/useSidebarCollapsed";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { Button } from "@/shared/ui/primitives/button";
 import {
@@ -18,6 +20,7 @@ import "./staff-theme.css";
 
 export function StaffLayout() {
   const [open, setOpen] = useState(false);
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed("learnable.staff.sidebar-collapsed");
   const user = useAuthStore((state) => state.user)!;
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
@@ -51,8 +54,8 @@ export function StaffLayout() {
   return (
     <div className="staff-shell admin-shell min-h-screen bg-white lg:flex">
       <SkipLink />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
-        <StaffSidebar {...sidebarProps} />
+      <aside className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-border lg:block", collapsed ? "w-16" : "w-64")}>
+        <StaffSidebar {...sidebarProps} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
         <Button
@@ -79,7 +82,7 @@ export function StaffLayout() {
       </Sheet>
       <main
         id="main"
-        className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-8"
+        className={cn("min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8", collapsed ? "lg:ml-16" : "lg:ml-64")}
       >
         <div className="mx-auto max-w-[1440px]">
           <Outlet />

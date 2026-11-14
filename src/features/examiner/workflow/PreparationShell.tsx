@@ -1,8 +1,8 @@
 import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function PreparationHeader({ title, description }: { title: string; description: string }) {
-  return <header className="border-b border-border pb-5"><h1 className="text-3xl font-semibold tracking-tight text-primary">{title}</h1><p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p></header>;
+export function PreparationHeader({ title, description }: { title: string; description?: string }) {
+  return <header className="border-b border-border pb-5"><h1 className="text-3xl font-semibold tracking-tight text-primary">{title}</h1>{description ? <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p> : null}</header>;
 }
 
 export function PreparationSteps({ steps, current }: { steps: string[]; current: number }) {
@@ -10,7 +10,7 @@ export function PreparationSteps({ steps, current }: { steps: string[]; current:
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <label className="grid gap-2 text-sm font-semibold"><span>{label}</span>{children}{hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}</label>;
+  return <label className="grid min-w-0 gap-2 text-sm font-semibold"><span>{label}</span>{children}{hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}</label>;
 }
 
 export function ApiNotice({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "error" | "success" }) {

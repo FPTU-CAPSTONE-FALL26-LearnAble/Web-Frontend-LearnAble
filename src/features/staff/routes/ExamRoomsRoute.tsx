@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { plural } from "@/components/workbench/dashboardTime";
 import { DoorOpen, LayoutGrid, Plus, Trash2 } from "lucide-react";
 import {
   createExamRoom,
@@ -32,6 +33,9 @@ import {
   TablePanel,
 } from "@/features/admin/components/AdminSurfaces";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { toast } from "@/shared/ui/primitives/toast";
+import { RoomSeatMap, type SeatCreateReport, type SeatDeleteReport } from "../components/RoomSeatMap";
+import { createSeats, deleteSeats, type SeatPlan } from "../seatMap";
 import { Button } from "@/shared/ui/primitives/button";
 import {
   Dialog,
@@ -42,7 +46,6 @@ import {
   DialogTitle,
 } from "@/shared/ui/primitives/dialog";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -91,6 +94,7 @@ const yesNo = [
 export function ExamRoomsRoute() {
   useRouteAnnouncer("Exam Rooms & Seats · LearnAble", "Exam Rooms & Seats");
   const scope = useUniversityScope();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [roomDraft, setRoomDraft] = useState<RoomDraft>(emptyRoom);
@@ -99,9 +103,8 @@ export function ExamRoomsRoute() {
   const [editingRoom, setEditingRoom] = useState<ExamRoom | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<ExamRoom | null>(null);
   const [editingSeat, setEditingSeat] = useState<RoomSeat | null>(null);
-  const [creatingSeat, setCreatingSeat] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<ExamRoom | null>(null);
-  const [deletingSeat, setDeletingSeat] = useState<RoomSeat | null>(null);
+  const [confirmingSeatDelete, setConfirmingSeatDelete] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
   const rooms = useQuery({
@@ -115,6 +118,14 @@ export function ExamRoomsRoute() {
   });
   const rows = rooms.data?.items ?? [];
   const seatRows = seats.data ?? [];
+  // The room list has no seat count of its own, so each listed room's seats are read. The key is shared
+  // with the seat map above, so creating, editing or deleting seats refreshes these counts too.
+  const seatCounts = useQueries({
+    queries: rows.map((room) => ({
+      queryKey: adminKeys.list("roomSeats", [room.examRoomId]),
+      queryFn: () => getRoomSeats(room.examRoomId),
+    })),
+  });
   const tenantUniversityId = scope.universityId || rows[0]?.universityId || "";
   const universityScopePending = !scope.universityId && rooms.isPending;
 
@@ -125,7 +136,7 @@ export function ExamRoomsRoute() {
     setErrors([]);
   };
   const closeSeatForm = () => {
-    setCreatingSeat(false);
+    setConfirmingSeatDelete(false);
     setEditingSeat(null);
     setSeatDraft(emptySeat);
     setErrors([]);
@@ -168,12 +179,36 @@ export function ExamRoomsRoute() {
       setSelectedRoom(null);
     },
   });
-  const addSeat = useAdminWrite({
-    resource: "roomSeats",
-    action: "Create seat",
-    mutationFn: () => createRoomSeat(selectedRoom!.examRoomId, seatBody()),
-    onSuccess: closeSeatForm,
-  });
+  /** Creates the picked seats one request each, then reports which cells worked and which did not. */
+  const createSeatsAt = async (plans: SeatPlan[]): Promise<SeatCreateReport> => {
+    const roomId = selectedRoom!.examRoomId;
+    const result = await createSeats(plans, (body) => createRoomSeat(roomId, body));
+    await queryClient.invalidateQueries({ queryKey: adminKeys.resource("roomSeats") });
+    if (result.created.length)
+      toast({
+        title: result.created.length === 1 ? "1 seat created" : `${result.created.length} seats created`,
+        description: result.failed.length ? `${result.failed.length} could not be created. They stay selected.` : undefined,
+      });
+    return {
+      created: result.created,
+      failed: result.failed.map((failure) => ({ key: failure.key, message: describeError(failure.error) })),
+    };
+  };
+  /** Deletes the picked seats one request each, then reports which worked and which did not. */
+  const deleteSeatsAt = async (picked: RoomSeat[]): Promise<SeatDeleteReport> => {
+    const roomId = selectedRoom!.examRoomId;
+    const result = await deleteSeats(picked, (seat) => deleteRoomSeat(roomId, seat.seatId));
+    await queryClient.invalidateQueries({ queryKey: adminKeys.resource("roomSeats") });
+    if (result.deleted.length)
+      toast({
+        title: result.deleted.length === 1 ? "1 seat deleted" : `${result.deleted.length} seats deleted`,
+        description: result.failed.length ? `${result.failed.length} could not be deleted. They stay selected.` : undefined,
+      });
+    return {
+      deleted: result.deleted,
+      failed: result.failed.map((failure) => ({ key: failure.key, message: describeError(failure.error) })),
+    };
+  };
   const saveSeat = useAdminWrite({
     resource: "roomSeats",
     action: "Update seat",
@@ -185,7 +220,7 @@ export function ExamRoomsRoute() {
     resource: "roomSeats",
     action: "Delete seat",
     mutationFn: (id) => deleteRoomSeat(selectedRoom!.examRoomId, id),
-    onSuccess: () => setDeletingSeat(null),
+    onSuccess: closeSeatForm,
   });
 
   const validateRoom = () => {
@@ -216,7 +251,7 @@ export function ExamRoomsRoute() {
     )
       found.push("Column must be a positive whole number.");
     setErrors(found);
-    if (!found.length) (creatingSeat ? addSeat : saveSeat).mutate();
+    if (!found.length) saveSeat.mutate();
   };
 
   return (
@@ -277,12 +312,13 @@ export function ExamRoomsRoute() {
           <TableRow>
             <TableHead>Room</TableHead>
             <TableHead>Location</TableHead>
+            <TableHead>Seats</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <TableRow
               key={row.examRoomId}
               aria-selected={selectedRoom?.examRoomId === row.examRoomId}
@@ -296,6 +332,22 @@ export function ExamRoomsRoute() {
               <TableCell>
                 {row.building ?? "Not available"}
                 {row.floor === null ? "" : ` · Floor ${row.floor}`}
+              </TableCell>
+              <TableCell>
+                {seatCounts[index]?.isError ? (
+                  <p className="text-muted-foreground">Not available</p>
+                ) : seatCounts[index]?.data ? (
+                  <>
+                    <p className="font-semibold">{plural(seatCounts[index].data.length, "seat")}</p>
+                    {seatCounts[index].data.some((seat) => !seat.isAvailable) ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {seatCounts[index].data.filter((seat) => !seat.isAvailable).length} unavailable
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">…</p>
+                )}
               </TableCell>
               <TableCell>
                 <StatusBadge
@@ -340,7 +392,7 @@ export function ExamRoomsRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={4}
+              columns={5}
               title="No exam rooms are configured."
               hint="Create the first room, then define its seats."
             />
@@ -359,115 +411,51 @@ export function ExamRoomsRoute() {
       >
         {selectedRoom ? (
           <DialogContent className="max-h-[88vh] w-[min(96vw,1120px)] max-w-[1120px] gap-5 overflow-hidden p-0">
-            <DialogHeader className="border-b border-border px-6 pt-6">
-              <div className="flex flex-wrap items-start justify-between gap-4 pr-10">
-                <div>
+            {/* A flex column keeps the title and Close in view while only the map scrolls. */}
+            <div className="flex max-h-[88vh] min-h-0 flex-col">
+              <DialogHeader className="shrink-0 border-b border-border px-6 pt-6">
+                <div className="pb-4 pr-10">
                   <DialogTitle>
                     {selectedRoom.roomCode} · {selectedRoom.name}
                   </DialogTitle>
                   <DialogDescription>
-                    Manage the seat inventory for this exam room.
+                    Draw the seats of this room. Select empty cells to create seats, or click a seat to edit it.
                   </DialogDescription>
                 </div>
-                <Button
-                  onClick={() => {
-                    setSeatDraft(emptySeat);
-                    setErrors([]);
-                    setCreatingSeat(true);
-                  }}
-                >
-                  <Plus aria-hidden /> Add seat
-                </Button>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5">
+                <ReadState
+                  pending={seats.isPending}
+                  error={seats.error}
+                  retry={() => void seats.refetch()}
+                />
+                {!seats.isPending && !seats.error ? (
+                  <RoomSeatMap
+                    key={selectedRoom.examRoomId}
+                    seats={seatRows}
+                    onCreate={createSeatsAt}
+                    onDelete={deleteSeatsAt}
+                    onEditSeat={(seat) => {
+                      setEditingSeat(seat);
+                      setSeatDraft({
+                        seatCode: seat.seatCode ?? "",
+                        rowNumber: String(seat.rowNumber),
+                        columnNumber: String(seat.columnNumber),
+                        isAvailable: String(seat.isAvailable),
+                        hasComputer: String(seat.hasComputer),
+                        hasCamera: String(seat.hasCamera),
+                        notes: seat.notes ?? "",
+                      });
+                      setErrors([]);
+                    }}
+                  />
+                ) : null}
               </div>
-            </DialogHeader>
-            <div className="min-h-0 overflow-y-auto px-6">
-              <ReadState
-                pending={seats.isPending}
-                error={seats.error}
-                retry={() => void seats.refetch()}
+              <DialogFooter
+                showCloseButton
+                className="shrink-0 border-t border-border px-6 py-4"
               />
-              {!seats.isPending && !seats.error ? (
-                <Table containerLabel={`${selectedRoom.roomCode} seats`}>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Seat</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Equipment</TableHead>
-                      <TableHead>Availability</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {seatRows.map((seat) => (
-                      <TableRow key={seat.seatId}>
-                        <TableCell>
-                          <strong>{seat.seatCode ?? "Not available"}</strong>
-                        </TableCell>
-                        <TableCell>
-                          Row {seat.rowNumber} · Column {seat.columnNumber}
-                        </TableCell>
-                        <TableCell>
-                          {[
-                            seat.hasComputer && "Computer",
-                            seat.hasCamera && "Camera",
-                          ]
-                            .filter(Boolean)
-                            .join(" · ") || "Standard seat"}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge
-                            value={
-                              seat.isAvailable ? "Available" : "Unavailable"
-                            }
-                            tone={seat.isAvailable ? "success" : "neutral"}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex min-w-max gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setEditingSeat(seat);
-                                setSeatDraft({
-                                  seatCode: seat.seatCode ?? "",
-                                  rowNumber: String(seat.rowNumber),
-                                  columnNumber: String(seat.columnNumber),
-                                  isAvailable: String(seat.isAvailable),
-                                  hasComputer: String(seat.hasComputer),
-                                  hasCamera: String(seat.hasCamera),
-                                  notes: seat.notes ?? "",
-                                });
-                                setErrors([]);
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              aria-label={`Delete ${seat.seatCode ?? "seat"}`}
-                              onClick={() => setDeletingSeat(seat)}
-                            >
-                              <Trash2 aria-hidden />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {!seatRows.length && (
-                      <EmptyRow
-                        columns={5}
-                        title="This room has no seats yet."
-                        hint="Add seats so the scheduling service can allocate candidates."
-                      />
-                    )}
-                  </TableBody>
-                </Table>
-              ) : null}
             </div>
-            <DialogFooter
-              showCloseButton
-              className="border-t border-border px-6 pb-6"
-            />
           </DialogContent>
         ) : null}
       </Dialog>
@@ -540,20 +528,15 @@ export function ExamRoomsRoute() {
         />
       </FormDialog>
       <FormDialog
-        open={creatingSeat || !!editingSeat}
+        open={!!editingSeat}
         onOpenChange={(open) => {
           if (!open) closeSeatForm();
         }}
-        title={creatingSeat ? "Add seat" : "Edit seat"}
-        description={`Seat inventory for ${selectedRoom?.roomCode ?? "the selected room"}.`}
-        submitLabel={creatingSeat ? "Add seat" : "Save seat"}
-        pending={addSeat.isPending || saveSeat.isPending}
-        errors={[
-          ...errors,
-          ...((creatingSeat ? addSeat.error : saveSeat.error)
-            ? [describeError(creatingSeat ? addSeat.error : saveSeat.error)]
-            : []),
-        ]}
+        title="Edit seat"
+        description={`Seat ${editingSeat?.seatCode ?? ""} in ${selectedRoom?.roomCode ?? "the selected room"}.`}
+        submitLabel="Save seat"
+        pending={saveSeat.isPending}
+        errors={[...errors, ...(saveSeat.error ? [describeError(saveSeat.error)] : [])]}
         onSubmit={validateSeat}
       >
         <div className="grid gap-4 sm:grid-cols-3">
@@ -617,6 +600,29 @@ export function ExamRoomsRoute() {
             setSeatDraft((old) => ({ ...old, notes: value }))
           }
         />
+        {confirmingSeatDelete ? (
+          <div className="space-y-3 rounded-xl border border-destructive p-4">
+            <p className="font-semibold">Delete seat {editingSeat?.seatCode}?</p>
+            <p className="text-sm text-muted-foreground">This seat will no longer be available for candidate allocation.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" disabled={removeSeat.isPending} onClick={() => setConfirmingSeatDelete(false)}>
+                Keep seat
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={removeSeat.isPending}
+                onClick={() => editingSeat && removeSeat.mutate(editingSeat.seatId)}
+              >
+                {removeSeat.isPending ? "Deleting…" : "Delete seat"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="destructive" onClick={() => setConfirmingSeatDelete(true)}>
+            <Trash2 aria-hidden /> Delete this seat
+          </Button>
+        )}
       </FormDialog>
       <ConfirmAction
         open={!!deletingRoom}
@@ -630,20 +636,6 @@ export function ExamRoomsRoute() {
         onConfirm={() => {
           if (deletingRoom && !removeRoom.isPending)
             removeRoom.mutate(deletingRoom.examRoomId);
-        }}
-      />
-      <ConfirmAction
-        open={!!deletingSeat}
-        onOpenChange={(open) => {
-          if (!open && !removeSeat.isPending) setDeletingSeat(null);
-        }}
-        title="Delete seat?"
-        description="This seat will no longer be available for candidate allocation."
-        confirmLabel="Delete seat"
-        pending={removeSeat.isPending}
-        onConfirm={() => {
-          if (deletingSeat && !removeSeat.isPending)
-            removeSeat.mutate(deletingSeat.seatId);
         }}
       />
     </div>

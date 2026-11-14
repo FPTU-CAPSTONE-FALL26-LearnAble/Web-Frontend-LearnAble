@@ -51,7 +51,7 @@ export function PageHeading({
       <div>
         <h1
           tabIndex={-1}
-          className="text-3xl font-extrabold tracking-tight outline-none"
+          className="text-3xl font-extrabold tracking-tight text-primary outline-none"
         >
           {title}
         </h1>

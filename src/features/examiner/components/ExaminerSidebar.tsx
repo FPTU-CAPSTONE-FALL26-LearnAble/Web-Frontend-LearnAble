@@ -9,21 +9,21 @@ import {
   LayoutDashboard,
   LogOut,
   MonitorCheck,
+  Camera,
+  PackageCheck,
   TimerReset,
-  CalendarCheck,
   Bell,
   BellRing,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import type { User } from "@/api/auth";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { Button } from "@/shared/ui/primitives/button";
-import { Separator } from "@/shared/ui/primitives/separator";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { DemoDataToggle } from "@/components/DemoDataToggle";
+import { SidebarCollapseButton, SidebarRailButton, SidebarRailDivider, SidebarRailLink } from "@/components/SidebarControls";
 import { cn } from "@/lib/utils";
 import { getUnreadNotificationCount } from "@/api/notifications";
 
@@ -55,8 +55,9 @@ const groups: NavigationGroup[] = [
     icon: FileStack,
     items: [
       { label: "Exam papers", path: "/examiner/exams", icon: FileStack },
+      { label: "Sealed packages", path: "/examiner/sealed-papers", icon: PackageCheck },
+      { label: "Proctoring policy", path: "/examiner/proctoring-policy", icon: Camera },
       { label: "Exam schedule", path: "/examiner/schedule", icon: CalendarDays },
-      { label: "Invigilation registration", path: "/examiner/invigilation-periods", icon: CalendarCheck },
     ],
   },
   {
@@ -91,7 +92,7 @@ const groups: NavigationGroup[] = [
 
 const itemClasses = (active: boolean, nested = false) =>
   cn(
-    "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm font-semibold transition-colors",
+    "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm font-semibold leading-snug transition-colors",
     nested ? "py-2" : "py-2.5",
     active
       ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
@@ -127,7 +128,7 @@ function NavigationGroup({
         className={itemClasses(groupActive)}
       >
         <GroupIcon className="size-5 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{group.label}</span>
+        <span className="min-w-0 flex-1 wrap-anywhere">{group.label}</span>
         <ChevronDown
           className={cn(
             "size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
@@ -139,7 +140,7 @@ function NavigationGroup({
       {open ? (
         <div
           id={`examiner-nav-${group.id}`}
-          className="ml-5 mt-1 space-y-1 border-l border-border pl-3"
+          className="ml-4 mt-1 space-y-1 border-l border-border pl-2"
         >
           {group.items.map(({ label, path, icon: Icon }) => (
             <NavLink
@@ -151,7 +152,7 @@ function NavigationGroup({
               }
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">{label}</span>
+              <span className="min-w-0 flex-1 wrap-anywhere">{label}</span>
             </NavLink>
           ))}
         </div>
@@ -165,13 +166,23 @@ export function ExaminerSidebar({
   onNavigate,
   onSignOut,
   onUnavailable,
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   user: User;
   onNavigate?: () => void;
   onSignOut: () => void;
   onUnavailable: (label: string) => void;
+  /** Shows the icon rail instead of the full list. Only the desktop sidebar can be collapsed. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const { pathname } = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+  // Bring the current page into view when it sits below the fold of a short window.
+  useEffect(() => {
+    navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: "nearest" });
+  }, [pathname]);
   const unreadNotifications = useQuery({
     queryKey: ["my-notifications", "unread-count"],
     queryFn: getUnreadNotificationCount,
@@ -186,21 +197,51 @@ export function ExaminerSidebar({
       .map((part) => part[0])
       .join("")
       .toUpperCase() || "EX";
-  return (
-    <div className="flex h-full flex-col overflow-y-auto bg-white px-4 py-4">
-      <div className="border-b border-border px-1 pb-4">
-        <BrandIdentity />
-      </div>
-      <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
-        <Avatar size="lg">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold">{user.fullName}</p>
-          <p className="text-xs text-muted-foreground">Exam Operations</p>
+  const unreadCount = unreadNotifications.data?.unreadCount ?? 0;
+  if (collapsed && onToggleCollapsed) {
+    return (
+      <div className="flex h-full flex-col items-center bg-white px-2 py-3">
+        <SidebarCollapseButton collapsed onToggle={onToggleCollapsed} />
+        <nav
+          ref={navRef}
+          aria-label="Examiner navigation"
+          className="examiner-scroll mt-3 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 pb-2"
+        >
+          <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
+          <SidebarRailLink to={notifications.path} label={notifications.label} icon={Bell} end badge={unreadCount} />
+          <SidebarRailLink to="/examiner/notifications/manage" label="Send notifications" icon={BellRing} end />
+          {groups.map((group) => (
+            <Fragment key={group.id}>
+              <SidebarRailDivider />
+              {group.items.map(({ label, path, icon }) => (
+                <SidebarRailLink key={path} to={path} label={label} icon={icon} />
+              ))}
+            </Fragment>
+          ))}
+          <SidebarRailDivider />
+          <SidebarRailButton label="Emergency" icon={AlertTriangle} danger onClick={() => onUnavailable("Emergency workspace")} />
+        </nav>
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-border pt-3">
+          <Avatar title={user.fullName}>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <SidebarRailButton label="Sign out" icon={LogOut} onClick={onSignOut} />
         </div>
       </div>
-      <nav aria-label="Examiner navigation" className="mt-5 space-y-1">
+    );
+  }
+  return (
+    <div className="flex h-full flex-col bg-white px-4 py-4">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-1 pb-3">
+        <BrandIdentity />
+        {onToggleCollapsed ? <SidebarCollapseButton collapsed={false} onToggle={onToggleCollapsed} /> : null}
+      </div>
+      {/* Only the list scrolls, so the brand and the account controls never leave the screen. */}
+      <nav
+        ref={navRef}
+        aria-label="Examiner navigation"
+        className="examiner-scroll -mx-1 mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto px-1 pb-2"
+      >
         <NavLink
           to={dashboard.path}
           end
@@ -229,13 +270,14 @@ export function ExaminerSidebar({
           Emergency
         </button>
       </nav>
-      <div className="mt-auto pt-8">
-        <DemoDataToggle />
-        <Separator className="my-4" />
-        <div className="flex items-center gap-2">
+      <div className="shrink-0 border-t border-border pt-3">
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">{user.fullName}</p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="line-clamp-2 wrap-anywhere text-sm font-bold" title={user.fullName}>{user.fullName}</p>
+            <p className="text-xs text-muted-foreground">
               FPT University examiner
             </p>
           </div>

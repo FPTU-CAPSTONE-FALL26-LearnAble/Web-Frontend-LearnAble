@@ -15,10 +15,11 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { NavLink } from "react-router";
 import type { User } from "@/api/auth";
 import { BrandIdentity } from "@/components/BrandIdentity";
+import { SidebarCollapseButton, SidebarRailButton, SidebarRailDivider, SidebarRailLink } from "@/components/SidebarControls";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { Button } from "@/shared/ui/primitives/button";
 import { Separator } from "@/shared/ui/primitives/separator";
@@ -166,11 +167,16 @@ export function StaffSidebar({
   user,
   onSignOut,
   onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   activePath: string;
   user: User;
   onSignOut: () => void;
   onNavigate?: () => void;
+  /** Shows the icon rail instead of the full list. Only the desktop sidebar can be collapsed. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const initials =
     user.fullName
@@ -181,10 +187,38 @@ export function StaffSidebar({
       .join("")
       .toUpperCase() || "ST";
   const DashboardIcon = dashboard.icon;
+  if (collapsed && onToggleCollapsed) {
+    return (
+      <div className="flex h-full flex-col items-center bg-white px-2 py-3">
+        <SidebarCollapseButton collapsed onToggle={onToggleCollapsed} />
+        <nav
+          aria-label="Staff navigation"
+          className="admin-scroll mt-3 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 pb-2"
+        >
+          <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
+          {groups.map((group) => (
+            <Fragment key={group.id}>
+              <SidebarRailDivider />
+              {group.items.map(({ label, path, icon }) => (
+                <SidebarRailLink key={path} to={path} label={label} icon={icon} />
+              ))}
+            </Fragment>
+          ))}
+        </nav>
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-border pt-3">
+          <Avatar title={user.fullName}>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <SidebarRailButton label="Sign out" icon={LogOut} onClick={onSignOut} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="admin-scroll flex h-full flex-col overflow-y-auto bg-white px-4 py-4">
-      <div className="border-b border-border px-1 pb-4">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-1 pb-4">
         <BrandIdentity />
+        {onToggleCollapsed ? <SidebarCollapseButton collapsed={false} onToggle={onToggleCollapsed} /> : null}
       </div>
       <nav aria-label="Staff navigation" className="mt-5 space-y-1">
         <NavLink

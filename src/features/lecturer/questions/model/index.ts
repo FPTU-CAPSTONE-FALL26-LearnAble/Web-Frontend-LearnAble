@@ -62,7 +62,7 @@ export type Option = { text: string; description: string; correct: boolean };
 export type QuestionDraft = Common &
   (
     | { type: "single" | "multiple"; options: Option[] }
-    | { type: "essay"; instructions: string; rubric: string }
+    | { type: "essay"; instructions: string }
     | {
         type: "code";
         language: string;
@@ -102,7 +102,7 @@ export function createDraft(
         })),
       };
     case "essay":
-      return { ...base, type, instructions: "", rubric: "" };
+      return { ...base, type, instructions: "" };
     case "code":
       return {
         ...base,
@@ -142,11 +142,9 @@ export function validateDraft(
           : "Select at least one correct answer.",
       );
   }
-  if (
-    draft.type === "essay" &&
-    (!draft.instructions.trim() || !draft.rubric.trim())
-  )
-    errors.push("Answer instructions and a rubric are required.");
+  // Essays are graded by hand with a single total mark, so there is no rubric to enter.
+  if (draft.type === "essay" && !draft.instructions.trim())
+    errors.push("Answer instructions are required.");
   if (
     draft.type === "code" &&
     (!draft.starterCode.trim() || !draft.expectedOutput.trim())

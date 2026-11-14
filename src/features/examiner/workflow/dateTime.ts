@@ -50,6 +50,29 @@ export function localDatePrefix(date: string) {
   return `${match[3]}-${match[2]}-${match[1]}T`;
 }
 
+/** Converts an API instant to the browser's local yyyy-MM-ddTHH:mm. */
+export function toLocalInput(value: string) {
+  const date = new Date(value);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+}
+
+/** Shows an API instant as local DD/MM/YYYY HH:mm. */
+export function formatLocalDateTime(value: string) {
+  if (Number.isNaN(Date.parse(value))) return value;
+  const { date, time } = splitLocalDateTime(toLocalInput(value));
+  return `${date} ${time}`;
+}
+
+export function addDaysToDate(date: string, days: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+export function addMinutesToLocal(value: string, minutes: number) {
+  return toLocalInput(new Date(new Date(value).getTime() + minutes * 60_000).toISOString());
+}
+
 export function copyLocalDate(source: string, target: string) {
   const sourceMatch = /^(\d{4}-\d{2}-\d{2})T?(\d{2}:\d{2})?/.exec(source);
   if (!sourceMatch) return target;

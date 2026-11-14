@@ -3,11 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { PowerOff, ShieldCheck, UserCog, Users } from "lucide-react";
 import { describeError } from "@/app/providers";
 import {
+  activateUser,
+  changeUserRole,
   createLecturerProfile,
   createStudentProfile,
   createUser,
   deactivateUser,
   getAdminUsers,
+  resetUserPassword,
   staffManagedUserRoles,
   updateUser,
   userRoles,
@@ -89,6 +92,22 @@ const emptyDraft: Draft = {
 };
 const genders = ["Male", "Female", "Other"];
 const unset = "unset";
+const REASON_MAX = 500;
+const TEMP_PASSWORD_MIN = 8;
+
+type AccountAction = {
+  row: AdminUser;
+  kind: "reset" | "role";
+};
+type AccountActionDraft = { password: string; reason: string; role: string };
+const emptyActionDraft: AccountActionDraft = { password: "", reason: "", role: "" };
+
+/** Reasons are kept for the audit trail, so the Backend requires one for sensitive changes. */
+function reasonError(reason: string) {
+  if (!reason.trim()) return "Give a reason for this change.";
+  if (reason.trim().length > REASON_MAX) return `The reason must be ${REASON_MAX} characters or fewer.`;
+  return null;
+}
 
 const roleTone = (role: string) =>
   role === "Admin"
@@ -110,6 +129,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
   const isStaff = useAuthStore(
     (state) => state.user?.role?.toLowerCase() === "staff",
   );
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const managedRoles = isStaff ? staffManagedUserRoles : userRoles;
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -124,6 +144,10 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [deactivating, setDeactivating] = useState<AdminUser | null>(null);
+  const [reactivating, setReactivating] = useState<AdminUser | null>(null);
+  const [accountAction, setAccountAction] = useState<AccountAction | null>(null);
+  const [actionDraft, setActionDraft] = useState<AccountActionDraft>(emptyActionDraft);
+  const [actionErrors, setActionErrors] = useState<string[]>([]);
   const [createdAccount, setCreatedAccount] = useState<AdminUser | null>(null);
   const [staffDateError, setStaffDateError] = useState<string | null>(null);
   const departments = useDepartmentOptions(isStaff);
@@ -227,6 +251,72 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
     mutationFn: (id) => deactivateUser(id),
     onSuccess: () => setDeactivating(null),
   });
+  const reactivate = useAdminWrite<AdminUser>({
+    resource: "users",
+    action: "Account reactivation",
+    alsoInvalidate: ["studentProfiles", "lecturerProfiles"],
+    mutationFn: (row) => activateUser(row.userId, row.revision),
+    onSuccess: () => setReactivating(null),
+  });
+  const closeAccountAction = () => {
+    setAccountAction(null);
+    setActionDraft(emptyActionDraft);
+    setActionErrors([]);
+  };
+  const resetPassword = useAdminWrite({
+    resource: "users",
+    action: "Password reset",
+    mutationFn: () =>
+      resetUserPassword(
+        accountAction!.row.userId,
+        {
+          temporaryPassword: actionDraft.password,
+          reason: actionDraft.reason.trim(),
+        },
+        accountAction!.row.revision,
+      ),
+    onSuccess: closeAccountAction,
+    onError: (error) => setActionErrors([describeError(error)]),
+  });
+  const changeRole = useAdminWrite({
+    resource: "users",
+    action: "Role change",
+    alsoInvalidate: ["studentProfiles", "lecturerProfiles"],
+    mutationFn: () =>
+      changeUserRole(
+        accountAction!.row.userId,
+        {
+          role: actionDraft.role as UserRole,
+          reason: actionDraft.reason.trim(),
+        },
+        accountAction!.row.revision,
+      ),
+    onSuccess: closeAccountAction,
+    onError: (error) => setActionErrors([describeError(error)]),
+  });
+  const openAccountAction = (row: AdminUser, kind: AccountAction["kind"]) => {
+    setAccountAction({ row, kind });
+    setActionDraft({
+      ...emptyActionDraft,
+      role: kind === "role" ? (managedRoles.find((item) => item !== row.role) ?? "") : "",
+    });
+    setActionErrors([]);
+  };
+  const submitAccountAction = () => {
+    if (!accountAction) return;
+    const found: string[] = [];
+    if (accountAction.kind === "reset" && actionDraft.password.length < TEMP_PASSWORD_MIN)
+      found.push(`The temporary password must be at least ${TEMP_PASSWORD_MIN} characters.`);
+    if (accountAction.kind === "role" && (!actionDraft.role || actionDraft.role === accountAction.row.role))
+      found.push("Choose a different role.");
+    const reason = reasonError(actionDraft.reason);
+    if (reason) found.push(reason);
+    setActionErrors(found);
+    if (found.length) return;
+    if (accountAction.kind === "reset") resetPassword.mutate();
+    else changeRole.mutate();
+  };
+  const actionPending = resetPassword.isPending || changeRole.isPending;
 
   const submit = () => {
     const found: string[] = [];
@@ -476,26 +566,36 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
                         Deactivate
                       </Button>
                     )}
-                  {isStaff &&
-                  row.status !== "Active" &&
-                  row.role !== "Admin" &&
-                  row.role !== "Staff" ? (
+                  {row.status !== "Active" &&
+                  !(
+                    isStaff &&
+                    (row.role === "Admin" || row.role === "Staff")
+                  ) ? (
                     <Button
-                      disabled
                       variant="outline"
-                      title="Available when the Backend publishes account reactivation."
+                      onClick={() => setReactivating(row)}
                     >
                       Reactivate
                     </Button>
                   ) : null}
-                  {isStaff && row.role !== "Admin" && row.role !== "Staff" ? (
-                    <Button
-                      disabled
-                      variant="ghost"
-                      title="Available when the Backend publishes password reset."
-                    >
-                      Reset password
-                    </Button>
+                  {!(
+                    isStaff &&
+                    (row.role === "Admin" || row.role === "Staff")
+                  ) && row.userId !== currentUserId ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        onClick={() => openAccountAction(row, "reset")}
+                      >
+                        Reset password
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => openAccountAction(row, "role")}
+                      >
+                        Change role
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </TableCell>
@@ -760,8 +860,9 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
           if (!open && !deactivate.isPending) setDeactivating(null);
         }}
         title="Deactivate account?"
-        description={`${deactivating?.fullName ?? "This account"} will no longer be able to sign in. The API exposes no reactivation endpoint, so this cannot be undone from this workspace.`}
+        description={`${deactivating?.fullName ?? "This account"} will no longer be able to sign in. You can reactivate the account later from this list.`}
         confirmLabel="Deactivate"
+        pendingLabel="Deactivating…"
         pending={deactivate.isPending}
         onConfirm={() =>
           deactivating &&
@@ -769,6 +870,64 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
           deactivate.mutate(deactivating.userId)
         }
       />
+
+      <ConfirmAction
+        open={reactivating !== null}
+        onOpenChange={(open) => {
+          if (!open && !reactivate.isPending) setReactivating(null);
+        }}
+        title="Reactivate account?"
+        description={`${reactivating?.fullName ?? "This account"} will be able to sign in again with their current password.`}
+        confirmLabel="Reactivate"
+        pendingLabel="Reactivating…"
+        pending={reactivate.isPending}
+        onConfirm={() =>
+          reactivating && !reactivate.isPending && reactivate.mutate(reactivating)
+        }
+      />
+
+      <FormDialog
+        open={accountAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !actionPending) closeAccountAction();
+        }}
+        title={accountAction?.kind === "reset" ? "Reset password" : "Change role"}
+        description={
+          accountAction?.kind === "reset"
+            ? `Set a temporary password for ${accountAction.row.fullName}. Share it with them securely and ask them to change it after signing in. It is not shown again.`
+            : `Change the role of ${accountAction?.row.fullName ?? "this account"} (currently ${accountAction?.row.role ?? ""}). The Backend applies its own rules for any linked student or lecturer profile and explains if the change is not allowed.`
+        }
+        submitLabel={accountAction?.kind === "reset" ? "Reset password" : "Change role"}
+        pending={actionPending}
+        errors={actionErrors}
+        onSubmit={submitAccountAction}
+      >
+        {accountAction?.kind === "reset" ? (
+          <RevealablePasswordField
+            label="Temporary password"
+            value={actionDraft.password}
+            onChange={(password) => setActionDraft((old) => ({ ...old, password }))}
+          />
+        ) : (
+          <ChoiceField
+            label="New role"
+            value={actionDraft.role}
+            options={managedRoles
+              .filter((item) => item !== accountAction?.row.role)
+              .map((value) => ({ value, label: value }))}
+            onChange={(next) => setActionDraft((old) => ({ ...old, role: next }))}
+          />
+        )}
+        <TextField
+          label="Reason"
+          multiline
+          value={actionDraft.reason}
+          onChange={(reason) => setActionDraft((old) => ({ ...old, reason }))}
+        />
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {actionDraft.reason.trim().length}/{REASON_MAX} characters. The reason is recorded with the change.
+        </p>
+      </FormDialog>
     </div>
   );
 }

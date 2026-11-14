@@ -288,6 +288,7 @@ export function ConfirmAction({
   title,
   description,
   confirmLabel,
+  pendingLabel = "Deleting…",
   pending = false,
   onConfirm,
 }: {
@@ -296,6 +297,7 @@ export function ConfirmAction({
   title: string;
   description: string;
   confirmLabel: string;
+  pendingLabel?: string;
   pending?: boolean;
   onConfirm: () => void;
 }) {
@@ -316,7 +318,7 @@ export function ConfirmAction({
                   className="size-4 animate-spin motion-reduce:animate-none"
                 />
               ) : null}
-              {pending ? "Deleting…" : confirmLabel}
+              {pending ? pendingLabel : confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

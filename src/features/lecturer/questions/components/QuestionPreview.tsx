@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import {
@@ -21,23 +21,24 @@ import {
   ChevronLeft,
   ChevronRight,
   Monitor,
-  RotateCcw,
-  Square,
-  Volume2,
 } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 export function QuestionPreview({
   draft,
   image,
+  audio,
+  compact = false,
 }: {
   draft: QuestionDraft;
   image: string;
+  /** Optional players for a saved question: one under the question text, one under each answer. */
+  audio?: { question?: ReactNode; option?: (index: number) => ReactNode };
+  /** Inside a dialog that already says what it is: leaves out the "Student experience" and "Preview mode" labels. */
+  compact?: boolean;
 }) {
   const [answer, setAnswer] = useState("");
   const [multipleAnswers, setMultipleAnswers] = useState<string[]>([]);
   const [flagged, setFlagged] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
   const warnings = [
     !draft.content.trim() ? "Question content is empty." : "",
     draft.type === "diagram" && image && !draft.alt.trim()
@@ -48,23 +49,6 @@ export function QuestionPreview({
       ? "One or more answer options are empty."
       : "",
   ].filter(Boolean);
-  const readPreview = () => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const optionText = draft.type === "single" || draft.type === "multiple"
-      ? draft.options.map((option, index) => `${String.fromCharCode(65 + index)}. ${option.text || "Empty answer option"}`).join(". ")
-      : "";
-    const utterance = new SpeechSynthesisUtterance(`${draft.content || "Question content is empty"}. ${optionText}`);
-    utterance.rate = playbackRate;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  };
-  const stopPreview = () => {
-    window.speechSynthesis?.cancel();
-    setIsSpeaking(false);
-  };
   let formula = "";
   let formulaError = "";
   if (draft.type === "math" && draft.format === "LaTeX" && draft.formula) {
@@ -86,7 +70,7 @@ export function QuestionPreview({
         <h2 className="text-sm font-bold uppercase tracking-wide text-primary">
           Live review
         </h2>
-        <Badge variant="outline" className="ml-auto">Student experience</Badge>
+        {compact ? null : <Badge variant="outline" className="ml-auto">Student experience</Badge>}
       </div>
       <div className={`rounded-lg border px-4 py-3 text-sm ${warnings.length ? "border-warning-foreground/40 bg-warning text-warning-foreground" : "border-success-border bg-success text-success-foreground"}`}>
         <p className="font-bold">Accessibility check: {warnings.length ? `${warnings.length} issue${warnings.length > 1 ? "s" : ""}` : "Ready"}</p>
@@ -103,46 +87,8 @@ export function QuestionPreview({
             </p>
             <p className="text-xs text-muted-foreground">Student question view</p>
           </div>
-          <Badge variant="outline" className="ml-auto">Preview mode</Badge>
+          {compact ? null : <Badge variant="outline" className="ml-auto">Preview mode</Badge>}
         </div>
-
-        <section
-          aria-label="Student accessibility tools"
-          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-border/80 bg-card/95 px-4 py-3 shadow-xs"
-        >
-          <Button
-            type="button"
-            variant={isSpeaking ? "secondary" : "default"}
-            onClick={readPreview}
-          >
-            <Volume2 aria-hidden />
-            <span className="truncate">{isSpeaking ? "Reading question…" : "Read question & answers"}</span>
-          </Button>
-          <Button type="button" variant="outline" onClick={readPreview} aria-label="Read question again">
-            <RotateCcw aria-hidden />
-            <span className="sr-only">Read again</span>
-          </Button>
-          {isSpeaking && (
-            <Button type="button" variant="ghost" onClick={stopPreview} className="col-span-2 justify-self-start">
-              <Square aria-hidden className="fill-current" />
-              Stop
-            </Button>
-          )}
-          <div className="col-span-2 flex min-h-11 items-center gap-1 rounded-md border border-border bg-background p-1 text-sm">
-            <span className="px-1 font-medium text-muted-foreground">Speed</span>
-            {[1, 1.25].map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                aria-pressed={playbackRate === rate}
-                onClick={() => setPlaybackRate(rate)}
-                className={`min-h-9 rounded px-2 font-semibold transition-colors ${playbackRate === rate ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-              >
-                {rate}x
-              </button>
-            ))}
-          </div>
-        </section>
 
         <div className="min-w-0">
           <nav
@@ -209,6 +155,7 @@ export function QuestionPreview({
               <p className="whitespace-pre-wrap break-words text-xl font-semibold leading-relaxed text-foreground">
                 {draft.content || "Your question content will appear here."}
               </p>
+              {audio?.question}
             </div>
           {(draft.type === "single" || draft.type === "multiple") && (
             <div>
@@ -223,8 +170,8 @@ export function QuestionPreview({
                   className="gap-2"
                 >
                   {draft.options.map((o, i) => (
+                    <div key={i}>
                     <div
-                      key={i}
                       className={`group flex min-h-[60px] items-start gap-3.5 rounded-xl border p-4 transition-colors ${answer === String(i) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border/70 bg-card hover:border-border hover:bg-secondary/40"}`}
                     >
                       <RadioGroupItem id={`preview-option-${i}`} value={String(i)} className="sr-only" />
@@ -242,6 +189,8 @@ export function QuestionPreview({
                         </span>
                       </Label>
                     </div>
+                    {audio?.option?.(i)}
+                    </div>
                   ))}
                 </RadioGroup>
               ) : (
@@ -249,7 +198,8 @@ export function QuestionPreview({
                   {draft.options.map((o, i) => {
                     const optionId = String(i);
                     return (
-                      <div key={i} className={`flex min-h-[60px] items-start gap-3.5 rounded-xl border p-4 transition-colors ${multipleAnswers.includes(optionId) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border/70 bg-card hover:bg-secondary/40"}`}>
+                      <div key={i}>
+                      <div className={`flex min-h-[60px] items-start gap-3.5 rounded-xl border p-4 transition-colors ${multipleAnswers.includes(optionId) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border/70 bg-card hover:bg-secondary/40"}`}>
                         <Checkbox
                           id={`preview-multiple-${i}`}
                           checked={multipleAnswers.includes(optionId)}
@@ -264,6 +214,8 @@ export function QuestionPreview({
                           {multipleAnswers.includes(optionId) && <span className="mt-1.5 flex items-center gap-1 text-sm font-semibold text-primary"><CheckCircle2 aria-hidden className="size-4" />Selected answer</span>}
                           {o.description && <span className="mt-1 block text-sm font-normal text-muted-foreground">{o.description}</span>}
                         </Label>
+                      </div>
+                      {audio?.option?.(i)}
                       </div>
                     );
                   })}
@@ -282,14 +234,6 @@ export function QuestionPreview({
                 placeholder="Write your answer…"
                 className="min-h-40"
               />
-              <details className="text-sm">
-                <summary className="min-h-11 cursor-pointer py-3 font-semibold">
-                  Author rubric
-                </summary>
-                <p className="whitespace-pre-wrap">
-                  {draft.rubric || "No rubric entered."}
-                </p>
-              </details>
             </div>
           )}
           {draft.type === "code" && (

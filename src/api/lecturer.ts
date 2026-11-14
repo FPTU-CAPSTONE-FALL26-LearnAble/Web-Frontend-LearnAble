@@ -3,6 +3,7 @@ import { ApiFailure, request, requestBlob } from "@/api/client";
 import {
   materialSchema,
   questionSchema,
+  queryString,
   type CatalogQuestion,
   type LearningMaterial,
 } from "@/api/catalog";
@@ -118,6 +119,95 @@ export const getQuestionOptionAudio = (optionId: string) =>
   unwrap(`/QuestionOptions/${optionId}/audio`, audioPlaybackSchema, { method: "GET" });
 export const deleteQuestionOptionAudio = (optionId: string) =>
   command(`/QuestionOptions/${optionId}/audio`, { method: "DELETE" });
+
+const audioGenerationRetrySchema = z.object({
+  requeued: z.number(),
+  queued: z.number(),
+});
+
+/**
+ * Ask the Backend worker to (re)create audio for one question. The worker owns
+ * synthesis and retries; the browser never talks to the TTS tunnel directly.
+ */
+export const queueQuestionAudioGeneration = (questionId: string) =>
+  unwrap("/question-audio-generation/retry", audioGenerationRetrySchema, {
+    method: "POST",
+    json: { questionId, includeMissing: true },
+  });
+
+/** Queue audio for every missing question and answer option in a subject. */
+export const queueMissingSubjectAudioGeneration = (subjectId: string) =>
+  unwrap("/question-audio-generation/retry", audioGenerationRetrySchema, {
+    method: "POST",
+    json: { subjectId, includeMissing: true },
+  });
+
+const audioSegmentSchema = z.object({
+  questionId: z.string(),
+  optionId: z.string().nullable().optional(),
+  displayOrder: z.number().nullable().optional(),
+  generationStatus: z.enum(["Pending", "Processing", "Ready", "Failed"]),
+  hasAudio: z.boolean(),
+  attemptCount: z.number(),
+  lastError: z.string().nullable().optional(),
+  durationSeconds: z.number().nullable().optional(),
+  nextAttemptAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+});
+export type AudioSegment = z.infer<typeof audioSegmentSchema>;
+
+const audioGenerationSummarySchema = z.object({
+  questions: z.number(),
+  totalSegments: z.number(),
+  ready: z.number(),
+  pending: z.number(),
+  processing: z.number(),
+  failed: z.number(),
+  missing: z.number(),
+  workerEnabled: z.boolean(),
+  failedSegments: z.array(audioSegmentSchema),
+});
+export type AudioGenerationSummary = z.infer<typeof audioGenerationSummarySchema>;
+
+export const getQuestionAudioGeneration = (questionId: string) =>
+  unwrap(
+    `/question-audio-generation/questions/${questionId}`,
+    z.object({
+      questionId: z.string(),
+      totalSegments: z.number(),
+      ready: z.number(),
+      workerEnabled: z.boolean(),
+      segments: z.array(audioSegmentSchema),
+    }),
+    { method: "GET" },
+  );
+
+/** Requeue failed audio in a scope and, with includeMissing, create what was never queued. */
+export const retryAudioGeneration = (input: {
+  subjectId?: string;
+  topicId?: string;
+  examTypeId?: string;
+  includeMissing: boolean;
+}) =>
+  unwrap("/question-audio-generation/retry", audioGenerationRetrySchema, {
+    method: "POST",
+    json: input,
+  });
+
+export const getQuestionAudioGenerationSummary = (filters: {
+  subjectId?: string;
+  topicId?: string;
+  examTypeId?: string;
+}) =>
+  unwrap(
+    `/question-audio-generation/summary${queryString({
+      SubjectId: filters.subjectId,
+      TopicId: filters.topicId,
+      ExamTypeId: filters.examTypeId,
+    })}`,
+    audioGenerationSummarySchema,
+    { method: "GET" },
+  );
 
 export async function setQuestionStatus(questionId: string, status: "Active" | "Archived") {
   const response = await request(

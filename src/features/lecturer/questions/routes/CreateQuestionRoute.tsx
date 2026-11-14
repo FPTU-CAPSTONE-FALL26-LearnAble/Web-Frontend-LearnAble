@@ -50,13 +50,15 @@ import {
   type QuestionDraft,
   type QuestionType,
 } from "@/features/lecturer/questions/model";
+import { buildExamTypeOptions } from "@/lib/examTypeLabel";
 import { useAcademicOptions } from "@/features/lecturer/shared/api/useLecturerData";
 import { ReadState, ScrollRegion } from "@/features/lecturer/shared/components/Workbench";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
-import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
+import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
 import { getExamTypes } from "@/api/exams";
+import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
 
 export function CreateQuestionRoute() {
   const studioBodyRef = useRef<HTMLDivElement>(null);
@@ -101,12 +103,7 @@ export function CreateQuestionRoute() {
         .map((topic) => topic.topicName),
     ),
   ];
-  const examTypeOptions = purposeExamTypes.map((examType) => ({
-    value: examType.examTypeId,
-    label: examType.code
-      ? `${examType.code} · ${examType.name ?? "Unnamed exam type"}`
-      : examType.name ?? "Unnamed exam type",
-  }));
+  const examTypeOptions = buildExamTypeOptions(purposeExamTypes);
   useEffect(() => {
     if (!examTypes.isSuccess) return;
     setDraft((current) => {
@@ -153,7 +150,7 @@ export function CreateQuestionRoute() {
     };
     const type: QuestionType = source.questionType === "Multiple" ? "multiple" : source.questionType === "Essay" ? "essay" : "single";
     const loaded = type === "essay"
-      ? { ...createDraft("essay", common), instructions: source.referenceAnswer ?? "", rubric: source.gradingCriteria ?? "" }
+      ? { ...createDraft("essay", common), instructions: source.referenceAnswer ?? "" }
       : { ...createDraft(type, common), options: source.options.map((option) => ({ text: option.content, description: "", correct: option.isCorrect })) };
     setDraft(loaded);
     setSaved(JSON.stringify(loaded));
@@ -242,36 +239,6 @@ export function CreateQuestionRoute() {
       title: "Option not available",
       description: `${label} isn’t available yet. Your work is still here and has not been submitted.`,
     });
-  const previewGeneratedAudio = (text: string, label: string) => {
-    const spokenText = text.trim();
-    if (!spokenText) {
-      toast({
-        title: `Add ${label.toLowerCase()} text first`,
-        description: "Audio can be generated after this text field has content.",
-      });
-      return;
-    }
-    if (!("speechSynthesis" in window)) {
-      toast({
-        title: "Voice preview is unavailable",
-        description: "This browser does not provide a text-to-speech voice. You can still upload an MP3 file.",
-      });
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(spokenText);
-    const language = /[ăâđêôơưĂÂĐÊÔƠƯ]/.test(spokenText) ? "vi-VN" : "en-US";
-    utterance.lang = language;
-    utterance.voice = window.speechSynthesis
-      .getVoices()
-      .find((voice) => voice.lang.toLowerCase().startsWith(language.slice(0, 2).toLowerCase())) ?? null;
-    window.speechSynthesis.speak(utterance);
-    toast({
-      title: `${label} voice preview started`,
-      description: "This preview uses the voice on your device. Upload an MP3 to save audio until Backend generation is available.",
-    });
-  };
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
   const saveDraft = () => {
     try {
       localStorage.setItem(draftKey(userId, purpose), JSON.stringify(draft));
@@ -299,7 +266,7 @@ export function CreateQuestionRoute() {
           difficulty: "Medium",
           defaultScore: Number(draft.points),
           referenceAnswer: draft.type === "essay" ? draft.instructions : null,
-          gradingCriteria: draft.type === "essay" ? draft.rubric : null,
+          gradingCriteria: null,
           maxWords: draft.type === "essay" ? 1000 : null,
         };
       const optionInputs = draft.type === "single" || draft.type === "multiple"
@@ -339,14 +306,26 @@ export function CreateQuestionRoute() {
           return file ? uploadQuestionOptionAudio(option.optionId, file) : Promise.resolve();
         }),
       );
-      return question;
+      // Audio generation is asynchronous on the Backend. A queue failure must
+      // never turn a successfully saved question into a failed save.
+      try {
+        const audioGeneration = await queueQuestionAudioGeneration(question.questionId);
+        return { ...question, audioGenerationQueued: audioGeneration.queued + audioGeneration.requeued };
+      } catch {
+        return { ...question, audioGenerationQueued: null };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (question) => {
       localStorage.removeItem(draftKey(userId, purpose));
       setSaved(JSON.stringify(draft));
+      const audioMessage = question.audioGenerationQueued == null
+        ? "The question was saved, but automatic audio could not be queued. You can save again to retry."
+        : question.audioGenerationQueued > 0
+          ? "Audio generation was added to the queue."
+          : "Audio is already queued or ready.";
       toast({
         title: editingId ? "Question updated" : "Question saved",
-        description: editingId ? "The question and its answer options were updated." : "The question is now available in the question bank.",
+        description: `${editingId ? "The question and its answer options were updated." : "The question is now available in the question bank."} ${audioMessage}`,
       });
       void navigate(bankPath);
     },
@@ -627,17 +606,14 @@ export function CreateQuestionRoute() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <Label htmlFor="question-audio">Question audio</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">Generate a voice preview from the question or provide a saved MP3.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">LearnAble generates audio after the question is saved, or you can provide a saved MP3.</p>
                   </div>
-                  <Button type="button" variant="outline" onClick={() => previewGeneratedAudio(draft.content, "Question")}>
-                    <Sparkles className="size-4 text-primary" aria-hidden />
-                    Generate voice preview
-                  </Button>
                 </div>
                 <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3 text-sm">
                   <AudioLines className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-                  <p><strong>Automatic audio</strong><span className="mt-1 block text-xs text-muted-foreground">Preview is available now. A generated MP3 can only be saved after the Backend text-to-audio endpoint is connected.</span></p>
+                  <p><strong>Automatic audio</strong><span className="mt-1 block text-xs text-muted-foreground">When you save, LearnAble sends this question to the Backend audio queue. Generation continues in the background; saving your question is not delayed.</span></p>
                 </div>
+                {editingId ? <QuestionAudioStatus questionId={editingId} /> : null}
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Or upload MP3</p>
                 <Input
                   id="question-audio"
@@ -648,7 +624,7 @@ export function CreateQuestionRoute() {
                 <p className="text-xs text-muted-foreground">
                   {selectedFiles.current.audio
                     ? `${selectedFiles.current.audio.name} selected for upload.`
-                    : "MP3 is optional while saving a draft, but required before the question can be activated for an exam."}
+                    : "Optional. Upload an MP3 only if you want to provide your own recording."}
                 </p>
               </div>
             </div>
@@ -659,7 +635,6 @@ export function CreateQuestionRoute() {
               onOptionAudio={onOptionAudio}
               onRemoveOption={removeOptionAudio}
               optionAudioNames={optionAudioNames}
-              onGenerateAudio={previewGeneratedAudio}
             />
             <div className="border-t border-border pt-4">
               <TextField

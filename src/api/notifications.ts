@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiFailure, request } from "@/api/client";
 import { pageSchema, queryString } from "@/api/catalog";
+import { fetchAllPages } from "@/api/pagination";
 
 const envelope = <T extends z.ZodTypeAny>(schema: T) => z.object({ success: z.boolean(), message: z.string().nullable().optional(), data: schema.nullable(), errors: z.array(z.string()).nullable().optional() });
 async function unwrap<T extends z.ZodTypeAny>(path: string, schema: T, init?: RequestInit & { json?: unknown }) {
@@ -36,10 +37,14 @@ export const markNotificationRead = (id: string) => unwrap(`/me/notifications/${
 export const markAllNotificationsRead = () => unwrap("/me/notifications/read-all", z.object({ updatedCount: z.number() }), { method: "PATCH" });
 export const getManagedNotifications = () => unwrap(`/notifications${queryString({ Page: 1, PageSize: 100 })}`, pageSchema(managedNotificationSchema));
 export const getManagedNotification = (id: string) => unwrap(`/notifications/${id}`, managedNotificationSchema);
-export const createManagedNotification = (input: NotificationWriteInput) => unwrap("/notifications", managedNotificationSchema, { method: "POST", json: input });
+/** Same contract as the manual form, plus the type the Backend reserves for published exam schedules. */
+export type ManagedNotificationCreateInput = Omit<NotificationWriteInput, "notificationType"> & {
+  notificationType: NotificationWriteInput["notificationType"] | "ExamSchedulePublished";
+};
+export const createManagedNotification = (input: ManagedNotificationCreateInput) => unwrap("/notifications", managedNotificationSchema, { method: "POST", json: input });
 export const updateManagedNotification = (id: string, revision: string, input: NotificationWriteInput) => unwrap(`/notifications/${id}`, managedNotificationSchema, { method: "PUT", headers: { "If-Match": notificationTag(id, revision) }, json: input });
 export const getNotificationRecipientCandidates = (search = "", role?: string) => unwrap(`/notifications/recipient-candidates${queryString({ Page: 1, PageSize: 100, Search: search || undefined, Role: role || undefined })}`, pageSchema(notificationRecipientSchema));
 export const publishManagedNotification = (id: string, revision: string) => unwrap(`/notifications/${id}/publish`, z.object({ notification: managedNotificationSchema, recipientCount: z.number() }), { method: "POST", headers: { "If-Match": notificationTag(id, revision) } });
-export const getNotificationRecipients = (id: string, preview: boolean) => unwrap(`/notifications/${id}/recipients${preview ? "/preview" : ""}${queryString({ Page: 1, PageSize: 200 })}`, pageSchema(notificationRecipientSchema));
+export const getNotificationRecipients = (id: string, preview: boolean) => fetchAllPages((Page, PageSize) => unwrap(`/notifications/${id}/recipients${preview ? "/preview" : ""}${queryString({ Page, PageSize })}`, pageSchema(notificationRecipientSchema)));
 export const archiveManagedNotification = (id: string, revision: string) => unwrap(`/notifications/${id}/archive`, managedNotificationSchema, { method: "PATCH", headers: { "If-Match": notificationTag(id, revision) } });
 export const deleteManagedNotification = (id: string, revision: string) => command(`/notifications/${id}`, { method: "DELETE", headers: { "If-Match": notificationTag(id, revision) } });

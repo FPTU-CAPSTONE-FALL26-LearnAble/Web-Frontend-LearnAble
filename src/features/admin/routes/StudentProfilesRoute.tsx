@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, Trash2, UserPlus, UserRound } from "lucide-react";
+import { GraduationCap, Pencil, Trash2, UserPlus, UserRound } from "lucide-react";
 import {
   changeEnrollmentStatus,
   createStudentProfile,
@@ -48,6 +48,7 @@ import {
   TablePanel,
   formatDate,
 } from "../components/AdminSurfaces";
+import { StudentAcademicDialog } from "../components/StudentAcademicDialog";
 
 type Draft = {
   userId: string;
@@ -94,6 +95,7 @@ export function StudentProfilesRoute() {
     next: EnrollmentStatus;
   } | null>(null);
   const [removing, setRemoving] = useState<StudentProfile | null>(null);
+  const [editingAcademic, setEditingAcademic] = useState<StudentProfile | null>(null);
 
   const students = useUserOptions("Student");
   const studentCandidates = useQuery({
@@ -388,6 +390,14 @@ export function StudentProfilesRoute() {
               <TableCell>
                 <div className="flex flex-wrap gap-2">
                   <Button
+                    variant="outline"
+                    aria-label={`Edit academic record of ${userLabel(studentRows, row.userId) ?? "this student"}`}
+                    onClick={() => setEditingAcademic(row)}
+                  >
+                    <Pencil aria-hidden />
+                    Edit
+                  </Button>
+                  <Button
                     variant="ghost"
                     aria-label={`Delete profile of ${userLabel(studentRows, row.userId) ?? "this student"}`}
                     onClick={() => setRemoving(row)}
@@ -434,7 +444,7 @@ export function StudentProfilesRoute() {
           if (!open) closeForm();
         }}
         title="New student profile"
-        description="Account, major, curriculum and intake year are permanent in the current Backend contract."
+        description="Choose the student account, major, curriculum and intake year. You can correct the academic record later with Edit."
         submitLabel="Create profile"
         pending={create.isPending}
         errors={errors}
@@ -519,6 +529,17 @@ export function StudentProfilesRoute() {
           }
         />
       </FormDialog>
+
+      {editingAcademic ? (
+        <StudentAcademicDialog
+          key={editingAcademic.userId}
+          profile={editingAcademic}
+          studentLabel={userLabel(studentRows, editingAcademic.userId) ?? "this student"}
+          currentCurriculumLabel={curriculumLabel(curriculumRows, editingAcademic.curriculumId)}
+          majors={majorRows}
+          onClose={() => setEditingAcademic(null)}
+        />
+      ) : null}
 
       <ConfirmAction
         open={statusChange !== null}

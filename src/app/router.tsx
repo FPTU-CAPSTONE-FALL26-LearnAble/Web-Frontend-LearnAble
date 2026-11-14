@@ -28,9 +28,12 @@ const CreateQuestionRoute = lazy(() =>
 import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/LearningMaterialsRoute";
 import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
+import { SharedShiftRoute } from "@/features/examiner/routes/SharedShiftRoute";
+import { ProctoringPolicyRoute } from "@/features/examiner/routes/ProctoringPolicyRoute";
+import { SealPaperRoute } from "@/features/lecturer/exams/routes/SealPaperRoute";
+import { SealedPapersRoute } from "@/features/lecturer/exams/routes/SealedPapersRoute";
 import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
 import { LecturerGradingRoute } from "@/features/lecturer/exams/routes/LecturerGradingRoute";
-import { InvigilationAvailabilityRoute } from "@/features/lecturer/exams/routes/InvigilationAvailabilityRoute";
 import { LecturerProfileRoute } from "@/features/lecturer/profile/routes/LecturerProfileRoute";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
 import { RequireAdmin } from "@/features/admin/components/RequireAdmin";
@@ -70,9 +73,6 @@ import {
   RoomMonitoringRoute,
   ScheduleCandidatesRoute,
   ScheduleDetailsRoute,
-  ScheduleReadinessRoute,
-  ScheduleRoomsRoute,
-  InvigilationPeriodsRoute,
 } from "@/features/examiner/routes/ExaminerRoutes";
 import {
   AccommodationsRoute,
@@ -168,11 +168,13 @@ export const router = createBrowserRouter([
                 element: <UploadMaterialRoute />,
               },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
+              { path: "/lecturer/exam-papers", element: <ExamBankRoute /> },
+              { path: "/lecturer/exam-papers/new/setup", element: <ExamSetupRoute /> },
+              { path: "/lecturer/exam-papers/new/questions", element: <QuestionSelectionRoute /> },
+              { path: "/lecturer/exam-papers/new/operations", element: <ExamOperationsRoute /> },
+              { path: "/lecturer/exam-papers/:paperId/seal", element: <SealPaperRoute /> },
+              { path: "/lecturer/sealed-papers", element: <SealedPapersRoute /> },
               { path: "/lecturer/grading", element: <LecturerGradingRoute /> },
-              {
-                path: "/lecturer/invigilation-availability",
-                element: <InvigilationAvailabilityRoute />,
-              },
               {
                 path: "/lecturer/exams/:examId/attendance",
                 element: <AttendanceRoute />,
@@ -266,18 +268,9 @@ export const router = createBrowserRouter([
                 element: <ExaminerDashboardRoute />,
               },
               { path: "/examiner/exams", element: <ExamBankRoute /> },
-              {
-                path: "/examiner/exams/new/setup",
-                element: <ExamSetupRoute />,
-              },
-              {
-                path: "/examiner/exams/new/questions",
-                element: <QuestionSelectionRoute />,
-              },
-              {
-                path: "/examiner/exams/new/operations",
-                element: <ExamOperationsRoute />,
-              },
+              { path: "/examiner/sealed-papers", element: <SealedPapersRoute /> },
+              { path: "/examiner/proctoring-policy", element: <ProctoringPolicyRoute /> },
+              { path: "/examiner/schedule/shared/:shiftId", element: <SharedShiftRoute /> },
               {
                 path: "/examiner/exams/new/readiness",
                 element: <ExamReadinessRoute />,
@@ -291,24 +284,12 @@ export const router = createBrowserRouter([
                 element: <ExamScheduleDetailRoute />,
               },
               {
-                path: "/examiner/invigilation-periods",
-                element: <InvigilationPeriodsRoute />,
-              },
-              {
                 path: "/examiner/schedule/new/details",
                 element: <ScheduleDetailsRoute />,
               },
               {
-                path: "/examiner/schedule/new/rooms",
-                element: <ScheduleRoomsRoute />,
-              },
-              {
                 path: "/examiner/schedule/new/candidates",
                 element: <ScheduleCandidatesRoute />,
-              },
-              {
-                path: "/examiner/schedule/new/readiness",
-                element: <ScheduleReadinessRoute />,
               },
               {
                 path: "/examiner/monitoring",

@@ -4,6 +4,9 @@ export type ExamPreparationDraft = {
   examSubjectId: string;
   examPaperId: string;
   paperETag: string;
+  /** Set when an existing Draft paper is being edited rather than a new one created. */
+  editingPaper: boolean;
+  examSubjectETag: string;
   subjectId: string;
   semesterId: string;
   examTypeId: string;
@@ -11,6 +14,9 @@ export type ExamPreparationDraft = {
   instructions: string;
   durationMinutes: number;
   passScore: number;
+  /** The examiner's plan for the paper. The Backend has no field for it; it guides the next step. 0 means not planned. */
+  plannedQuestionCount: number;
+  pointsPerQuestion: number;
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   scoringPolicy: "AllOrNothing";
@@ -22,7 +28,6 @@ export type ExamPreparationDraft = {
 };
 
 export type SchedulePreparationDraft = {
-  bulkRequestId: string;
   examSubjectId: string;
   examRoomId: string;
   examRoomIds: string[];
@@ -31,33 +36,27 @@ export type SchedulePreparationDraft = {
   endsAt: string;
   entryOpensAt: string;
   entryClosesAt: string;
-  examShiftId: string;
-  examScheduleId: string;
-  scheduleRooms: Array<{ examRoomId: string; roomLabel: string; examShiftId: string; examScheduleId: string }>;
-  assignmentsBySchedule: Record<string, { studentIds: string[]; lecturerIds: string[] }>;
-  assignedScheduleIds: string[];
+  /** The shared shift being prepared: it holds one schedule for every room. */
+  sharedShiftId: string;
   studentIds: string[];
   lecturerIds: string[];
-  invigilationPeriodId: string;
-  invigilationSlotId: string;
 };
 
 const examKey = "learnable:examiner:exam-preparation-v2";
 const scheduleKey = "learnable:examiner:schedule-preparation-v3";
 
 export const emptyExamPreparation: ExamPreparationDraft = {
-  examSubjectId: "", examPaperId: "", paperETag: "", subjectId: "", semesterId: "",
-  examTypeId: "", name: "", instructions: "", durationMinutes: 90, passScore: 5,
+  examSubjectId: "", examPaperId: "", paperETag: "", editingPaper: false, examSubjectETag: "", subjectId: "", semesterId: "",
+  examTypeId: "", name: "", instructions: "", durationMinutes: 90, passScore: 5, plannedQuestionCount: 0, pointsPerQuestion: 0,
   shuffleQuestions: true, shuffleOptions: true, scoringPolicy: "AllOrNothing",
   cameraRequired: true, cameraUnavailablePolicy: "AllowWithFlag",
   paperCode: "", paperName: "", selectedQuestions: [],
 };
 
 export const emptySchedulePreparation: SchedulePreparationDraft = {
-  bulkRequestId: "", examSubjectId: "", examRoomId: "", examRoomIds: [], shiftName: "", startsAt: "", endsAt: "",
-  entryOpensAt: "", entryClosesAt: "", examShiftId: "", examScheduleId: "",
-  scheduleRooms: [], assignmentsBySchedule: {}, assignedScheduleIds: [],
-  studentIds: [], lecturerIds: [], invigilationPeriodId: "", invigilationSlotId: "",
+  examSubjectId: "", examRoomId: "", examRoomIds: [], shiftName: "", startsAt: "", endsAt: "",
+  entryOpensAt: "", entryClosesAt: "", sharedShiftId: "",
+  studentIds: [], lecturerIds: [],
 };
 
 function read<T>(key: string, fallback: T): T {

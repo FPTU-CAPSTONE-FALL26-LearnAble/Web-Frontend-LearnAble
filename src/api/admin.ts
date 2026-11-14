@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { envelopeFailure, request } from "@/api/client";
+import { ApiFailure, envelopeFailure, request } from "@/api/client";
 import {
   pageSchema,
   queryString,
   type Page,
   type ReadFilters,
 } from "@/api/catalog";
+import { fetchAllPages } from "@/api/pagination";
 
 /**
  * Admin workspace contract — mirrors the deployed LearnAble OpenAPI document
@@ -39,6 +40,8 @@ export const staffManagedUserRoles = [
   "Examiner",
 ] as const;
 export const userStatuses = ["Active", "Inactive"] as const;
+export const examScoringPolicies = ["AllOrNothing"] as const;
+export const cameraUnavailablePolicies = ["Block", "AllowWithFlag", "Allow"] as const;
 export const semesterStatuses = ["Planned", "Ongoing", "Closed"] as const;
 export const curriculumStatuses = ["Draft", "Active", "Archived"] as const;
 export const enrollmentStatuses = [
@@ -153,6 +156,7 @@ export const curriculumSchema = z
 
 export const adminUserSchema = z
   .object({
+    revision: z.string().nullable().optional(),
     userId: z.string(),
     universityId: z.string(),
     userCode: z.string().nullable(),
@@ -177,6 +181,7 @@ export const adminUserSchema = z
 
 export const studentProfileSchema = z
   .object({
+    academicRevision: z.string().nullable().optional(),
     userId: z.string(),
     userRole: z.string().nullable(),
     majorId: z.string(),
@@ -371,6 +376,7 @@ async function write(
   resource: string,
   method: "POST" | "PUT" | "PATCH" | "DELETE",
   body?: unknown,
+  headers?: Record<string, string>,
 ): Promise<void> {
   const response = await request(
     `/${resource}`,
@@ -379,10 +385,26 @@ async function write(
       message: z.string().nullable().optional(),
       errors: z.array(z.string()).nullable().optional(),
     }),
-    body === undefined ? { method } : { method, json: body },
+    {
+      method,
+      ...(headers ? { headers } : {}),
+      ...(body === undefined ? {} : { json: body }),
+    },
   );
   if (!response.success) throw envelopeFailure(response);
 }
+
+const compactId = (value: string) => value.replaceAll("-", "");
+
+/**
+ * Optimistic-concurrency tag in the Backend's `"{id}-{revision}"` format, the
+ * same one the invigilation and notification endpoints use. The header is
+ * optional in the OpenAPI document, so it is only sent when a revision is known.
+ */
+const ifMatch = (id: string, revision?: string | null) =>
+  revision
+    ? { "If-Match": `"${compactId(id)}-${compactId(revision)}"` }
+    : undefined;
 
 /** Writes whose documented response contains the created resource. */
 async function writeOne<T>(
@@ -658,6 +680,84 @@ export const approveCurriculum = (id: string) =>
 export const archiveCurriculum = (id: string) =>
   write(`Curriculums/${id}/archive`, "PATCH");
 
+export type CurriculumSubjectSet = {
+  subjectIds: string[];
+  revision: string | null;
+};
+
+/**
+ * The OpenAPI document does not describe this response, so accept a bare list
+ * or an object holding one. A shape that cannot be read is an error, never an
+ * empty set: saving from a falsely empty list would replace every assignment.
+ */
+export function readCurriculumSubjects(raw: unknown): CurriculumSubjectSet {
+  if (raw === null || raw === undefined) return { subjectIds: [], revision: null };
+  const holder = Array.isArray(raw) || typeof raw !== "object" ? null : (raw as Record<string, unknown>);
+  const list = Array.isArray(raw)
+    ? raw
+    : holder && [holder.subjectIds, holder.subjects, holder.items].find(Array.isArray);
+  if (!Array.isArray(list)) throw new ApiFailure({ kind: "parse" });
+  const subjectIds = list.flatMap((item): string[] => {
+    if (typeof item === "string") return [item];
+    const id = (item as { subjectId?: unknown } | null)?.subjectId;
+    return typeof id === "string" ? [id] : [];
+  });
+  if (subjectIds.length !== list.length) throw new ApiFailure({ kind: "parse" });
+  return {
+    subjectIds: [...new Set(subjectIds)],
+    revision: typeof holder?.revision === "string" ? holder.revision : null,
+  };
+}
+
+export const getCurriculumSubjects = async (id: string) => {
+  const response = await request(`/Curriculums/${id}/subjects`, envelope(z.unknown()));
+  if (!response.success) throw envelopeFailure(response);
+  return readCurriculumSubjects(response.data);
+};
+/** Replaces the whole set atomically; send every subject that should remain. */
+export const setCurriculumSubjects = (
+  id: string,
+  subjectIds: string[],
+  revision?: string | null,
+) => write(`Curriculums/${id}/subjects`, "PUT", { subjectIds }, ifMatch(id, revision));
+
+/* ----------------------------------------------------- Default exam policy */
+
+export const universityExamPolicySchema = z.object({
+  defaultDurationMinutes: z.number(),
+  shuffleQuestions: z.boolean(),
+  shuffleOptions: z.boolean(),
+  scoringPolicy: z.enum(examScoringPolicies),
+  cameraRequired: z.boolean(),
+  cameraUnavailablePolicy: z.enum(cameraUnavailablePolicies),
+  revision: z.string().nullable().optional(),
+});
+export type UniversityExamPolicy = z.output<typeof universityExamPolicySchema>;
+export type UniversityExamPolicyBody = Omit<UniversityExamPolicy, "revision">;
+
+/** `null` means the university has not saved a policy yet. */
+export const getUniversityExamPolicy = async (
+  universityId: string,
+): Promise<UniversityExamPolicy | null> => {
+  const response = await request(
+    `/Universities/${universityId}/default-exam-policy`,
+    envelope(universityExamPolicySchema),
+  );
+  if (!response.success) throw envelopeFailure(response);
+  return response.data ?? null;
+};
+export const updateUniversityExamPolicy = (
+  universityId: string,
+  body: UniversityExamPolicyBody,
+  revision?: string | null,
+) =>
+  write(
+    `Universities/${universityId}/default-exam-policy`,
+    "PUT",
+    body,
+    ifMatch(universityId, revision),
+  );
+
 /* ------------------------------------------------------------------- Topics */
 
 export const getAdminTopics = (filters: ReadFilters = {}) =>
@@ -683,15 +783,33 @@ export const getAdminUsers = (filters: ReadFilters = {}) =>
     SortBy: "fullName",
     ...filters,
   });
+/** Every Student account with its name and student code, which the student profile does not carry. */
+export const getAllStudentUsers = () =>
+  fetchAllPages((PageNumber, PageSize) => getAdminUsers({ Role: "Student", PageNumber, PageSize }));
+/** Every lecturer profile the school imported. Examiners pick invigilators from this list. */
+export const getAllLecturerProfiles = () =>
+  fetchAllPages((PageNumber, PageSize) => getLecturerProfiles({ PageNumber, PageSize }));
 export const getAdminUser = (id: string) =>
   readOne<AdminUser>("Users", id, adminUserSchema);
 export const createUser = (body: CreateUserBody) =>
   writeOne<AdminUser>("Users", "POST", body, adminUserSchema);
 export const updateUser = (id: string, body: UpdateUserBody) =>
   write(`Users/${id}`, "PUT", body);
-/** The document exposes deactivate only — there is no matching activate. */
 export const deactivateUser = (id: string) =>
   write(`Users/${id}/deactivate`, "PATCH");
+export const activateUser = (id: string, revision?: string | null) =>
+  write(`Users/${id}/activate`, "PATCH", undefined, ifMatch(id, revision));
+/** The temporary password is only sent; the Backend never echoes it back. */
+export const resetUserPassword = (
+  id: string,
+  body: { temporaryPassword: string; reason: string },
+  revision?: string | null,
+) => write(`Users/${id}/reset-password`, "POST", body, ifMatch(id, revision));
+export const changeUserRole = (
+  id: string,
+  body: { role: UserRole; reason: string },
+  revision?: string | null,
+) => write(`Users/${id}/role`, "PATCH", body, ifMatch(id, revision));
 
 /* --------------------------------------------------------- StudentProfiles */
 
@@ -702,6 +820,9 @@ export const getStudentProfiles = (filters: ReadFilters = {}) =>
     SortBy: "-createdAt",
     ...filters,
   });
+
+export const getAllStudentProfiles = () =>
+  fetchAllPages((PageNumber, PageSize) => getStudentProfiles({ PageNumber, PageSize }));
 export const createStudentProfile = (body: CreateStudentProfileBody) =>
   write("StudentProfiles", "POST", body);
 /** Profile endpoints are keyed by the account's `userId`. */
@@ -711,6 +832,18 @@ export const changeEnrollmentStatus = (
 ) => write(`StudentProfiles/${userId}/enrollment-status`, "PATCH", { status });
 export const deleteStudentProfile = (userId: string) =>
   write(`StudentProfiles/${userId}`, "DELETE");
+
+export type UpdateStudentAcademicBody = {
+  majorId: string;
+  curriculumId: string;
+  intakeYear: number;
+};
+/** Changes the academic record only; enrollment status keeps its own endpoint. */
+export const updateStudentAcademic = (
+  userId: string,
+  body: UpdateStudentAcademicBody,
+  academicRevision?: string | null,
+) => write(`StudentProfiles/${userId}`, "PUT", body, ifMatch(userId, academicRevision));
 
 /* -------------------------------------------------------- LecturerProfiles */
 

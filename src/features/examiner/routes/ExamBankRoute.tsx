@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CircleDot, Download, FilePlus2, LayoutGrid, List, Trash2, Upload } from "lucide-react";
+import { CircleDot, Download, FilePlus2, LayoutGrid, List, Pencil, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/primitives/select";
-import { archiveExamPaper, createExamPaperVersion, deleteExamPaper, getExamPaperBank, publishExamPaper, type ExamPaper } from "@/api/exams";
+import { commonScore } from "@/features/examiner/workflow/examPlan";
+import { usePreparationPaths } from "@/features/examiner/workflow/preparationPaths";
+import { emptyExamPreparation, useExamPreparationDraft } from "@/features/examiner/workflow/examPreparation";
+import { archiveExamPaper, createExamPaperVersion, deleteExamPaper, getExamPaperBank, publishExamPaper } from "@/api/exams";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
@@ -87,7 +90,7 @@ function PageHeading({
     <header className="mb-6 flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow ? <span className="sr-only">{eyebrow}</span> : null}
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-extrabold tracking-tight text-primary sm:text-3xl">
           {title}
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
@@ -180,11 +183,16 @@ function Status({
   );
 }
 
+type BankPaper = Awaited<ReturnType<typeof getExamPaperBank>>[number];
+
 export function ExamBankRoute() {
+  const navigate = useNavigate();
+  const paths = usePreparationPaths();
+  const { setDraft: setPreparationDraft } = useExamPreparationDraft();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [paperToDelete, setPaperToDelete] = useState<ExamPaper | null>(null);
+  const [paperToDelete, setPaperToDelete] = useState<BankPaper | null>(null);
   useRouteAnnouncer("Exam Paper Management", "Exam Paper Management");
   const bank = useQuery({
     queryKey: ["examiner", "exam-paper-bank"],
@@ -212,6 +220,35 @@ export function ExamBankRoute() {
     },
     onError: (error) => toast({ title: "Paper could not be updated", description: error instanceof Error ? error.message : "Refresh the paper bank and try again." }),
   });
+  /** Opens a Draft paper in the same steps used to create one, with everything filled in. */
+  const startEditing = (paper: BankPaper) => {
+    const subject = paper.examSubject;
+    setPreparationDraft({
+      ...emptyExamPreparation,
+      editingPaper: true,
+      examSubjectId: subject.examSubjectId,
+      examSubjectETag: subject.eTag ?? "",
+      examPaperId: paper.examPaperId,
+      paperETag: paper.eTag ?? "",
+      subjectId: subject.subjectId,
+      semesterId: subject.semesterId,
+      examTypeId: subject.examTypeId,
+      name: subject.name ?? "",
+      instructions: subject.instructions ?? "",
+      durationMinutes: subject.durationMinutes,
+      passScore: subject.passScore,
+      shuffleQuestions: subject.shuffleQuestions,
+      shuffleOptions: subject.shuffleOptions,
+      cameraRequired: subject.cameraRequired,
+      cameraUnavailablePolicy: subject.cameraUnavailablePolicy as "Block" | "AllowWithFlag" | "Allow",
+      paperCode: paper.paperCode ?? "",
+      paperName: paper.name ?? "",
+      plannedQuestionCount: paper.questions.length,
+      pointsPerQuestion: commonScore(paper.questions.map((question) => question.maxScore ?? 0)),
+      selectedQuestions: paper.questions.map((question) => ({ questionId: question.questionId, maxScore: question.maxScore ?? 0 })),
+    });
+    navigate(`${paths.setup}?edit=1`);
+  };
   const rows = (bank.data ?? []).filter(
     (paper) =>
       `${paper.paperCode ?? ""} ${paper.name ?? ""} ${paper.examSubject.name ?? ""}`
@@ -225,7 +262,7 @@ export function ExamBankRoute() {
         eyebrow="Exam Paper Management"
         title="Exam Paper Bank"
         description="Build, review, and prepare secure exam packages for upcoming sessions."
-        actions={
+        actions={paths.readOnly ? undefined :
           <>
             <Button variant="outline" onClick={() => showPendingAction("Import")}>
               <Upload />
@@ -236,7 +273,7 @@ export function ExamBankRoute() {
               Export
             </Button>
             <Button asChild>
-              <Link to="/examiner/exams/new/setup">
+              <Link to={paths.setup}>
                 <FilePlus2 />
                 Create exam paper
               </Link>
@@ -355,10 +392,14 @@ export function ExamBankRoute() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              {paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "version" })}>New version</Button> : null}
-              {paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "archive" })}>Archive</Button> : null}
-              {paper.status === "Draft" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => setPaperToDelete(paper)}><Trash2 />Delete</Button> : null}
-              {paper.status === "Draft" ? <Button className="flex-1" disabled={publish.isPending} onClick={() => publish.mutate({ id: paper.examPaperId, eTag: paper.eTag })}>Publish</Button> : paper.status === "Published" ? <Button className="flex-1" asChild><Link to="/examiner/schedule/new/details">Schedule</Link></Button> : null}
+              {!paths.readOnly && paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "version" })}>New version</Button> : null}
+              {!paths.readOnly && paper.status === "Published" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => lifecycle.mutate({ id: paper.examPaperId, eTag: paper.eTag, action: "archive" })}>Archive</Button> : null}
+              {!paths.readOnly && paper.status === "Draft" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => setPaperToDelete(paper)}><Trash2 />Delete</Button> : null}
+              {!paths.readOnly && paper.status === "Draft" ? <Button className="flex-1" variant="outline" disabled={lifecycle.isPending} onClick={() => startEditing(paper)}><Pencil />Edit</Button> : null}
+              {!paths.readOnly && paper.status === "Draft" ? (paper.examSubject.requiresSealing
+                ? <Button className="flex-1" asChild><Link to={paths.sealPaper(paper.examPaperId)}>Seal package</Link></Button>
+                : <Button className="flex-1" disabled={publish.isPending} onClick={() => publish.mutate({ id: paper.examPaperId, eTag: paper.eTag })}>Publish</Button>
+              ) : paper.status === "Published" && paths.readOnly ? <Button className="flex-1" asChild><Link to="/examiner/schedule/new/details">Schedule</Link></Button> : paper.status === "Published" && paper.examSubject.requiresSealing ? <Badge variant="outline">Sealed</Badge> : null}
             </div>
           </article>
         ))}

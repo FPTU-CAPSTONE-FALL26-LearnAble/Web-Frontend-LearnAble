@@ -38,7 +38,9 @@ export function describeError(error: unknown): string {
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (error) => {
+    onError: (error, query) => {
+      // A query that shows its own inline state (for example audio that does not exist yet) opts out.
+      if (query.meta?.silent) return;
       const message = describeError(error);
       // Toast tự có aria-live — không gọi announce() song song để NVDA khỏi đọc hai lần.
       toast({ title: vi.common.error, description: message, variant: "error" });

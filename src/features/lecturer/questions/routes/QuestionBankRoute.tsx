@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { Download, FileQuestion, Plus, Search, Upload } from "lucide-react";
+import { CheckCheck, Download, FileQuestion, Plus, Search, SlidersHorizontal, Upload } from "lucide-react";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { formatQuestionId } from "@/shared/strings/questionId";
 import { Button } from "@/shared/ui/primitives/button";
@@ -23,10 +24,24 @@ import {
   SummaryCard,
 } from "@/features/lecturer/shared/components/Workbench";
 import { type ManagedQuestion, type QuestionPurpose } from "@/features/lecturer/questions/model";
+import { AudioGenerationPanel, type QuestionProgress } from "@/features/lecturer/questions/components/AudioGenerationStatus";
+import { ActivationProgress, type ActivationProgressState } from "@/features/lecturer/questions/components/ActivationProgress";
+import { QuestionPreviewDialog } from "@/features/lecturer/questions/components/QuestionPreviewDialog";
+import { audioFilterLabels, matchesAudioFilter, useQuestionAudio, type AudioFilter, type QuestionAudio } from "@/features/lecturer/questions/audioStatus";
 import { ChoiceField } from "@/features/lecturer/questions/components/QuestionFields";
+import { SubjectTopicPicker } from "@/features/lecturer/questions/components/SubjectTopicPicker";
+import { subjectLabel } from "@/features/lecturer/questions/subjectTopicSearch";
+import { downloadQuestionWorkbook } from "@/features/lecturer/questions/export/questionExport";
+import { buildExamTypeOptions } from "@/lib/examTypeLabel";
+import { usePersistedFlag } from "@/lib/usePersistedFlag";
+import { toast } from "@/shared/ui/primitives/toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/primitives/alert-dialog";
+import { setQuestionStatus } from "@/api/lecturer";
+import { describeError } from "@/app/providers";
 import { useQuestionBank } from "@/features/lecturer/questions/api/useQuestionBank";
 
 const defaults = {
+  audio: "all",
   examType: "",
   subject: "all",
   topic: "all",
@@ -77,6 +92,7 @@ export function QuestionBankRoute({
     status: filters.status === "all" ? "" : filters.status,
     page,
     pageSize: Number(size),
+    loadAll: filters.audio !== "all",
   });
   const { data, pageData, examTypes, purposeExamTypes, statusMutation } = bank;
   useEffect(() => {
@@ -86,9 +102,129 @@ export function QuestionBankRoute({
     }
   }, [filters.examType, purposeExamTypes]);
   const subjects = bank.subjects.data?.items ?? [];
-  const topics = (bank.topics.data?.items ?? []).filter((topic) => filters.subject === "all" || topic.subjectId === filters.subject);
-  const pages = Math.max(1, pageData?.totalPages ?? 1);
-  const rows = data;
+  const allTopics = bank.topics.data?.items ?? [];
+  const examTypeOptions = buildExamTypeOptions(purposeExamTypes);
+  // The filters can be folded away to leave the room to the questions; a one-line summary stays.
+  const [filtersHidden, toggleFilters] = usePersistedFlag("learnable.lecturer.question-filters-hidden", false);
+  const chosenSubject = subjects.find((item) => item.subjectId === filters.subject);
+  const chosenTopic = allTopics.find((item) => item.topicId === filters.topic);
+  const questionTypeNames: Record<string, string> = { Single: "Single Choice", Multiple: "Multiple Choice", Essay: "Essay" };
+  // Every filter is listed, also those left at "All", so a folded panel still shows exactly what is applied.
+  const filterSummary: Array<{ name: string; value: string; active: boolean }> = [
+    { name: "Exam type", value: examTypeOptions.find((item) => item.value === filters.examType)?.label ?? "Not selected", active: true },
+    { name: "Question type", value: filters.type === "all" ? "All types" : questionTypeNames[filters.type] ?? filters.type, active: filters.type !== "all" },
+    { name: "Difficulty", value: filters.difficulty === "all" ? "All difficulties" : filters.difficulty, active: filters.difficulty !== "all" },
+    { name: "Status", value: filters.status === "all" ? "All statuses" : filters.status, active: filters.status !== "all" },
+    { name: "Audio", value: audioFilterLabels[filters.audio as AudioFilter] ?? filters.audio, active: filters.audio !== "all" },
+    { name: "Subject", value: filters.subject === "all" ? "All subjects" : chosenSubject ? subjectLabel(chosenSubject) : "Selected subject", active: filters.subject !== "all" },
+    { name: "Topic", value: filters.topic === "all" ? "All topics" : chosenTopic?.topicName ?? "Selected topic", active: filters.topic !== "all" },
+  ];
+  // The exam type is always chosen, and a topic belongs to its subject, so neither adds to the count.
+  const activeFilterCount = filterSummary.filter((item) => item.active && item.name !== "Exam type" && item.name !== "Topic").length;
+  // The Backend cannot filter by audio. With an audio filter every matching question is loaded,
+  // each one asks for its own audio state, and this page filters and pages the result itself.
+  const audioFilter = filters.audio as AudioFilter;
+  const audioFiltering = audioFilter !== "all";
+  // Audio is read for every matching question, not only the page, so progress can count questions.
+  const everyItems = bank.everyQuestion.data?.items;
+  const audioIds = [...new Set([...data.map((question) => question.id), ...(everyItems ?? []).map((question) => question.questionId)])];
+  const audioById = useQuestionAudio(audioIds, {
+    priorityIds: audioFiltering ? audioIds : data.map((question) => question.id),
+    restEnabled: !bank.list.isFetching,
+  });
+  const questionProgress: QuestionProgress = {
+    loading: !everyItems,
+    total: everyItems?.length ?? 0,
+    ready: 0,
+    waiting: 0,
+    failed: 0,
+    none: 0,
+    checking: 0,
+  };
+  for (const question of everyItems ?? []) {
+    const state = audioById.get(question.questionId)?.state;
+    if (state === "ready" || state === "waiting" || state === "failed" || state === "none") questionProgress[state] += 1;
+    else questionProgress.checking += 1;
+  }
+  const matched = audioFiltering ? data.filter((question) => matchesAudioFilter(audioById.get(question.id), audioFilter)) : data;
+  const checkingAudio = audioFiltering && data.some((question) => audioById.get(question.id)?.state === "loading");
+  const totalCount = audioFiltering ? matched.length : pageData?.totalCount ?? 0;
+  const pages = audioFiltering ? Math.max(1, Math.ceil(matched.length / Number(size))) : Math.max(1, pageData?.totalPages ?? 1);
+  const rows = audioFiltering ? matched.slice((page - 1) * Number(size), page * Number(size)) : matched;
+  // Until the first answer arrives the list is empty, which must not read as "no questions match".
+  const loadingList = bank.examTypes.isPending
+    || (!filters.examType && purposeExamTypes.length > 0)
+    || (bank.list.isFetching && data.length === 0)
+    || (checkingAudio && rows.length === 0);
+  const refreshingList = !loadingList && (bank.list.isFetching || checkingAudio);
+  const [exporting, setExporting] = useState(false);
+  const exportPage = async () => {
+    setExporting(true);
+    try {
+      await downloadQuestionWorkbook(rows, {
+        purpose,
+        title: view.title,
+        filters: filterSummary.filter((item) => item.active).map((item): [string, string] => [item.name, item.value]),
+        exportedAt: new Date(),
+        page,
+        pageCount: pages,
+        totalCount,
+      });
+    } catch {
+      toast({ title: "Export failed", description: "The Excel file could not be created. Try again.", variant: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  // Questions picked with "Select all" may be on other pages, so their statuses are kept here.
+  const [matchingStatus, setMatchingStatus] = useState<Record<string, string>>({});
+  const statusOf = (id: string) => matchingStatus[id] ?? data.find((question) => question.id === id)?.status;
+  const selectedDrafts = selected.filter((id) => statusOf(id) === "Draft");
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [confirmActivate, setConfirmActivate] = useState(false);
+  const selectAllMatching = async () => {
+    setSelectingAll(true);
+    try {
+      const everything = audioFiltering
+        ? matched.map((question) => ({ id: question.id, status: question.status as string }))
+        : (await bank.readEveryQuestion()).items.map((question) => ({ id: question.questionId, status: question.status }));
+      setMatchingStatus(Object.fromEntries(everything.map((item) => [item.id, item.status])));
+      setSelected(everything.map((item) => item.id));
+    } catch {
+      toast({ title: "Could not select all questions", description: "The full list could not be loaded. Try again.", variant: "error" });
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+  const [activation, setActivation] = useState<ActivationProgressState | null>(null);
+  const activateSelected = useMutation({
+    mutationFn: async (ids: string[]) => {
+      // A few at a time, so a long selection does not flood the server. The tracker updates after each group.
+      for (let start = 0; start < ids.length; start += 5) {
+        const results = await Promise.allSettled(ids.slice(start, start + 5).map((id) => setQuestionStatus(id, "Active")));
+        const refused = results.flatMap((result) => (result.status === "rejected" ? [describeError(result.reason)] : []));
+        setActivation((current) => current && {
+          ...current,
+          done: current.done + results.length - refused.length,
+          failed: current.failed + refused.length,
+          reason: current.reason ?? refused[0],
+        });
+      }
+    },
+    onSettled: async () => {
+      setActivation((current) => current && { ...current, running: false });
+      await bank.refresh();
+    },
+  });
+  const startActivation = () => {
+    const ids = selectedDrafts;
+    setActivation({ total: ids.length, done: 0, failed: 0, running: true, minimized: false });
+    setConfirmActivate(false);
+    setSelected([]);
+    setMatchingStatus({});
+    activateSelected.mutate(ids);
+  };
   const update = (key: keyof typeof filters, value: string) => {
     setFilters((old) => ({
       ...old,
@@ -106,10 +242,10 @@ export function QuestionBankRoute({
     setSelected([]);
   };
   const summary = [
-    ["Matching questions", pageData?.totalCount ?? 0],
-    ["Active on page", data.filter((q) => q.status === "Active").length],
-    ["Draft on page", data.filter((q) => q.status === "Draft").length],
-    ["Results on page", data.length],
+    ["Matching questions", totalCount],
+    ["Active on page", rows.filter((q) => q.status === "Active").length],
+    ["Draft on page", rows.filter((q) => q.status === "Draft").length],
+    ["Results on page", rows.length],
   ] as const;
   return (
     <div className="space-y-6">
@@ -120,13 +256,9 @@ export function QuestionBankRoute({
             Import
           </Link>
         </Button>
-        <Button variant="outline" onClick={() => {
-          const csv = ["id,content,course,topic,type,difficulty,points,status", ...data.map((item) => `${item.id},"${item.content.replaceAll('"', '""')}",${item.subjectCode},${item.topic},${item.type},${item.difficulty},${item.score},${item.status}`)].join("\n");
-          const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-          const link = document.createElement("a"); link.href = url; link.download = `${purpose}-questions.csv`; link.click(); URL.revokeObjectURL(url);
-        }}>
+        <Button variant="outline" disabled={!data.length || exporting} onClick={() => void exportPage()}>
           <Download aria-hidden />
-          Export current page
+          {exporting ? "Preparing Excel file…" : "Export current page (.xlsx)"}
         </Button>
         <Button asChild>
           <Link to={`/lecturer/questions/new?purpose=${purpose}`}>
@@ -156,6 +288,17 @@ export function QuestionBankRoute({
           />
         ))}
       </section>
+      {filters.examType && (filters.subject !== "all" || subjects.length > 0) ? (
+        <AudioGenerationPanel
+          questionProgress={questionProgress}
+          filters={{
+            examTypeId: filters.examType,
+            subjectId: filters.subject === "all" ? undefined : filters.subject,
+            topicId: filters.topic === "all" ? undefined : filters.topic,
+          }}
+          subjectIds={subjects.map((subject) => subject.subjectId)}
+        />
+      ) : null}
       <Card className="lecturer-major-card border shadow-none">
         <CardContent className="space-y-5">
           <form
@@ -184,20 +327,40 @@ export function QuestionBankRoute({
               <Search aria-hidden />
               Search
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              aria-expanded={!filtersHidden}
+              aria-controls="question-filter-panel"
+              onClick={toggleFilters}
+            >
+              <SlidersHorizontal aria-hidden />
+              {filtersHidden ? "Show filters" : "Hide filters"}
+              {activeFilterCount ? (
+                <span aria-label={`${activeFilterCount} active`} className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold leading-5 text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
             <Button type="button" variant="outline" onClick={reset}>
               Reset filters
             </Button>
           </form>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {filtersHidden ? (
+            <ul aria-label="Active filters" className="flex flex-wrap gap-2">
+              {filterSummary.map(({ name, value, active }) => (
+                <li key={name} className={active ? "rounded-md border border-primary bg-primary/10 px-2 py-1 text-sm wrap-anywhere" : "rounded-md border border-border bg-muted/40 px-2 py-1 text-sm wrap-anywhere"}>
+                  <span className="text-muted-foreground">{name}</span> <strong className={active ? "font-semibold" : "font-normal"}>{value}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div id="question-filter-panel" hidden={filtersHidden} className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <ChoiceField
               label="Exam type"
               value={filters.examType}
-              options={[
-                ...purposeExamTypes.map((item) => ({
-                  value: item.examTypeId,
-                  label: item.code ? `${item.code} · ${item.name ?? "Unnamed"}` : item.name ?? "Unnamed",
-                })),
-              ]}
+              options={examTypeOptions}
               onChange={(value) => update("examType", value)}
             />
             <ChoiceField
@@ -233,40 +396,53 @@ export function QuestionBankRoute({
               ]}
               onChange={(value) => update("status", value)}
             />
+            <ChoiceField
+              label="Audio"
+              value={filters.audio}
+              options={(Object.keys(audioFilterLabels) as AudioFilter[]).map((value) => ({ value, label: audioFilterLabels[value] }))}
+              onChange={(value) => update("audio", value)}
+            />
           </div>
-          <fieldset className="rounded-xl border border-border p-4">
-            <legend className="px-1 font-semibold">Subject → Topic</legend>
-            <div className="mt-2 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
-              <Button type="button" variant={filters.subject === "all" ? "default" : "outline"} className="justify-start" onClick={() => update("subject", "all")}>All subjects</Button>
-              {subjects.map((subject) => {
-                const subjectTopics = (bank.topics.data?.items ?? []).filter((topic) => topic.subjectId === subject.subjectId);
-                const selectedSubject = filters.subject === subject.subjectId;
-                return <div key={subject.subjectId} className="min-w-0 rounded-xl border border-border p-2">
-                  <Button type="button" variant={selectedSubject && filters.topic === "all" ? "default" : "ghost"} className="w-full justify-start truncate" onClick={() => update("subject", subject.subjectId)}>{subject.subjectCode} · {subject.subjectNameEn ?? "Unnamed subject"}</Button>
-                  {selectedSubject ? <ul className="mt-1 space-y-1 border-l border-border pl-3">{subjectTopics.map((topic) => <li key={topic.topicId}><Button type="button" size="sm" variant={filters.topic === topic.topicId ? "secondary" : "ghost"} className="w-full justify-start whitespace-normal text-left" onClick={() => update("topic", topic.topicId)}>{topic.topicName}</Button></li>)}</ul> : null}
-                </div>;
-              })}
-            </div>
-            {filters.subject !== "all" && topics.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">This subject has no topics.</p> : null}
-          </fieldset>
+          <SubjectTopicPicker
+            subjects={subjects}
+            topics={allTopics}
+            subjectId={filters.subject}
+            topicId={filters.topic}
+            onSubjectChange={(id) => update("subject", id)}
+            onTopicChange={(id) => update("topic", id)}
+            loading={bank.subjects.isPending || bank.topics.isPending}
+          />
+          </div>
         </CardContent>
       </Card>
-      {selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-secondary p-4">
-          <p role="status" className="mr-auto text-sm font-bold">
-            {selected.length} questions selected
-          </p>
-          <Button variant="outline" onClick={() => setSelected([])}>Clear selection</Button>
-        </div>
-      )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border p-4">
+        <p role="status" className="mr-auto text-sm font-bold">
+          {selected.length
+            ? `${selected.length} questions selected${selectedDrafts.length !== selected.length ? ` · ${selectedDrafts.length} Draft` : ""}`
+            : "No questions selected"}
+        </p>
+        <Button variant="outline" disabled={!totalCount || selectingAll || selected.length === totalCount} onClick={() => void selectAllMatching()}>
+          {selectingAll ? "Selecting…" : `Select all ${totalCount} matching`}
+        </Button>
+        <Button variant="success" disabled={!selectedDrafts.length || activateSelected.isPending} onClick={() => setConfirmActivate(true)}>
+          <CheckCheck aria-hidden />
+          Activate {selectedDrafts.length} selected
+        </Button>
+        {selected.length > 0 ? <Button variant="outline" onClick={() => setSelected([])}>Clear selection</Button> : null}
+      </div>
+      <section className={refreshingList ? "min-w-0 overflow-hidden rounded-2xl border border-border opacity-60 transition-opacity" : "min-w-0 overflow-hidden rounded-2xl border border-border transition-opacity"}>
         <div className="border-b border-border p-5">
           <h2 className="text-lg font-bold text-primary">{view.title}</h2>
           <p role="status" className="mt-1 text-sm text-muted-foreground">
-            Showing {rows.length} of {pageData?.totalCount ?? 0} questions from the server
+            {loadingList ? "Loading questions…" : <>Showing {rows.length} of {totalCount} questions from the server</>}
           </p>
+          {checkingAudio ? (
+            <p role="status" className="mt-1 text-sm text-muted-foreground">
+              Checking the audio of all {data.length} matching questions…
+            </p>
+          ) : null}
         </div>
-        <Table aria-label={`${view.title} table`} className="min-w-[1120px]">
+        <Table aria-label={`${view.title} table`} aria-busy={loadingList || refreshingList} className="min-w-[1280px]">
           <TableHeader>
             <TableRow>
               <TableHead>
@@ -290,6 +466,7 @@ export function QuestionBankRoute({
               <TableHead>Course / topic</TableHead>
               <TableHead>{view.usedColumn}</TableHead>
               <TableHead>Readiness</TableHead>
+              <TableHead>Audio</TableHead>
               <TableHead>Updated</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -346,21 +523,35 @@ export function QuestionBankRoute({
                 <TableCell>
                   <Badge variant="outline">{q.readiness}</Badge>
                 </TableCell>
+                <TableCell className="whitespace-normal">
+                  <AudioBadge audio={audioById.get(q.id)} />
+                </TableCell>
                 <TableCell>
                   {new Date(q.updatedAt).toLocaleDateString("en-US")}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setPreviewId(q.id)}>Preview</Button>
                     {q.status !== "Archived" ? <Button variant="outline" asChild><Link to={`/lecturer/questions/new?purpose=${purpose}&edit=${q.id}`}>Edit</Link></Button> : null}
                     {q.status === "Active" ? <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: "Archived" })}>Archive</Button> : null}
-                    {q.status === "Draft" ? <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: "Active" })}>Activate</Button> : null}
+                    {q.status === "Draft" ? <Button variant="success" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ id: q.id, status: "Active" })}>Activate</Button> : null}
                   </div>
                 </TableCell>
               </TableRow>
             ))}
-            {!rows.length && (
+            {loadingList ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-40 text-center">
+                <TableCell colSpan={10}>
+                  <div role="status" aria-label="Loading questions" className="animate-pulse space-y-3">
+                    {[0, 1, 2, 3].map((item) => <div key={item} className="h-14 rounded-lg bg-muted" />)}
+                    <span className="sr-only">Loading questions…</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {!rows.length && !loadingList && (
+              <TableRow>
+                <TableCell colSpan={10} className="h-40 text-center">
                   <p className="font-bold">{view.empty}</p>
                   <p className="mt-2 text-muted-foreground">
                     Try another search or reset the filters.
@@ -385,6 +576,48 @@ export function QuestionBankRoute({
           }}
         />
       </section>
+      <AlertDialog open={confirmActivate} onOpenChange={setConfirmActivate}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Activate {selectedDrafts.length} question{selectedDrafts.length === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Active questions can be used in exams. Questions that are already Active or Archived in your selection are skipped. You can archive a question again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="success" onClick={(event) => { event.preventDefault(); startActivation(); }}>
+              Activate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {activation ? (
+        <ActivationProgress
+          state={activation}
+          onToggle={() => setActivation((current) => current && { ...current, minimized: !current.minimized })}
+          onClose={() => setActivation(null)}
+        />
+      ) : null}
+      <QuestionPreviewDialog
+        questionId={previewId}
+        course={data.find((question) => question.id === previewId)?.subjectCode ?? ""}
+        topic={data.find((question) => question.id === previewId)?.topic ?? ""}
+        onClose={() => setPreviewId(null)}
+      />
+    </div>
+  );
+}
+
+function AudioBadge({ audio }: { audio?: QuestionAudio }) {
+  if (!audio || audio.state === "loading") return <span className="text-xs text-muted-foreground">Checking…</span>;
+  if (audio.state === "unavailable") return <span className="text-xs text-muted-foreground">Unknown</span>;
+  const names = { ready: "Ready", waiting: "In progress", failed: "Failed", none: "No audio" } as const;
+  return (
+    <div>
+      <Badge variant={audio.state === "failed" ? "destructive" : "outline"}>{names[audio.state]}</Badge>
+      {audio.total ? <p className="mt-1 text-xs text-muted-foreground">{audio.ready}/{audio.total} segments</p> : null}
+      {audio.questionReady && audio.state !== "ready" ? <p className="mt-1 text-xs font-semibold">Question audio ready</p> : null}
     </div>
   );
 }

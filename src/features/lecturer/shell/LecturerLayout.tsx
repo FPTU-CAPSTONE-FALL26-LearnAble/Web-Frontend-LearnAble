@@ -1,6 +1,8 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
+import { cn } from "@/lib/utils";
+import { useSidebarCollapsed } from "@/lib/useSidebarCollapsed";
 import { Button } from "@/shared/ui/primitives/button";
 import {
   Sheet,
@@ -17,6 +19,7 @@ import "./lecturer-theme.css";
 
 export function LecturerLayout() {
   const [open, setOpen] = useState(false);
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed("learnable.lecturer.sidebar-collapsed");
   const location = useLocation();
   const isStudio = location.pathname === "/lecturer/questions/new";
   const navigate = useNavigate();
@@ -38,8 +41,8 @@ export function LecturerLayout() {
   return (
     <div className="lecturer-shell min-h-screen bg-background lg:flex">
       <SkipLink />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border lg:block">
-        <LecturerSidebar {...sidebarProps} />
+      <aside className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-border lg:block", collapsed ? "w-16" : "w-64")}>
+        <LecturerSidebar {...sidebarProps} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
         <Button
@@ -69,11 +72,13 @@ export function LecturerLayout() {
       </Sheet>
       <main
         id="main"
-        className={
+        className={cn(
+          "min-w-0 flex-1",
           isStudio
-            ? "min-w-0 flex-1 lg:ml-64 lg:pl-4 xl:h-dvh xl:overflow-hidden"
-            : "min-w-0 flex-1 px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-8"
-        }
+            ? "lg:pl-4 xl:h-dvh xl:overflow-hidden"
+            : "px-4 py-6 sm:px-6 lg:px-8 lg:py-8",
+          collapsed ? "lg:ml-16" : "lg:ml-64",
+        )}
       >
         <div className={isStudio ? "xl:h-full" : "mx-auto max-w-[1440px]"}>
           <Outlet />

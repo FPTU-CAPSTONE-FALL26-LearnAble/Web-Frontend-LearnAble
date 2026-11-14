@@ -33,16 +33,18 @@ export function RevealablePasswordField({
   value,
   onChange,
   error,
+  label = "Initial password",
 }: {
   value: string;
   onChange: (value: string) => void;
   error?: string;
+  label?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const id = "initial-password";
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Initial password</Label>
+      <Label htmlFor={id}>{label}</Label>
       <div className="flex items-center gap-2">
         <Input
           id={id}

@@ -65,6 +65,14 @@ export const getScheduleGradingAssignments = (scheduleId: string) =>
   unwrap(`/examschedules/${scheduleId}/grading-assignments?Page=1&PageSize=100`, pageSchema(gradingAssignmentSchema));
 export const assignScheduleGrader = (scheduleId: string, revision: string, input: { lecturerId: string; overwriteExisting: boolean; note?: string | null }) =>
   unwrap(`/examschedules/${scheduleId}/grading-assignments`, z.object({ scheduleId: z.string(), revision: z.string(), lecturerId: z.string(), eligibleAttempts: z.number(), assignedCount: z.number(), reassignedCount: z.number(), unchangedCount: z.number(), reviewResetCount: z.number() }), { method: "PUT", headers: revisionHeaders(scheduleId, revision), json: input });
+/**
+ * Gives one attempt to one grader. The attempt must be the revision the caller last read, so two
+ * examiners cannot silently overwrite each other. An attempt already marked complete is refused.
+ */
+export async function assignAttemptGrader(attemptId: string, revision: string, input: { lecturerId: string; note?: string | null }) {
+  const response = await request(`/exam-attempts/${attemptId}/grading-assignment`, envelope(z.unknown()), { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+  if (!response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
+}
 export const getAttemptGrading = (attemptId: string) => unwrap(`/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
 export const reviewAttemptResult = (attemptId: string, revision: string, input: { reviewed?: boolean; note?: string | null }) =>
   unwrap(`/exam-attempts/${attemptId}/grading/review`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });

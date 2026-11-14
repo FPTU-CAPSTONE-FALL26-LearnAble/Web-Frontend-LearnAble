@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { tokenStore } from "@/lib/auth/tokenStore";
-import { getDemoApiResponse } from "@/lib/demoData";
 
 /**
  * Client HTTP duy nhất của repo web. Lỗi là discriminated union có kiểu —
@@ -66,13 +65,6 @@ export async function request<TSchema extends z.ZodTypeAny>(
   schema: TSchema,
   init?: RequestInit & { json?: unknown },
 ): Promise<z.output<TSchema>> {
-  const demoResponse = getDemoApiResponse(path, init);
-  if (demoResponse !== undefined) {
-    const parsed = schema.safeParse(demoResponse);
-    if (!parsed.success) throw new ApiFailure({ kind: "parse" });
-    return parsed.data;
-  }
-
   const { json, ...rest } = init ?? {};
   const token = tokenStore.get();
 

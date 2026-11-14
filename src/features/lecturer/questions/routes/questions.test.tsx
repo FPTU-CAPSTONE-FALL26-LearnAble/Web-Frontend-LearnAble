@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { QuestionBankRoute } from "./QuestionBankRoute";
@@ -12,8 +12,11 @@ import {
 } from "@/features/lecturer/questions/model";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
+import { Toaster } from "@/shared/ui/primitives/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { bankQuestions, courses } from "@/features/lecturer/questions/data/fixtures";
+// Every row asks for its own audio state, so under a busy full run the page needs longer than one second.
+configure({ asyncUtilTimeout: 4000 });
 const lecturerApi = vi.hoisted(() => ({
   createQuestionWithOptions: vi.fn(async () => ({ questionId: "created-question", createdOptions: [] })),
   getQuestion: vi.fn(),
@@ -23,6 +26,12 @@ const lecturerApi = vi.hoisted(() => ({
   createQuestionOption: vi.fn(async () => ({ optionId: "new-option" })),
   uploadQuestionAudio: vi.fn(async () => undefined),
   uploadQuestionOptionAudio: vi.fn(async () => undefined),
+  getQuestionAudio: vi.fn(),
+  getQuestionOptionAudio: vi.fn(),
+  queueQuestionAudioGeneration: vi.fn(async () => ({ queued: 1, requeued: 0 })),
+  getQuestionAudioGeneration: vi.fn<(id: string) => Promise<unknown>>(async () => ({ questionId: "q", totalSegments: 0, ready: 0, workerEnabled: true, segments: [] })),
+  getQuestionAudioGenerationSummary: vi.fn(async () => ({ questions: 0, totalSegments: 0, ready: 0, pending: 0, processing: 0, failed: 0, missing: 0, workerEnabled: true, failedSegments: [] })),
+  retryAudioGeneration: vi.fn(async () => ({ queued: 0, requeued: 0 })),
   setQuestionStatus: vi.fn(async () => undefined),
 }));
 vi.mock("@/api/lecturer", () => ({
@@ -81,6 +90,11 @@ vi.mock("@/api/lecturer", () => ({
       totalPages: Math.ceil(rows.length / size),
     };
   },
+}));
+const excel = vi.hoisted(() => ({ downloadQuestionWorkbook: vi.fn(async () => undefined) }));
+vi.mock("@/features/lecturer/questions/export/questionExport", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/lecturer/questions/export/questionExport")>()),
+  downloadQuestionWorkbook: excel.downloadQuestionWorkbook,
 }));
 vi.mock("@/api/exams", () => ({
   getExamTypes: async () => [
@@ -236,6 +250,103 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     localStorage.setItem(draftKey("bad"), '{"type":"single"}');
     expect(readDraft("bad")).toBeNull();
   });
+  it("shows which questions have audio and filters the page by it", async () => {
+    const user = userEvent.setup();
+    lecturerApi.getQuestionAudioGeneration.mockImplementation(async (id: string) => id === "EXQ-0001"
+      ? { questionId: id, totalSegments: 3, ready: 3, workerEnabled: true, segments: [] }
+      : { questionId: id, totalSegments: 0, ready: 0, workerEnabled: true, segments: [] });
+    view(<QuestionBankRoute purpose="exam" />);
+    expect(await screen.findByText("3/3 segments")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Audio"));
+    await user.click(screen.getByRole("option", { name: "All audio ready" }));
+    expect(await screen.findByText("Showing 1 of 1 questions from the server")).toBeInTheDocument();
+    expect(within(screen.getByRole("table")).queryByText("No audio")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reset filters" }));
+    expect(await screen.findByText("Showing 10 of 12 questions from the server")).toBeInTheDocument();
+  });
+  it("finds questions whose own audio is ready while answers are still in progress", async () => {
+    const user = userEvent.setup();
+    lecturerApi.getQuestionAudioGeneration.mockImplementation(async (id: string) => id === "EXQ-0002"
+      ? { questionId: id, totalSegments: 5, ready: 1, workerEnabled: true, segments: [
+        { questionId: id, optionId: null, generationStatus: "Ready", hasAudio: true, attemptCount: 1 },
+        { questionId: id, optionId: "o1", displayOrder: 1, generationStatus: "Pending", hasAudio: false, attemptCount: 0 },
+      ] }
+      : { questionId: id, totalSegments: 0, ready: 0, workerEnabled: true, segments: [] });
+    view(<QuestionBankRoute purpose="exam" />);
+    expect(await screen.findByText("Question audio ready")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Audio"));
+    await user.click(screen.getByRole("option", { name: "Has question audio" }));
+    expect(await screen.findByText("Showing 1 of 1 questions from the server")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Audio"));
+    await user.click(screen.getByRole("option", { name: "All audio ready" }));
+    expect(await screen.findByText("Showing 0 of 0 questions from the server")).toBeInTheDocument();
+  });
+  it("finds a question with audio even when it is not on the first page", async () => {
+    const user = userEvent.setup();
+    lecturerApi.getQuestionAudioGeneration.mockImplementation(async (id: string) => id === "EXQ-0012"
+      ? { questionId: id, totalSegments: 2, ready: 1, workerEnabled: true, segments: [
+        { questionId: id, optionId: null, generationStatus: "Ready", hasAudio: true, attemptCount: 1 },
+      ] }
+      : { questionId: id, totalSegments: 0, ready: 0, workerEnabled: true, segments: [] });
+    view(<QuestionBankRoute purpose="exam" />);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    expect(screen.queryByText("Question audio ready")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("Audio"));
+    await user.click(screen.getByRole("option", { name: "Has question audio" }));
+    expect(await screen.findByText("Showing 1 of 1 questions from the server")).toBeInTheDocument();
+    expect(screen.getByText("Question audio ready")).toBeInTheDocument();
+  });
+  it("shows a loading state, not an empty message, while questions are loading", async () => {
+    view(<QuestionBankRoute purpose="exam" />);
+    expect(screen.getByRole("status", { name: "Loading questions" })).toBeInTheDocument();
+    expect(screen.queryByText("No exam questions match your filters.")).not.toBeInTheDocument();
+    expect(await screen.findByText("Showing 10 of 12 questions from the server")).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading questions" })).not.toBeInTheDocument();
+  });
+  it("selects every matching question and activates the drafts among them in one go", async () => {
+    const user = userEvent.setup();
+    lecturerApi.setQuestionStatus.mockClear();
+    view(<QuestionBankRoute purpose="exam" />);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    expect(screen.getByRole("button", { name: "Activate 0 selected" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Select all 12 matching" }));
+    expect(await screen.findByText("12 questions selected · 2 Draft")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Activate 2 selected" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Activate 2 questions?")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Activate" }));
+    await waitFor(() => expect(lecturerApi.setQuestionStatus).toHaveBeenCalledTimes(2));
+    expect(lecturerApi.setQuestionStatus).toHaveBeenCalledWith(expect.any(String), "Active");
+    expect(await screen.findByText("No questions selected")).toBeInTheDocument();
+    // The dialog closes at once; a floating tracker reports the result and can be folded or closed.
+    const tracker = await screen.findByRole("region", { name: "Bulk activation progress" });
+    expect(await within(tracker).findByText("Questions activated")).toBeInTheDocument();
+    expect(within(tracker).getByText("Activated")).toBeInTheDocument();
+    await user.click(within(tracker).getByRole("button", { name: "Hide activation progress" }));
+    expect(within(tracker).queryByText("Activated")).not.toBeInTheDocument();
+    await user.click(within(tracker).getByRole("button", { name: "Close activation progress" }));
+    expect(screen.queryByRole("region", { name: "Bulk activation progress" })).not.toBeInTheDocument();
+  });
+  it("previews a question with its answers and audio player", async () => {
+    const user = userEvent.setup();
+    lecturerApi.getQuestionAudio.mockResolvedValue({ audio: {}, url: "https://audio.test/question.mp3", expiresAt: "2026-11-10T00:10:00Z" });
+    lecturerApi.getQuestionOptionAudio.mockRejectedValue(new Error("no audio"));
+    view(<QuestionBankRoute purpose="exam" />);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    await user.click(screen.getAllByRole("button", { name: "Preview" })[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect((await within(dialog).findAllByText("Original editable question")).length).toBeGreaterThan(0);
+    expect(within(dialog).getAllByText("First answer").length).toBeGreaterThan(0);
+    expect(within(dialog).getByText("Live review")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Student experience")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Preview mode")).not.toBeInTheDocument();
+    await waitFor(() => expect(within(dialog).getByLabelText("Question audio")).toHaveAttribute("src", "https://audio.test/question.mp3"));
+    expect((await within(dialog).findAllByText("No audio file yet.")).length).toBe(2);
+    const order = within(dialog).getByRole("region", { name: "Screen reader reading order" });
+    expect(within(order).getByText("Original editable question")).toBeInTheDocument();
+    expect(within(order).getByText("2 answer options. Select one answer.")).toBeInTheDocument();
+    expect(within(order).getByText("Option A. First answer")).toBeInTheDocument();
+  });
   it("filters by status and resets filters", async () => {
     const user = userEvent.setup();
     view(<QuestionBankRoute purpose="exam" />);
@@ -245,7 +356,85 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     await user.click(screen.getByRole("button", { name: "Reset filters" }));
     expect(await screen.findByText("Showing 10 of 12 questions from the server")).toBeInTheDocument();
   });
+  it("exports the questions on the page to a formatted Excel file", async () => {
+    const user = userEvent.setup();
+    excel.downloadQuestionWorkbook.mockClear();
+    view(<QuestionBankRoute purpose="exam" />);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    await user.click(screen.getByLabelText("Status"));
+    await user.click(screen.getByRole("option", { name: "Draft" }));
+    await screen.findByText("Showing 2 of 2 questions from the server");
+    await user.click(screen.getByRole("button", { name: "Export current page (.xlsx)" }));
+    await waitFor(() => expect(excel.downloadQuestionWorkbook).toHaveBeenCalledTimes(1));
+    const [questions, context] = excel.downloadQuestionWorkbook.mock.calls[0] as unknown as [unknown[], Record<string, unknown>];
+    expect(questions).toHaveLength(2);
+    expect(context).toMatchObject({ purpose: "exam", title: "Exam Questions", page: 1, pageCount: 1, totalCount: 2 });
+    expect(context.filters).toEqual([["Exam type", "Final Exam"], ["Status", "Draft"]]);
+  });
+
+  it("tells the lecturer when the Excel file cannot be created", async () => {
+    const user = userEvent.setup();
+    excel.downloadQuestionWorkbook.mockRejectedValueOnce(new Error("blocked"));
+    view(<><QuestionBankRoute purpose="exam" /><Toaster /></>);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    await user.click(screen.getByRole("button", { name: "Export current page (.xlsx)" }));
+    expect(await screen.findByText("Export failed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export current page (.xlsx)" })).toBeEnabled();
+  });
+
+  it("has nothing to export while no question matches", async () => {
+    const user = userEvent.setup();
+    view(<QuestionBankRoute purpose="exam" />);
+    await screen.findByText("Showing 10 of 12 questions from the server");
+    await user.type(screen.getByLabelText("Search exam questions"), "zzzz-no-match{Enter}");
+    await screen.findByText("Showing 0 of 0 questions from the server");
+    expect(screen.getByRole("button", { name: "Export current page (.xlsx)" })).toBeDisabled();
+  });
+
+  it("folds the filters away to make room for questions, keeping a summary", async () => {
+    const user = userEvent.setup();
+    view(<QuestionBankRoute purpose="exam" />);
+    await user.click(screen.getByLabelText("Status"));
+    await user.click(screen.getByRole("option", { name: "Draft" }));
+    expect(screen.getByRole("button", { name: /Hide filters/ })).toHaveAttribute("aria-expanded", "true");
+    await user.click(screen.getByRole("button", { name: /Hide filters/ }));
+    expect(screen.getByRole("button", { name: /Show filters/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByLabelText("Status")).not.toBeVisible();
+    expect(screen.queryByRole("list", { name: "Subjects" })).not.toBeInTheDocument();
+    const summary = screen.getByRole("list", { name: "Active filters" });
+    expect(summary).toHaveTextContent("Exam type Final Exam");
+    expect(summary).toHaveTextContent("Status Draft");
+    // Filters left at their default are listed too.
+    expect(summary).toHaveTextContent("Question type All types");
+    expect(summary).toHaveTextContent("Difficulty All difficulties");
+    expect(summary).toHaveTextContent("Subject All subjects");
+    expect(summary).toHaveTextContent("Topic All topics");
+    expect(summary).toHaveTextContent("Audio All audio");
+    expect(within(summary).getAllByRole("listitem")).toHaveLength(7);
+    expect(screen.getByRole("button", { name: /Show filters/ })).toHaveTextContent("1");
+    expect(screen.getByLabelText("Search exam questions")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 2 of 2 questions from the server")).toBeInTheDocument();
+  });
+
+  it("opens the filters again with their choices intact, and remembers the fold", async () => {
+    const user = userEvent.setup();
+    const first = view(<QuestionBankRoute purpose="exam" />);
+    await user.click(screen.getByLabelText("Status"));
+    await user.click(screen.getByRole("option", { name: "Draft" }));
+    await user.click(screen.getByRole("button", { name: /Hide filters/ }));
+    expect(localStorage.getItem("learnable.lecturer.question-filters-hidden")).toBe("1");
+    await user.click(screen.getByRole("button", { name: /Show filters/ }));
+    expect(screen.getByLabelText("Status")).toHaveTextContent("Draft");
+    expect(screen.queryByRole("list", { name: "Active filters" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Hide filters/ }));
+    first.unmount();
+    view(<QuestionBankRoute purpose="exam" />);
+    expect(screen.getByRole("button", { name: /Show filters/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("Status")).not.toBeVisible();
+  });
+
   it("publishes a supported valid question through the backend API", async () => {
+    lecturerApi.queueQuestionAudioGeneration.mockClear();
     const draft = createDraft("essay");
     if (draft.type === "essay") {
       draft.examTypeId = "exam-type-final";
@@ -253,7 +442,6 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       draft.topic = "Microservices Architecture";
       draft.content = "Explain service boundaries.";
       draft.instructions = "Write a concise response.";
-      draft.rubric = "Award points for clear boundaries.";
     }
     localStorage.setItem(
       draftKey("question-test", "exam"),
@@ -266,6 +454,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       screen.getByRole("button", { name: "Save to Question Bank" }),
     );
     await waitFor(() => expect(lecturerApi.createQuestionWithOptions).toHaveBeenCalled());
+    await waitFor(() => expect(lecturerApi.queueQuestionAudioGeneration).toHaveBeenCalledWith("created-question"));
     expect(
       screen.queryByRole("button", { name: "Listen to AI reading" }),
     ).not.toBeInTheDocument();
@@ -283,6 +472,8 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     expect(await screen.findByText("PRQ-0001")).toBeInTheDocument();
     expect(screen.queryByText("EXQ-0001")).not.toBeInTheDocument();
     expect(screen.getByText("Exam type")).toBeInTheDocument();
+    expect(screen.getByLabelText("Exam type")).toHaveTextContent("Practice");
+    expect(screen.getByLabelText("Exam type")).not.toHaveTextContent("PRACTICE ·");
     expect(
       screen.getByRole("link", { name: "Create practice question" }),
     ).toHaveAttribute("href", "/lecturer/questions/new?purpose=practice");

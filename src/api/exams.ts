@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiFailure, request } from "@/api/client";
 import { pageSchema, queryString, type ReadFilters } from "@/api/catalog";
+import { fetchAllPages } from "@/api/pagination";
 
 const nullableString = z.string().nullable().optional();
 
@@ -97,6 +98,8 @@ export const examSubjectSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   eTag: z.string().nullable().optional(),
+  /** True when papers of this exam must be sealed into a locked package before they can be scheduled. */
+  requiresSealing: z.boolean().optional(),
 });
 export type ExamSubject = z.infer<typeof examSubjectSchema>;
 
@@ -209,35 +212,6 @@ export const bulkExamSchedulePlanSchema = z.object({
 });
 export type BulkExamSchedulePlan = z.infer<typeof bulkExamSchedulePlanSchema>;
 
-export type BulkExamScheduleInput = {
-  requestId: string;
-  examSubjectId: string;
-  name: string;
-  startsAt: string;
-  endsAt: string;
-  entryOpensAt: string;
-  entryClosesAt: string;
-  roomIds: string[];
-  students: Array<{ studentId: string; extraTimeMinutes: number; accommodationNotes?: string | null }>;
-  lecturerIds: string[];
-  invigilationSlotId: string;
-  invigilatorsPerRoom: number;
-};
-
-const bulkExamScheduleCreatedSchema = z.object({
-  requestId: z.string(),
-  planHash: nullableString,
-  createdAt: z.string(),
-  schedules: z.array(z.object({
-    roomId: z.string(),
-    examShiftId: z.string(),
-    examScheduleId: z.string(),
-    studentCount: z.number(),
-    invigilatorCount: z.number(),
-  })).nullable().transform((value) => value ?? []),
-});
-export type BulkExamScheduleCreated = z.infer<typeof bulkExamScheduleCreatedSchema>;
-
 export const myExamScheduleSchema = z.object({
   schedule: examScheduleSchema,
   seatCode: nullableString,
@@ -259,6 +233,12 @@ export const examStudentSchema = z.object({
   checkedOutBy: nullableString,
   attemptProgress: attemptProgressSchema,
   attemptId: nullableString,
+  absentAt: nullableString,
+  absentBy: nullableString,
+  /** True when the Backend marked the student absent at the end of the exam, not a lecturer. */
+  absenceRecordedAutomatically: z.boolean().optional(),
+  attendanceRevision: z.number().optional(),
+  eTag: nullableString,
 });
 export type ExamStudent = z.infer<typeof examStudentSchema>;
 
@@ -297,11 +277,33 @@ export const getExamPapers = (examSubjectId: string) =>
 export const getExamSubject = (examSubjectId: string) =>
   unwrap(`/examsubjects/${examSubjectId}`, examSubjectSchema);
 
-export const updateExamSubject = (examSubjectId: string, input: CreateExamSubjectInput) =>
-  unwrap(`/examsubjects/${examSubjectId}`, examSubjectSchema, { method: "PUT", json: input });
+export const updateExamSubject = (examSubjectId: string, input: CreateExamSubjectInput, eTag?: string | null) =>
+  unwrap(`/examsubjects/${examSubjectId}`, examSubjectSchema, { method: "PUT", headers: eTag ? { "If-Match": eTag } : undefined, json: input });
 
 export const archiveExamSubject = (examSubjectId: string) =>
   unwrap(`/examsubjects/${examSubjectId}/archive`, examSubjectSchema, { method: "PATCH" });
+
+export const examCameraPolicySchema = z.object({
+  examSubjectId: z.string(),
+  cameraRequired: z.boolean(),
+  cameraUnavailablePolicy: z.enum(["Block", "AllowWithFlag", "Allow"]),
+  eTag: z.string().nullable().optional(),
+});
+export type ExamCameraPolicy = z.infer<typeof examCameraPolicySchema>;
+
+export const getExamCameraPolicy = (examSubjectId: string) =>
+  unwrap(`/examsubjects/${examSubjectId}/camera-policy`, examCameraPolicySchema);
+
+export const updateExamCameraPolicy = (
+  examSubjectId: string,
+  input: Pick<ExamCameraPolicy, "cameraRequired" | "cameraUnavailablePolicy">,
+  eTag?: string | null,
+) =>
+  unwrap(`/examsubjects/${examSubjectId}/camera-policy`, examCameraPolicySchema, {
+    method: "PUT",
+    headers: eTag ? { "If-Match": eTag } : undefined,
+    json: input,
+  });
 
 export type CreateExamSubjectInput = {
   subjectId: string;
@@ -362,16 +364,66 @@ export const setExamPaperQuestions = (
   json: { questions },
 });
 
+const previewAudioSchema = z.object({ url: nullableString, expiresAt: nullableString }).nullable().optional();
+
+const previewOptionSchema = z.object({
+  optionId: z.string(),
+  label: nullableString,
+  content: nullableString,
+  isCorrect: z.boolean().optional(),
+  audio: previewAudioSchema,
+});
+
+/**
+ * One question of the preview. The Backend wraps the question text and type in `snapshot` and
+ * gives the paper-specific order, score and answer options beside it; this flattens them for the screen.
+ */
+const previewQuestionSchema = z.object({
+  examQuestionId: z.string().optional(),
+  displayOrder: z.number().nullable().optional(),
+  maxScore: z.number().nullable().optional(),
+  snapshot: z.object({
+    questionId: z.string().optional(),
+    content: nullableString,
+    questionType: nullableString,
+    difficulty: nullableString,
+    referenceAnswer: nullableString,
+    gradingCriteria: nullableString,
+  }).nullable().optional(),
+  audio: previewAudioSchema,
+  options: z.array(previewOptionSchema).nullable().optional(),
+}).transform((question) => ({
+  questionId: question.snapshot?.questionId ?? question.examQuestionId ?? "",
+  displayOrder: question.displayOrder ?? null,
+  maxScore: question.maxScore ?? null,
+  content: question.snapshot?.content ?? null,
+  questionType: question.snapshot?.questionType ?? null,
+  difficulty: question.snapshot?.difficulty ?? null,
+  referenceAnswer: question.snapshot?.referenceAnswer ?? null,
+  gradingCriteria: question.snapshot?.gradingCriteria ?? null,
+  audioUrl: question.audio?.url ?? null,
+  options: (question.options ?? []).map((option) => ({
+    optionId: option.optionId,
+    label: option.label ?? null,
+    content: option.content ?? null,
+    isCorrect: option.isCorrect ?? false,
+    audioUrl: option.audio?.url ?? null,
+  })),
+}));
+
+export const examPaperPreviewSchema = z.object({
+  examPaperId: z.string(),
+  version: z.number(),
+  durationMinutes: z.number(),
+  totalScore: z.number(),
+  instructions: nullableString,
+  questions: z.array(previewQuestionSchema).nullable().transform((value) => value ?? []),
+  message: nullableString,
+});
+export type ExamPaperPreview = z.infer<typeof examPaperPreviewSchema>;
+
 export const getExamPaperPreview = (paperId: string) =>
-  unwrap(`/exampapers/${paperId}/preview?simulateShuffle=true`, z.object({
-    examPaperId: z.string(),
-    version: z.number(),
-    durationMinutes: z.number(),
-    totalScore: z.number(),
-    instructions: nullableString,
-    questions: z.array(examQuestionSchema).nullable().transform((value) => value ?? []),
-    message: nullableString,
-  }));
+  unwrap(`/exampapers/${paperId}/preview?simulateShuffle=true`, examPaperPreviewSchema);
 
 export async function getExamPaperBank() {
   const subjects = await getExamSubjects();
@@ -422,12 +474,6 @@ export const createExamSchedule = (input: {
   entryOpensAt: string;
   entryClosesAt: string;
 }) => unwrap("/examschedules", examScheduleSchema, { method: "POST", json: input });
-
-export const previewBulkExamSchedules = (input: BulkExamScheduleInput) =>
-  unwrap("/examschedules/bulk/preview", bulkExamSchedulePlanSchema, { method: "POST", json: input });
-
-export const createBulkExamSchedules = (input: BulkExamScheduleInput & { expectedPlanHash: string }) =>
-  unwrap("/examschedules/bulk", bulkExamScheduleCreatedSchema, { method: "POST", json: input });
 
 export const getExamSchedule = (scheduleId: string) => unwrap(`/examschedules/${scheduleId}`, examScheduleSchema);
 export const updateExamSchedule = (scheduleId: string, input: { examSubjectId: string; examShiftId: string; entryOpensAt: string; entryClosesAt: string }) =>
@@ -511,9 +557,11 @@ export const getMyExamSchedules = (filters: ReadFilters = {}) =>
   );
 
 export const getExamStudents = (scheduleId: string, filters: ReadFilters = {}) =>
-  unwrap(
-    `/lecturer/exam-schedules/${scheduleId}/students${queryString({ PageNumber: 1, PageSize: 200, ...filters })}`,
-    pageSchema(examStudentSchema),
+  fetchAllPages((PageNumber, PageSize) =>
+    unwrap(
+      `/lecturer/exam-schedules/${scheduleId}/students${queryString({ ...filters, PageNumber, PageSize })}`,
+      pageSchema(examStudentSchema),
+    ),
   );
 
 export const getExamSeatMap = (scheduleId: string) =>
@@ -529,6 +577,11 @@ const attendanceSchema = examStudentSchema.pick({
   checkedInBy: true,
   checkedOutAt: true,
   checkedOutBy: true,
+  absentAt: true,
+  absentBy: true,
+  absenceRecordedAutomatically: true,
+  attendanceRevision: true,
+  eTag: true,
 });
 
 export const checkInStudent = (scheduleId: string, enrollmentId: string) =>
@@ -552,7 +605,35 @@ export const checkOutStudent = (scheduleId: string, enrollmentId: string) =>
     { method: "PUT" },
   );
 
-export const openExamSchedule = (scheduleId: string, examPaperId: string) =>
+/** Marks a student who did not check in as absent. The ETag is the one the student was last read with. */
+export const markStudentAbsent = (
+  scheduleId: string,
+  enrollmentId: string,
+  eTag?: string | null,
+  operationId: string = crypto.randomUUID(),
+  note?: string,
+) =>
+  unwrap(`/lecturer/exam-schedules/${scheduleId}/enrollments/${enrollmentId}/absence`, attendanceSchema, {
+    method: "PUT",
+    headers: eTag ? { "If-Match": eTag } : undefined,
+    json: { operationId, ...(note ? { note } : {}) },
+  });
+
+/** Takes an absence back, for example after a wrong tap, while the exam is still running. */
+export const undoStudentAbsence = (
+  scheduleId: string,
+  enrollmentId: string,
+  eTag?: string | null,
+  operationId: string = crypto.randomUUID(),
+) =>
+  unwrap(`/lecturer/exam-schedules/${scheduleId}/enrollments/${enrollmentId}/absence/undo`, attendanceSchema, {
+    method: "POST",
+    headers: eTag ? { "If-Match": eTag } : undefined,
+    json: { operationId },
+  });
+
+/** Opens the exam room. Without a paper id the Backend uses the package attached to the shift. */
+export const openExamSchedule = (scheduleId: string, examPaperId?: string) =>
   unwrap(
     `/lecturer/exam-schedules/${scheduleId}/open`,
     z.object({
@@ -562,7 +643,7 @@ export const openExamSchedule = (scheduleId: string, examPaperId: string) =>
       openedBy: z.string(),
       examPaperId: nullableString,
     }),
-    { method: "POST", json: { examPaperId } },
+    { method: "POST", json: examPaperId ? { examPaperId } : {} },
   );
 
 export const getScheduleValidation = (scheduleId: string) =>
@@ -597,3 +678,172 @@ export const publishExamPaper = (paperId: string, eTag?: string | null) =>
     method: "PATCH",
     headers: eTag ? { "If-Match": eTag } : undefined,
   });
+
+/** A paper sealed into a locked, read-only package. */
+export const sealedPaperSchema = z.object({
+  versionId: z.string(),
+  paperId: z.string(),
+  examSubjectId: z.string(),
+  subjectId: z.string(),
+  examTypeId: z.string(),
+  name: nullableString,
+  versionNumber: z.number(),
+  questionCount: z.number(),
+  totalScore: z.number(),
+  status: nullableString,
+  sealedAt: z.string(),
+  publishedToPoolAt: nullableString,
+  eTag: nullableString,
+  semesterId: z.string(),
+  durationMinutes: z.number(),
+  passScore: z.number(),
+  cameraRequired: z.boolean(),
+  scoringPolicy: nullableString,
+});
+export type SealedPaper = z.infer<typeof sealedPaperSchema>;
+
+const ifMatch = (eTag?: string | null) => (eTag ? { "If-Match": eTag } : undefined);
+
+/** Locks a paper into a read-only package. The paper must be the version the caller last read. */
+export const sealExamPaper = (paperId: string, eTag?: string | null) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/seal`, sealedPaperSchema, { method: "POST", headers: ifMatch(eTag) });
+
+/** Packages the signed-in lecturer sealed. */
+export const getMySealedPapers = () =>
+  unwrap("/lecturer/exam-papers/versions", z.array(sealedPaperSchema));
+
+/** Hands a sealed package over to the examiners. */
+export const handoverSealedPaper = (paperId: string, versionId: string, eTag?: string | null) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/versions/${versionId}/handover`, sealedPaperSchema, { method: "POST", headers: ifMatch(eTag) });
+
+/** Takes a handed-over package back from the examiners. */
+export const withdrawSealedPaper = (paperId: string, versionId: string, eTag?: string | null) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/versions/${versionId}/withdraw`, sealedPaperSchema, { method: "POST", headers: ifMatch(eTag) });
+
+/** Packages handed over to examiners. */
+export const getSealedExamPapers = () => unwrap("/sealed-exam-papers", z.array(sealedPaperSchema));
+
+export const shiftPaperSelectionSchema = z.object({
+  selectionId: z.string(),
+  shiftId: z.string(),
+  versionId: z.string(),
+  operationId: z.string(),
+  selectedAt: z.string(),
+  releasedAt: nullableString,
+  consumedAt: nullableString,
+});
+export type ShiftPaperSelection = z.infer<typeof shiftPaperSelectionSchema>;
+
+export const sharedExamShiftSchema = z.object({
+  shiftId: z.string(),
+  name: nullableString,
+  startsAt: z.string(),
+  endsAt: z.string(),
+  publishedAt: nullableString,
+  openedAt: nullableString,
+  status: nullableString,
+  eTag: nullableString,
+  scheduleIds: z.array(z.string()).nullable().transform((value) => value ?? []),
+  examSubjectId: z.string(),
+});
+export type SharedExamShift = z.infer<typeof sharedExamShiftSchema>;
+
+export type SharedExamShiftInput = {
+  examSubjectId: string;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  entryOpensAt: string;
+  entryClosesAt: string;
+  roomIds: string[];
+};
+
+/** Creates one shared shift and a schedule for every room. The exam must be sealed. */
+export const createSharedExamShift = (input: SharedExamShiftInput) =>
+  unwrap("/exam-shifts", sharedExamShiftSchema, { method: "POST", json: input });
+
+/** What each chosen room can offer for this shift, before anything is created. The Backend also checks the rooms and times. */
+export const previewSharedExamShift = (input: SharedExamShiftInput) =>
+  unwrap("/exam-shifts/preview", z.array(z.object({
+    roomId: z.string(),
+    name: nullableString,
+    availableComputerSeats: z.number(),
+    availableCameraSeats: z.number(),
+  })), { method: "POST", json: input });
+
+/** Changes the rooms or times of a shift. Only before it is published and before anyone is added. */
+export const updateSharedExamShift = (shiftId: string, input: SharedExamShiftInput, shiftETag?: string | null) =>
+  unwrap(`/exam-shifts/${shiftId}`, sharedExamShiftSchema, { method: "PUT", headers: ifMatch(shiftETag), json: input });
+
+/** Cancels a shift that has not been opened. Its package goes back to the pool. */
+export const cancelSharedExamShift = (shiftId: string, shiftETag?: string | null) =>
+  unwrap(`/exam-shifts/${shiftId}/cancel`, sharedExamShiftSchema, { method: "POST", headers: ifMatch(shiftETag) });
+
+/** Ends the exam in one room. Only its chief, only after the shift ended and with no attempt still running. */
+export const closeExamSchedule = (scheduleId: string) =>
+  unwrap(`/lecturer/exam-schedules/${scheduleId}/close`, z.object({ examScheduleId: z.string(), status: examScheduleStatusSchema, closedAt: z.string() }), { method: "POST" });
+
+const sealedQuestionSchema = z.object({
+  examQuestionId: z.string(),
+  questionId: z.string(),
+  displayOrder: z.number(),
+  maxScore: z.number(),
+  snapshot: z.object({
+    content: nullableString,
+    questionType: z.string(),
+    options: z.array(z.object({ optionId: z.string(), content: nullableString, isCorrect: z.boolean(), originalDisplayOrder: z.number() })).nullable().transform((value) => value ?? []),
+  }),
+});
+
+/** The questions of a sealed package exactly as they were locked. */
+export const getSealedPaperPreview = (paperId: string, versionId: string) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/versions/${versionId}/preview`, z.object({
+    versionId: z.string(),
+    paperId: z.string(),
+    durationMinutes: z.number(),
+    passScore: z.number(),
+    questions: z.array(sealedQuestionSchema).nullable().transform((value) => value ?? []),
+  }));
+
+/** A ten-minute link to the locked audio of a question, or of one of its options. */
+export const getSealedPaperAudio = (paperId: string, versionId: string, examQuestionId: string, optionId?: string) =>
+  unwrap(
+    `/lecturer/exam-papers/${paperId}/versions/${versionId}/questions/${examQuestionId}/audio${optionId ? `?optionId=${optionId}` : ""}`,
+    z.object({ url: nullableString, expiresAt: z.string() }),
+  );
+
+export const getSharedExamShift = (shiftId: string) => unwrap(`/exam-shifts/${shiftId}`, sharedExamShiftSchema);
+
+/** The package attached to a shift, or null while none is attached. */
+export async function getShiftPaperSelection(shiftId: string): Promise<ShiftPaperSelection | null> {
+  try {
+    const selection = await unwrap(`/exam-shifts/${shiftId}/paper-selection`, shiftPaperSelectionSchema);
+    return selection.releasedAt ? null : selection;
+  } catch (error) {
+    if (error instanceof ApiFailure && error.detail.kind === "not_found") return null;
+    throw error;
+  }
+}
+
+/**
+ * Asks the Backend to attach a package from the handed-over pool to a shift. The request carries no
+ * package id: the Backend picks, checks the package is intact, and answers with the one it chose.
+ * operationId makes a retry safe, so keep the same one when repeating a request that may have landed.
+ */
+export const selectShiftPaper = (shiftId: string, shiftETag?: string | null, operationId: string = crypto.randomUUID()) =>
+  unwrap(`/exam-shifts/${shiftId}/paper-selection`, shiftPaperSelectionSchema, {
+    method: "POST",
+    headers: ifMatch(shiftETag),
+    json: { operationId },
+  });
+
+/** Publishes a shared shift once it has its package, people and rooms. */
+export const publishSharedExamShift = (shiftId: string, shiftETag?: string | null) =>
+  unwrap(`/exam-shifts/${shiftId}/publish`, sharedExamShiftSchema, { method: "POST", headers: ifMatch(shiftETag) });
+
+/** Opens every room of a shared shift. For a shared shift only the examiner opens the exam, not the lecturers. */
+export const openSharedExamShift = (shiftId: string, shiftETag?: string | null) =>
+  unwrap(`/exam-shifts/${shiftId}/open`, sharedExamShiftSchema, { method: "POST", headers: ifMatch(shiftETag) });
+
+export const releaseShiftPaper = (shiftId: string, shiftETag?: string | null) =>
+  unwrap(`/exam-shifts/${shiftId}/paper-selection/release`, sharedExamShiftSchema, { method: "POST", headers: ifMatch(shiftETag) });

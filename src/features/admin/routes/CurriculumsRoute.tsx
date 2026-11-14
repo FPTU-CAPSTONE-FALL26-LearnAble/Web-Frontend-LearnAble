@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Archive, CheckCircle2, Plus, ScrollText } from "lucide-react";
+import { Archive, CheckCircle2, ListChecks, Pencil, Plus, ScrollText } from "lucide-react";
 import {
   approveCurriculum,
   archiveCurriculum,
@@ -43,6 +43,7 @@ import {
   formatDate,
   toDateInput,
 } from "../components/AdminSurfaces";
+import { CurriculumSubjectsDialog } from "../components/CurriculumSubjectsDialog";
 
 type Draft = {
   majorId: string;
@@ -87,6 +88,7 @@ export function CurriculumsRoute() {
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Curriculum | null>(null);
+  const [subjectsFor, setSubjectsFor] = useState<Curriculum | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [transition, setTransition] = useState<{
@@ -365,11 +367,19 @@ export function CurriculumsRoute() {
                     Approved {formatDate(row.approvedAt)}
                   </p>
                 )}
+                {row.status === "Archived" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Reopening is not available yet.
+                  </p>
+                )}
               </TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-max flex-nowrap gap-1">
                   <Button
                     variant="outline"
+                    size="icon"
+                    title="Edit"
+                    aria-label={`Edit ${row.curriculumCode}`}
                     onClick={() => {
                       setEditing(row);
                       setErrors([]);
@@ -384,31 +394,37 @@ export function CurriculumsRoute() {
                       });
                     }}
                   >
-                    Edit
+                    <Pencil aria-hidden />
                   </Button>
-                  {isStaff ? (
-                    <Button
-                      disabled
-                      variant="outline"
-                      title="Curriculum subject assignment API is not available yet"
-                    >
-                      Manage subjects
-                    </Button>
-                  ) : null}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Manage subjects"
+                    aria-label={`Manage subjects of ${row.curriculumCode}`}
+                    onClick={() => setSubjectsFor(row)}
+                  >
+                    <ListChecks aria-hidden />
+                  </Button>
                   {row.status === "Draft" && (
                     <Button
                       variant="ghost"
+                      size="icon"
+                      title="Approve"
+                      aria-label={`Approve ${row.curriculumCode}`}
                       onClick={() => setTransition({ row, action: "approve" })}
                     >
-                      Approve
+                      <CheckCircle2 aria-hidden />
                     </Button>
                   )}
                   {row.status !== "Archived" && (
                     <Button
                       variant="ghost"
+                      size="icon"
+                      title="Archive"
+                      aria-label={`Archive ${row.curriculumCode}`}
                       onClick={() => setTransition({ row, action: "archive" })}
                     >
-                      Archive
+                      <Archive aria-hidden />
                     </Button>
                   )}
                 </div>
@@ -532,6 +548,14 @@ export function CurriculumsRoute() {
           />
         </div>
       </FormDialog>
+
+      {subjectsFor ? (
+        <CurriculumSubjectsDialog
+          key={subjectsFor.curriculumId}
+          curriculum={subjectsFor}
+          onClose={() => setSubjectsFor(null)}
+        />
+      ) : null}
 
       <ConfirmAction
         open={transition !== null}
