@@ -10,7 +10,7 @@ export type ApiError =
   | { kind: "network" }
   | { kind: "unauthorized" }
   | { kind: "not_found" }
-  | { kind: "server"; status: number }
+  | { kind: "server"; status: number; message?: string; errors?: string[] }
   | { kind: "parse" };
 
 export class ApiFailure extends Error {
@@ -60,11 +60,11 @@ async function errorMessage(res: Response): Promise<string | undefined> {
 
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
-export async function request<T>(
+export async function request<TSchema extends z.ZodTypeAny>(
   path: string,
-  schema: z.ZodType<T>,
+  schema: TSchema,
   init?: RequestInit & { json?: unknown },
-): Promise<T> {
+): Promise<z.output<TSchema>> {
   const { json, ...rest } = init ?? {};
   const token = tokenStore.get();
 
@@ -85,8 +85,10 @@ export async function request<T>(
 
   if (!res.ok) {
     const message = await errorMessage(res);
-    if (res.status === 401) throw new ApiFailure({ kind: "unauthorized" }, message);
-    if (res.status === 404) throw new ApiFailure({ kind: "not_found" }, message);
+    if (res.status === 401)
+      throw new ApiFailure({ kind: "unauthorized" }, message);
+    if (res.status === 404)
+      throw new ApiFailure({ kind: "not_found" }, message);
     throw new ApiFailure({ kind: "server", status: res.status }, message);
   }
 
@@ -100,4 +102,39 @@ export async function request<T>(
   const parsed = schema.safeParse(data);
   if (!parsed.success) throw new ApiFailure({ kind: "parse" });
   return parsed.data;
+}
+
+export async function requestBlob(
+  path: string,
+  init?: RequestInit,
+): Promise<{ blob: Blob; fileName: string | null }> {
+  const token = tokenStore.get();
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new ApiFailure({ kind: "network" });
+  }
+  if (!res.ok) {
+    const message = await errorMessage(res);
+    if (res.status === 401)
+      throw new ApiFailure({ kind: "unauthorized" }, message);
+    if (res.status === 404)
+      throw new ApiFailure({ kind: "not_found" }, message);
+    throw new ApiFailure({ kind: "server", status: res.status }, message);
+  }
+  const disposition = res.headers.get("Content-Disposition");
+  const fileName = disposition?.match(
+    /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i,
+  )?.[1];
+  return {
+    blob: await res.blob(),
+    fileName: fileName ? decodeURIComponent(fileName) : null,
+  };
 }

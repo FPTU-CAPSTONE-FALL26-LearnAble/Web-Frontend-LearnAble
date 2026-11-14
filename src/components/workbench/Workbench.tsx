@@ -33,8 +33,8 @@ export function ScrollRegion({
 
 export const notConnected = (action: string) =>
   toast({
-    title: "Feature not connected",
-    description: `${action} is not connected to the backend yet. No data has been submitted or changed.`,
+    title: "Option not available",
+    description: `${action} isn’t available yet. Your existing information has not been changed.`,
   });
 export const unavailable = "Not available";
 export function PageHeading({
@@ -51,7 +51,7 @@ export function PageHeading({
       <div>
         <h1
           tabIndex={-1}
-          className="text-3xl font-extrabold tracking-tight outline-none"
+          className="text-3xl font-extrabold tracking-tight text-primary outline-none"
         >
           {title}
         </h1>
@@ -67,10 +67,12 @@ export function Breadcrumb({
   parent,
   path,
   current,
+  currentClassName,
 }: {
   parent: string;
   path: string;
   current: string;
+  currentClassName?: string;
 }) {
   return (
     <nav
@@ -84,7 +86,9 @@ export function Breadcrumb({
         {parent}
       </Link>
       <span aria-hidden>/</span>
-      <span aria-current="page">{current}</span>
+      <span aria-current="page" className={currentClassName}>
+        {current}
+      </span>
     </nav>
   );
 }
@@ -100,11 +104,13 @@ export function SummaryCard({
   value,
   detail,
   icon,
+  compact = false,
 }: {
   label: string;
   value: ReactNode;
-  detail: string;
+  detail?: string;
   icon?: ReactNode;
+  compact?: boolean;
 }) {
   const tone = /failed|review|urgent|incident/i.test(label)
     ? "danger"
@@ -112,9 +118,43 @@ export function SummaryCard({
       ? "success"
       : /running|processing|exam/i.test(label)
         ? "info"
-        : /draft|archived|total/i.test(label)
+        : /draft|archived/i.test(label)
           ? "warning"
-          : "info";
+          : /active|published|compliant|ready|completed/i.test(label)
+            ? "success"
+            : "info";
+  if (compact) {
+    return (
+      <Card size="sm" className="min-w-0 border-border py-0 shadow-none">
+        <CardContent className="relative min-h-20 justify-center gap-1 p-4 pr-16">
+          <p className="truncate text-sm font-semibold text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              "break-words text-2xl font-extrabold leading-none tabular-nums",
+              value === unavailable && "text-lg",
+            )}
+          >
+            {value}
+          </p>
+          {icon ? (
+            <span
+              className={cn(
+                "summary-icon absolute right-4 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg",
+                summaryToneClasses[tone] ?? "bg-secondary text-secondary-foreground",
+              )}
+            >
+              {icon}
+            </span>
+          ) : null}
+          {detail ? (
+            <p className="truncate text-xs text-muted-foreground">{detail}</p>
+          ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card className="min-w-0 overflow-hidden border-border py-0 shadow-none">
       <CardContent>
@@ -136,7 +176,9 @@ export function SummaryCard({
         >
           {value}
         </p>
-        <p className="text-xs text-muted-foreground">{detail}</p>
+        {detail ? (
+          <p className="text-xs text-muted-foreground">{detail}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

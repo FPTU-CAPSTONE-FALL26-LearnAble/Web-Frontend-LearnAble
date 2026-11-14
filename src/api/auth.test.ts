@@ -4,9 +4,39 @@ describe("auth API", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("parses the live login envelope and sends the documented body", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ success: true, message: "Signed in", data: { accessToken: "access", refreshToken: "refresh", accessTokenExpiresAt: "2026-09-14T08:00:00Z" }, errors: null }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ success: true, message: "Signed in", data: { universityId: "university-1", isSuperAdmin: false, accessToken: "access", refreshToken: "refresh", accessTokenExpiresAt: "2026-09-14T08:00:00Z" }, errors: null }), { status: 200, headers: { "Content-Type": "application/json" } }));
     await expect(login({ identifier: "user@fpt.edu.vn", password: "secret" })).resolves.toMatchObject({ accessToken: "access", refreshToken: "refresh" });
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ identifier: "user@fpt.edu.vn", password: "secret" });
+  });
+
+  it("maps the tenant context returned by the current-user endpoint", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          message: "Current user",
+          data: {
+            universityId: "university-1",
+            isSuperAdmin: false,
+            userId: "lecturer-1",
+            fullName: "Lecturer One",
+            email: "lecturer@fpt.edu.vn",
+            role: "Lecturer",
+          },
+          errors: null,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(getCurrentUser()).resolves.toEqual({
+      id: "lecturer-1",
+      universityId: "university-1",
+      isSuperAdmin: false,
+      fullName: "Lecturer One",
+      email: "lecturer@fpt.edu.vn",
+      role: "Lecturer",
+    });
   });
 
   it("rejects success false and HTTP 401 as unauthorized", async () => {
@@ -22,6 +52,6 @@ describe("auth API", () => {
   it("uses the local API proxy and preserves backend HTTP 500", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }));
     await expect(login({ identifier: "LEC0001", password: "123" })).rejects.toMatchObject({ detail: { kind: "server", status: 500 } });
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/auth/login");
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/api\/v1\/auth\/login$/);
   });
 });

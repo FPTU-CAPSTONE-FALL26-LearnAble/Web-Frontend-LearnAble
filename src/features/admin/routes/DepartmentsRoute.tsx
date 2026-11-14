@@ -23,6 +23,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   useAdminWrite,
@@ -54,6 +55,9 @@ const emptyDraft: Draft = {
 
 export function DepartmentsRoute() {
   useRouteAnnouncer("Departments · LearnAble Admin", "Departments");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState("all");
@@ -67,13 +71,20 @@ export function DepartmentsRoute() {
   const scope = useUniversityScope();
 
   const list = useQuery({
-    queryKey: adminKeys.list("departments", [search, active, page, size]),
+    queryKey: adminKeys.list("departments", [
+      search,
+      active,
+      page,
+      size,
+      isStaff,
+    ]),
     queryFn: () =>
       getDepartments({
         SearchTerm: search,
         IsActive: active === "all" ? undefined : active === "active",
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -119,8 +130,7 @@ export function DepartmentsRoute() {
   const submit = () => {
     const found: string[] = [];
     if (!creating && !editing) return;
-    if (creating && !draft.universityId)
-      found.push("University is required.");
+    if (creating && !draft.universityId) found.push("University is required.");
     if (creating && !draft.departmentCode.trim())
       found.push("Department code is required.");
     if (!draft.departmentName.trim())

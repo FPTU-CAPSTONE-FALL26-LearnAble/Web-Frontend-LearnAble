@@ -1,0 +1,89 @@
+import { Menu } from "lucide-react";
+import { useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router";
+import { cn } from "@/lib/utils";
+import { useSidebarCollapsed } from "@/lib/useSidebarCollapsed";
+import { Button } from "@/shared/ui/primitives/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/shared/ui/primitives/sheet";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import { SkipLink } from "@/shared/a11y/SkipLink";
+import { toast } from "@/shared/ui/primitives/toast";
+import { LecturerSidebar } from "./LecturerSidebar";
+import { BrandIdentity } from "@/components/BrandIdentity";
+import "./lecturer-theme.css";
+
+export function LecturerLayout() {
+  const [open, setOpen] = useState(false);
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed("learnable.lecturer.sidebar-collapsed");
+  const location = useLocation();
+  const isStudio = location.pathname === "/lecturer/questions/new";
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user)!;
+  const logout = useAuthStore((state) => state.logout);
+  const sidebarProps = {
+    activePath: location.pathname,
+    user,
+    onSignOut: () => {
+      logout();
+      navigate("/login", { replace: true });
+    },
+    onUnavailable: (label: string) =>
+      toast({
+        title: "Coming soon",
+        description: `${label} is not available yet. You can continue with the other lecturer tools.`,
+      }),
+  };
+  return (
+    <div className="lecturer-shell min-h-screen bg-background lg:flex">
+      <SkipLink />
+      <aside className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-border lg:block", collapsed ? "w-16" : "w-64")}>
+        <LecturerSidebar {...sidebarProps} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      </aside>
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Open navigation"
+          onClick={() => setOpen(true)}
+        >
+          <Menu aria-hidden />
+        </Button>
+        <BrandIdentity compact />
+        <span className="max-w-28 truncate text-sm font-semibold">
+          {user.fullName}
+        </span>
+      </header>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent>
+          <SheetTitle className="sr-only">Lecturer navigation</SheetTitle>
+          <SheetDescription className="sr-only">
+            Navigate between lecturer tools.
+          </SheetDescription>
+          <LecturerSidebar
+            {...sidebarProps}
+            onNavigate={() => setOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+      <main
+        id="main"
+        className={cn(
+          "min-w-0 flex-1",
+          isStudio
+            ? "lg:pl-4 xl:h-dvh xl:overflow-hidden"
+            : "px-4 py-6 sm:px-6 lg:px-8 lg:py-8",
+          collapsed ? "lg:ml-16" : "lg:ml-64",
+        )}
+      >
+        <div className={isStudio ? "xl:h-full" : "mx-auto max-w-[1440px]"}>
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  );
+}

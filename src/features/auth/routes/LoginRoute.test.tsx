@@ -65,7 +65,9 @@ describe("LoginRoute", () => {
     const user = userEvent.setup();
     renderLogin();
     await user.click(
-      screen.getByRole("button", { name: "Continue with Google" }),
+      screen.getByRole("button", {
+        name: "Continue with university Google account",
+      }),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

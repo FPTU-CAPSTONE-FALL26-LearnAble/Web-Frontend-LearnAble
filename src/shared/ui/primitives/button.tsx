@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+import { cn } from "@/shared/ui/cn";
 import { Slot } from "radix-ui";
 
 const buttonVariants = cva(
@@ -17,6 +17,8 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        success:
+          "border-success-border bg-success text-success-foreground hover:bg-[color-mix(in_oklch,var(--success),var(--success-border)_18%)] focus-visible:border-success-border focus-visible:ring-success-border/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

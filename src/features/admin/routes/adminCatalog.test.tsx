@@ -13,7 +13,6 @@ import {
   deleteStudentProfile,
   getAdminTopics,
   setUniversityActive,
-  updateStudentProfile,
 } from "@/api/admin";
 import { ApiFailure } from "@/api/client";
 import { useAuthStore } from "@/features/auth/store/authStore";
@@ -129,14 +128,12 @@ vi.mock("@/api/admin", async (importOriginal) => {
           majorId: "m1",
           curriculumId: "c1",
           intakeYear: 2024,
-          currentSemester: 3,
           enrollmentStatus: "Studying",
           createdAt: "2026-01-06T00:00:00Z",
           updatedAt: "2026-01-06T00:00:00Z",
         },
       ]),
     ),
-    updateStudentProfile: vi.fn(async () => undefined),
     changeEnrollmentStatus: vi.fn(async () => undefined),
     deleteStudentProfile: vi.fn(async () => undefined),
     getAdminTopics: vi.fn(async () =>
@@ -206,7 +203,6 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
         expect.objectContaining({ SubjectId: "sub1" }),
       ),
     );
-
   });
 
   it("rejects a negative display order before calling the API", async () => {
@@ -236,23 +232,16 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/specialization/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
-    const semester = screen.getByLabelText("Current semester");
-    await user.clear(semester);
-    await user.type(semester, "4");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() =>
-      expect(updateStudentProfile).toHaveBeenCalledWith("u1", {
-        currentSemester: 4,
-      }),
-    );
-
     await user.click(
       screen.getByRole("button", { name: /Delete profile of HE180100/ }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Delete profile" }));
-    await waitFor(() => expect(deleteStudentProfile).toHaveBeenCalledWith("u1"));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete profile" }),
+    );
+    await waitFor(() =>
+      expect(deleteStudentProfile).toHaveBeenCalledWith("u1"),
+    );
     expect(changeEnrollmentStatus).not.toHaveBeenCalled();
   });
 
@@ -280,7 +269,10 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
 
   it("shows the reason the API gave for a failed read", async () => {
     vi.mocked(getUniversities).mockRejectedValue(
-      new ApiFailure({ kind: "server", status: 403 }, "You cannot view universities."),
+      new ApiFailure(
+        { kind: "server", status: 403 },
+        "You cannot view universities.",
+      ),
     );
     view(<UniversitiesRoute />);
     expect(
@@ -310,7 +302,10 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     await screen.findByText("FPT University");
     await user.click(screen.getByRole("button", { name: "New university" }));
     await user.type(screen.getByLabelText("University code"), " HUST ");
-    await user.type(screen.getByLabelText("University name"), "Hanoi University");
+    await user.type(
+      screen.getByLabelText("University name"),
+      "Hanoi University",
+    );
     await user.type(screen.getByLabelText("Subdomain"), "hust");
     await user.click(screen.getByRole("button", { name: "Create university" }));
 
@@ -361,7 +356,9 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Deactivate" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(setUniversityActive).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Deactivate" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Deactivate" }),
+    );
     await waitFor(() =>
       expect(setUniversityActive).toHaveBeenCalledWith("uni-fpt", false),
     );
