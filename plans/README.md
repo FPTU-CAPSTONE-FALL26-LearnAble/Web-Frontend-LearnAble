@@ -8,6 +8,7 @@ the plan fully, honour its STOP conditions, and update its status when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001 | Consolidate the cross-platform primitive layer | P1 | L | — | DONE |
+| 002 | Migrate the assessment player demo route to desktop | P1 | M | — | IN PROGRESS (web steps 1–2 done) |
 
 ## Dependency notes
 

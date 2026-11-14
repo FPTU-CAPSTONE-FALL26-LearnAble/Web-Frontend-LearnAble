@@ -85,6 +85,7 @@ pre {
   --focus-ring-offset: var(--focus-ring-offset);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-checkbox: var(--checkbox);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-primary-hover: var(--primary-hover);
@@ -92,6 +93,8 @@ pre {
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
