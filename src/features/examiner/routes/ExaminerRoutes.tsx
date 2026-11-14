@@ -51,13 +51,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/primitives/dialog";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 import { candidates, examPapers, incidents, rooms } from "../data/fixtures";
 import { cn } from "@/lib/utils";
 
 const unavailable = (label: string) =>
-  toast({
-    title: "Feature not connected",
+  toast.info("Feature not connected", {
     description: `${label} is a UI preview and has not been connected to the backend.`,
   });
 
@@ -1839,8 +1838,7 @@ export function ScheduleCandidatesRoute() {
             </Button>
             <Button
               onClick={() =>
-                toast({
-                  title: "Seats rearranged locally",
+                toast.success("Seats rearranged locally", {
                   description:
                     "The fixture seating map has been updated only in this browser session.",
                 })

@@ -64,7 +64,6 @@ import {
   TableRow,
   TableCell,
   TableCaption,
-  Toaster,
   toast,
 } from "@/shared/ui/primitives";
 import {
@@ -77,6 +76,7 @@ import {
   Trash2Icon,
   ExternalLinkIcon,
   SlidersHorizontalIcon,
+  Undo2Icon,
 } from "lucide-react";
 
 export function ComponentDemoRoute() {
@@ -87,9 +87,6 @@ export function ComponentDemoRoute() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Toast Notification Container */}
-      <Toaster />
-
       {/* Main Header */}
       <header className="border-b border-border bg-card py-4 px-6 sm:px-12">
         <div className="mx-auto max-w-7xl">
@@ -557,6 +554,26 @@ export function ComponentDemoRoute() {
                 >
                   <XCircleIcon className="mr-1.5 size-4 text-red-600" />
                   Error Toast
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    toast.success("Question draft deleted", {
+                      description:
+                        "The draft was removed from this demo session.",
+                      action: {
+                        label: "Undo",
+                        onClick: () =>
+                          toast.info("Question draft restored", {
+                            description:
+                              "The draft is available again in this demo session.",
+                          }),
+                      },
+                    })
+                  }
+                >
+                  <Undo2Icon className="mr-1.5 size-4" />
+                  Action Toast
                 </Button>
               </CardContent>
             </Card>

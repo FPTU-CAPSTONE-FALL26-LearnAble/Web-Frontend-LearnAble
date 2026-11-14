@@ -27,8 +27,7 @@ import { Separator } from "@/shared/ui/primitives/separator";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { announce } from "@/shared/a11y/announcer";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
-import { toast } from "sonner";
-import { Toaster } from "@/shared/ui/primitives/sonner";
+import { toast } from "@/shared/ui/primitives/sonner";
 
 export function ResultReceiptDemoRoute() {
   useRouteAnnouncer(
@@ -124,8 +123,6 @@ export function ResultReceiptDemoRoute() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-      <Toaster />
-
       {/* 1. GEIST-STYLE MINIMAL HEADER */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/80 px-4 py-2.5 backdrop-blur-md print:hidden sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">

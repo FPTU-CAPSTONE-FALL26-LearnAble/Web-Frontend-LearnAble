@@ -10,7 +10,7 @@ import {
   AlertTitle,
 } from "@/shared/ui/primitives/alert";
 import { describeError } from "@/app/providers";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 import { ChoiceField } from "@/components/workbench/Fields";
 import { cn } from "@/lib/utils";
 export function ScrollRegion({
@@ -32,8 +32,7 @@ export function ScrollRegion({
 }
 
 export const notConnected = (action: string) =>
-  toast({
-    title: "Feature not connected",
+  toast.info("Feature not connected", {
     description: `${action} is not connected to the backend yet. No data has been submitted or changed.`,
   });
 export const unavailable = "Not available";

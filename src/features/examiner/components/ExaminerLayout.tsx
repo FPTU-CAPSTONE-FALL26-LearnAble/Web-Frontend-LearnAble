@@ -11,7 +11,7 @@ import {
 } from "@/shared/ui/primitives/sheet";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { SkipLink } from "@/shared/a11y/SkipLink";
-import { toast } from "@/shared/ui/primitives/toast";
+import { toast } from "@/shared/ui/primitives/sonner";
 import { ExaminerSidebar } from "./ExaminerSidebar";
 import "./examiner-theme.css";
 
@@ -27,8 +27,7 @@ export function ExaminerLayout() {
       navigate("/login", { replace: true });
     },
     onUnavailable: (label: string) =>
-      toast({
-        title: "Feature not connected",
+      toast.info("Feature not connected", {
         description: `${label} is not connected to the backend yet.`,
       }),
   };
