@@ -26,8 +26,8 @@ describe("MultipleResponseQuestion", () => {
     expect(screen.getByRole("group", { name: "Select one or more alternatives" })).toBeInTheDocument();
     const selectedCheckbox = screen.getByRole("checkbox", { name: "First alternative" });
     expect(selectedCheckbox).toBeChecked();
-    expect(selectedCheckbox.parentElement).toHaveClass("bg-primary/15");
-    expect(screen.getByRole("checkbox", { name: "Second alternative" }).parentElement).toHaveClass("hover:bg-muted");
+    expect(selectedCheckbox.parentElement).toHaveClass("bg-player-accent-soft");
+    expect(screen.getByRole("checkbox", { name: "Second alternative" }).parentElement).toHaveClass("hover:bg-muted/50");
     expect(screen.getByText("First alternative")).toHaveClass("select-text");
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Second alternative" }));
@@ -70,7 +70,7 @@ describe("MultipleResponseQuestion", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Flag for review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flag" }));
     expect(onToggleFlag).toHaveBeenCalledOnce();
   });
 

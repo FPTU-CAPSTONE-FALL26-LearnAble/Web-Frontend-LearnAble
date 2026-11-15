@@ -23,7 +23,7 @@ describe("MultipleChoiceQuestion", () => {
     );
 
     expect(screen.getByRole("radio", { name: "First alternative" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "First alternative" }).parentElement).toHaveClass("bg-primary/15");
+    expect(screen.getByRole("radio", { name: "First alternative" }).parentElement).toHaveClass("bg-player-accent-soft");
     fireEvent.click(screen.getByRole("radio", { name: "Second alternative" }));
     expect(onValueChange).toHaveBeenCalledWith("b");
 
@@ -48,7 +48,7 @@ describe("MultipleChoiceQuestion", () => {
     );
 
     expect(screen.getByRole("img", { name: "A supporting diagram" })).toHaveClass("w-full");
-    fireEvent.click(screen.getByRole("button", { name: "Flag for review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flag" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset answer" }));
     expect(onToggleFlag).toHaveBeenCalledOnce();
     expect(onReset).toHaveBeenCalledOnce();

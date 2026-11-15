@@ -65,7 +65,7 @@ describe("InlineChoiceQuestion", () => {
     expect(screen.getByRole("img", { name: "Supporting diagram" })).toHaveClass("w-full");
     expect(screen.getByRole("combobox", { name: "First blank" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Reset answer" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Flag for review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Flag" }));
     expect(onToggleFlag).toHaveBeenCalledOnce();
     expect(onReset).not.toHaveBeenCalled();
   });

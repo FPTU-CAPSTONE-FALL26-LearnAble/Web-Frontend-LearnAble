@@ -27,7 +27,7 @@ describe("AssessmentPlayerDemoRoute", () => {
     renderPlayer();
 
     await user.click(screen.getByRole("button", { name: "1 Unattempted Multiple choice" }));
-    await user.click(screen.getByRole("button", { name: "Flag for review" }));
+    await user.click(screen.getByRole("button", { name: "Flag" }));
     await user.click(screen.getByRole("button", { name: "Navigate to table of contents" }));
     await user.click(screen.getByRole("tab", { name: /Flagged \(1\)/i }));
 
@@ -81,6 +81,40 @@ describe("AssessmentPlayerDemoRoute", () => {
 
     await user.click(previous);
     expect(screen.getByRole("heading", { name: /upload your final design report/i })).toBeInTheDocument();
+  });
+
+  it("applies the selected contrast option to the document root and cleans up on unmount", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderPlayer();
+
+    expect(document.documentElement).not.toHaveAttribute("data-contrast");
+
+    await user.click(screen.getByRole("button", { name: "Open options" }));
+    await user.click(screen.getByRole("button", { name: "Contrast" }));
+
+    const defaultOption = screen.getByRole("radio", { name: "Default" });
+    const invertedOption = screen.getByRole("radio", { name: "Inverted" });
+    const yellowOption = screen.getByRole("radio", { name: "Yellow on black" });
+
+    expect(defaultOption).toBeChecked();
+
+    await user.click(invertedOption);
+    expect(invertedOption).toBeChecked();
+    expect(document.documentElement).toHaveAttribute("data-contrast", "inverted");
+
+    await user.click(yellowOption);
+    expect(yellowOption).toBeChecked();
+    expect(document.documentElement).toHaveAttribute("data-contrast", "yellowOnBlack");
+
+    await user.click(defaultOption);
+    expect(defaultOption).toBeChecked();
+    expect(document.documentElement).not.toHaveAttribute("data-contrast");
+
+    await user.click(invertedOption);
+    expect(document.documentElement).toHaveAttribute("data-contrast", "inverted");
+
+    unmount();
+    expect(document.documentElement).not.toHaveAttribute("data-contrast");
   });
 
   it("passes axe accessibility checks", async () => {

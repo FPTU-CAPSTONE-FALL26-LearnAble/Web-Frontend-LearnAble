@@ -16,6 +16,8 @@ export interface MultipleResponseOption {
 export interface MultipleResponseQuestionProps {
   /** 1-based question number displayed within the question area. */
   questionNumber: number;
+  /** Total questions in the assessment; renders "Question X of Y" when provided. */
+  questionCount?: number;
   stem: string;
   stemLang?: string;
   image?: { src: string; alt: string };
@@ -38,6 +40,7 @@ export interface MultipleResponseQuestionProps {
  */
 export function MultipleResponseQuestion({
   questionNumber,
+  questionCount,
   stem,
   stemLang,
   image,
@@ -57,51 +60,35 @@ export function MultipleResponseQuestion({
   return (
     <section
       aria-labelledby={questionId}
-      className={cn(
-        "mt-4 grid gap-y-6 sm:grid-cols-[6rem_minmax(0,1fr)_3rem] sm:gap-x-4",
-        className,
-      )}
+      className={cn("flex w-full flex-col gap-6", className)}
     >
-      <p className="text-base font-semibold text-foreground sm:col-start-1">
-        {vi.exam.questionNumber(questionNumber)}
+      <p className="text-base font-medium text-muted-foreground">
+        {questionCount
+          ? vi.exam.player.questionOf(questionNumber, questionCount)
+          : vi.exam.questionNumber(questionNumber)}
       </p>
 
-      {onToggleFlag ? (
-        <Button
-          type="button"
-          variant={flagged ? "secondary" : "ghost"}
-          size="icon"
-          aria-label={flagged ? vi.exam.unflagQuestion : vi.exam.flagQuestion}
-          aria-pressed={flagged}
-          className="justify-self-end sm:col-start-3 sm:row-start-1"
-          onClick={onToggleFlag}
-        >
-          <Bookmark
-            aria-hidden
-            className={cn("size-5", flagged && "fill-current")}
-          />
-        </Button>
-      ) : null}
-
-      <div className="flex flex-col gap-6 sm:col-start-2">
+      <div className="flex flex-col gap-6">
         {image && imageLayout === "above" ? (
           <img
             src={image.src}
             alt={image.alt}
-            className="max-h-80 w-full object-cover"
+            className="max-h-80 w-full rounded object-cover"
           />
         ) : null}
         <div
           className={cn(
             "grid gap-6 sm:items-start",
-            imageLayout === "inline" && "sm:grid-cols-[minmax(0,1fr)_10rem]",
+            image &&
+              imageLayout === "inline" &&
+              "sm:grid-cols-[minmax(0,1fr)_10rem]",
           )}
         >
           <h2
             id={questionId}
             lang={stemLang}
             tabIndex={-1}
-            className="text-base font-normal text-foreground"
+            className="text-lg font-medium leading-snug text-foreground"
           >
             {stem}
           </h2>
@@ -109,34 +96,43 @@ export function MultipleResponseQuestion({
             <img
               src={image.src}
               alt={image.alt}
-              className="h-50 w-full aspect-auto object-cover sm:w-40"
+              className="h-50 w-full rounded object-cover sm:w-40"
             />
           ) : null}
         </div>
 
         <fieldset disabled={disabled} className="min-w-0">
-          <legend className="mb-3 select-text text-base font-semibold text-foreground">
+          <legend className="mb-3 select-text text-base font-normal text-muted-foreground">
             {vi.exam.selectOneOrMore}
           </legend>
-          <div className="divide-y divide-border overflow-hidden rounded bg-card">
+          <div className="flex flex-col gap-1">
             {options.map((option) => {
               const optionId = `${questionId}-option-${option.id}`;
               const selected = selectedOptionIds.includes(option.id);
               const optionDisabled = disabled || option.disabled === true;
 
               return (
-                <div
+                <Label
                   key={option.id}
+                  htmlFor={optionId}
                   className={cn(
-                    "flex min-h-12 items-center gap-3 bg-card px-4 transition-colors",
-                    !optionDisabled && !selected && "hover:bg-muted",
-                    selected && "bg-primary/15",
+                    "relative flex min-h-[54px] w-full cursor-pointer items-center gap-3 rounded border p-4 transition-colors",
+                    selected
+                      ? "border-player-selected-border bg-player-accent-soft"
+                      : "border-border bg-background",
+                    !optionDisabled && !selected && "hover:bg-muted/50",
+                    optionDisabled && "cursor-not-allowed opacity-50",
                   )}
                 >
                   <Checkbox
                     id={optionId}
                     checked={selected}
                     disabled={optionDisabled}
+                    className={cn(
+                      "size-[calc(1rem*var(--text-scale))] shrink-0",
+                      selected &&
+                        "data-checked:border-player-accent data-checked:bg-player-accent data-checked:text-player-accent-foreground",
+                    )}
                     onCheckedChange={(checked) => {
                       const nextSelected = checked === true;
                       announce(
@@ -147,27 +143,54 @@ export function MultipleResponseQuestion({
                       onSelectionChange(option.id, nextSelected);
                     }}
                   />
-                  <Label
-                    htmlFor={optionId}
-                    className="min-h-11 flex-1 cursor-pointer "
+                  <p
+                    className={cn(
+                      "min-w-0 flex-1 select-text break-words text-base leading-snug text-foreground",
+                      selected ? "font-medium" : "font-normal",
+                    )}
                   >
-                    <p className="select-text text-base font-normal leading-relaxed">
-                      {option.text}
-                    </p>
-                  </Label>
-                </div>
+                    {option.text}
+                  </p>
+                </Label>
               );
             })}
           </div>
         </fieldset>
       </div>
 
-      <div className="border-t border-border pt-2 sm:col-start-2">
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        {onToggleFlag ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            aria-label={flagged ? vi.exam.unflagQuestion : vi.exam.flagQuestion}
+            aria-pressed={flagged}
+            className={cn(
+              "h-auto min-h-10 max-h-none rounded px-[0.75em] py-[0.5em] text-base font-normal",
+              flagged &&
+                "border-player-flag-border bg-player-flag font-medium text-player-flag-foreground hover:bg-player-flag/80",
+            )}
+            onClick={onToggleFlag}
+          >
+            <Bookmark
+              aria-hidden
+              className={cn(
+                "size-[calc(1rem*var(--text-scale))]",
+                flagged && "fill-current",
+              )}
+            />
+            <span>
+              {flagged ? vi.exam.unflagQuestion : vi.exam.flagQuestion}
+            </span>
+          </Button>
+        ) : null}
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
+          size="lg"
           disabled={disabled || !hasSelection}
-          className="-ml-2 font-normal text-base"
+          className="h-auto min-h-10 max-h-none rounded px-[0.75em] py-[0.5em] text-base font-normal"
           onClick={() => {
             onReset();
             announce(vi.announce.answerCleared);

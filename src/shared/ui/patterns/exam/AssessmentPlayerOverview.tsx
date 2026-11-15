@@ -1,7 +1,5 @@
-import { RotateCcw } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { TabsList, TabsTrigger } from "@/shared/ui/primitives/tabs";
-import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
 import type { PlayerFilter, PlayerView } from "./assessment-player-types";
 
@@ -12,7 +10,7 @@ export interface AssessmentPlayerOverviewProps {
   flaggedCount: number;
   questionCount: number;
   view: PlayerView;
-  onStartOver: () => void;
+  onFinishAndSubmit?: () => void;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -27,12 +25,13 @@ export function AssessmentPlayerOverview({
   flaggedCount,
   questionCount,
   view,
-  onStartOver,
+  onFinishAndSubmit,
 }: AssessmentPlayerOverviewProps) {
   const strings = vi.exam.player;
+  const unattemptedCount = questionCount - answeredCount;
   const counts: Record<PlayerFilter, number> = {
     all: questionCount,
-    unanswered: questionCount - answeredCount,
+    unanswered: unattemptedCount,
     flagged: flaggedCount,
   };
   const labels: Record<PlayerFilter, string> = {
@@ -42,63 +41,59 @@ export function AssessmentPlayerOverview({
   };
 
   return (
-    <section
-      aria-hidden={view === "question"}
-      inert={view === "question"}
-      className={cn(
-        "w-full overflow-hidden transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-none",
-        view === "question" ? "max-h-0 opacity-0" : "max-h-56 opacity-100",
-      )}
-    >
-      <div>
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-6 px-4 pb-8 pt-6 sm:px-6">
-          {view === "review" ? (
-            <>
-              <div>
-                <h2 id="review-heading" className="sr-only">
-                  {strings.reviewHeading}
-                </h2>
-                <p className="text-lg font-normal text-foreground">
-                  {strings.unattemptedSummary(questionCount - answeredCount)}
-                </p>
-              </div>
-              <Button
-                size="xl"
-                className="shrink-0 bg-primary px-6 text-base font-normal text-primary-foreground hover:bg-primary/90"
-                onClick={onStartOver}
+    <div className="w-full">
+      <div className="flex items-center justify-between gap-6 pb-5">
+        {view === "review" ? (
+          <>
+            <div className="min-w-0">
+              <h2
+                id="review-heading"
+                className="text-xl font-semibold text-foreground"
               >
-                <RotateCcw aria-hidden />
-                {strings.startOver}
-              </Button>
-            </>
-          ) : (
-            <h2
-              id="contents-heading"
-              className="text-lg font-normal text-foreground"
+                {strings.reviewHeading}
+              </h2>
+              <p className="mt-1 text-base text-muted-foreground">
+                {strings.reviewBreakdown(
+                  answeredCount,
+                  flaggedCount,
+                  unattemptedCount,
+                  questionCount,
+                )}
+              </p>
+            </div>
+            <Button
+              size="xl"
+              className="shrink-0 rounded bg-player-accent font-semibold text-player-accent-foreground hover:bg-player-accent/90"
+              onClick={onFinishAndSubmit}
             >
-              {title}
-            </h2>
-          )}
-        </div>
-        <div className="mx-auto w-full max-w-4xl">
-          <TabsList
-            aria-label={strings.filterQuestions}
-            variant="line"
-            className="mx-auto group-data-horizontal/tabs:h-auto w-full max-w-4xl !justify-start px-4 sm:px-6"
+              {strings.finishAndSubmit}
+            </Button>
+          </>
+        ) : (
+          <h2
+            id="contents-heading"
+            className="text-xl font-semibold text-foreground"
           >
-            {filters.map((name) => (
-              <TabsTrigger
-                key={name}
-                value={name}
-                className="will-change-transform !flex-none p-4 text-base font-normal data-[state=active]:shadow-none data-[state=active]:text-foreground group-data-horizontal/tabs:after:h-1"
-              >
-                {labels[name]}{" "}
-                <span className="will-change-transform">({counts[name]})</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+            {title}
+          </h2>
+        )}
       </div>
-    </section>
+      <TabsList
+        aria-label={strings.filterQuestions}
+        variant="line"
+        className="group-data-horizontal/tabs:h-auto w-full !justify-start gap-6 border-b border-border p-0"
+      >
+        {filters.map((name) => (
+          <TabsTrigger
+            key={name}
+            value={name}
+            className="will-change-transform !flex-none rounded-none px-0 pb-3 pt-2 text-base font-normal text-muted-foreground data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none group-data-horizontal/tabs:after:h-0.5 group-data-horizontal/tabs:after:bg-player-accent"
+          >
+            {labels[name]}{" "}
+            <span className="will-change-transform">({counts[name]})</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </div>
   );
 }

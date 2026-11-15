@@ -50,7 +50,7 @@ export function MatchingQuestion({
       className={className}
     >
       {visual === "drag" ? (
-        <div className="grid gap-4 rounded bg-muted p-4 outline outline-1 outline-black/10 dark:outline-white/10">
+        <div className="grid gap-4 rounded bg-muted p-4 outline outline-1 outline-border">
           <p className="text-base text-muted-foreground">
             Drag an event onto a destination. The answer controls below provide
             a keyboard alternative.
@@ -99,7 +99,7 @@ export function MatchingQuestion({
         className={cn(
           "grid gap-4",
           visual === "graphic" &&
-            "relative min-h-80 rounded bg-muted p-4 outline outline-1 outline-black/10 dark:outline-white/10",
+            "relative min-h-80 rounded bg-muted p-4 outline outline-1 outline-border",
         )}
       >
         {targets.map((target) => (

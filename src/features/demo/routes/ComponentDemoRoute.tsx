@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import {
   Button,
   Input,
@@ -104,12 +103,6 @@ export function ComponentDemoRoute() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button asChild variant="default">
-                <Link to="/demo/exam">Exam Client Demo (/demo/exam)</Link>
-              </Button>
-              <Button asChild variant="secondary">
-                <Link to="/demo/result">Result Demo (/demo/result)</Link>
-              </Button>
               <Button
                 variant="outline"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}

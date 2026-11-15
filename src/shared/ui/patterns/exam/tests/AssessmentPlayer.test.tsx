@@ -43,7 +43,7 @@ describe("AssessmentPlayer", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
     await user.click(screen.getByRole("radio", { name: "A" }));
     expect(onAnswerChange).toHaveBeenCalledWith("one", "A");
-    await user.click(screen.getByRole("button", { name: "Flag for review" }));
+    await user.click(screen.getByRole("button", { name: "Flag" }));
     expect(onToggleFlag).toHaveBeenCalledWith("one");
   });
 
@@ -54,12 +54,22 @@ describe("AssessmentPlayer", () => {
     expect(screen.getByRole("button", { name: "2 Unattempted Text entry" })).toBeInTheDocument();
   });
 
-  it("starts over from review and opens the first question", async () => {
-    const { onStartOver, user } = renderPlayer();
+  it("submits from review and shows answered, flagged, and unattempted status badges", async () => {
+    const { onGoToSubmission, user } = renderPlayer({
+      answers: { one: "A" },
+      flagged: ["two"],
+    });
     await user.click(screen.getByRole("button", { name: "Review" }));
-    await user.click(screen.getByRole("button", { name: /Start over/ }));
-    expect(onStartOver).toHaveBeenCalled();
-    expect(screen.getByRole("heading", { name: "First stem" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Review your answers" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("1 answered · 1 flagged · 1 unattempted out of 2 questions"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Answered")).toBeInTheDocument();
+    expect(screen.getByText("Flagged ⚑")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Finish & submit" }));
+    expect(onGoToSubmission).toHaveBeenCalled();
   });
 
   it("forwards the submission action from the options overlay", async () => {
@@ -67,5 +77,20 @@ describe("AssessmentPlayer", () => {
     await user.click(screen.getByRole("button", { name: "Open options" }));
     await user.click(screen.getByRole("button", { name: /Go to submission page/ }));
     expect(onGoToSubmission).toHaveBeenCalled();
+  });
+
+  it("lets the candidate choose a contrast option from the options overlay", async () => {
+    const onContrastChange = vi.fn();
+    const { user } = renderPlayer({ contrast: "default", onContrastChange });
+
+    await user.click(screen.getByRole("button", { name: "Open options" }));
+    await user.click(screen.getByRole("button", { name: "Contrast" }));
+
+    expect(screen.getByRole("radio", { name: "Default" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Inverted" }));
+    expect(onContrastChange).toHaveBeenCalledWith("inverted");
+
+    await user.click(screen.getByRole("radio", { name: "Yellow on black" }));
+    expect(onContrastChange).toHaveBeenCalledWith("yellowOnBlack");
   });
 });

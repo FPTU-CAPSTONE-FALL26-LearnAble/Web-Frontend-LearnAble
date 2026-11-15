@@ -64,6 +64,7 @@ export function PlayerQuestion({
       return (
         <MultipleChoiceQuestion
           {...shared}
+          questionCount={questionCount}
           image={question.image}
           options={options.map((option) => ({ id: option, text: option }))}
           value={value || null}
@@ -75,6 +76,7 @@ export function PlayerQuestion({
       return (
         <MultipleResponseQuestion
           {...shared}
+          questionCount={questionCount}
           image={question.image}
           imageLayout="above"
           options={options.map((option) => ({ id: option, text: option }))}

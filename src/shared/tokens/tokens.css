@@ -67,6 +67,39 @@
   --sidebar-accent-foreground: var(--color-brand-950);
   --sidebar-border: var(--color-gray-200);
   --sidebar-ring: var(--color-brand-600);
+  --player-accent: #ea580c;
+  --player-accent-foreground: #ffffff;
+  --player-accent-soft: #ffede6;
+  --player-accent-soft-foreground: #c2410c;
+  --player-accent-soft-border: #fed7aa;
+  --player-selected-border: transparent;
+  --player-flag: #fefce8;
+  --player-flag-foreground: #854d0e;
+  --player-flag-border: #fde047;
+  --player-table-header: #f9fafb;
+  --player-neutral-badge: #f3f4f6;
+  --player-neutral-badge-foreground: #4b5563;
+  --player-neutral-badge-border: #e5e7eb;
+  --player-option-badge: #e5e7eb99;
+  --player-connected: #16a34a;
+}
+
+@theme inline {
+  --color-player-accent: var(--player-accent);
+  --color-player-accent-foreground: var(--player-accent-foreground);
+  --color-player-accent-soft: var(--player-accent-soft);
+  --color-player-accent-soft-foreground: var(--player-accent-soft-foreground);
+  --color-player-accent-soft-border: var(--player-accent-soft-border);
+  --color-player-selected-border: var(--player-selected-border);
+  --color-player-flag: var(--player-flag);
+  --color-player-flag-foreground: var(--player-flag-foreground);
+  --color-player-flag-border: var(--player-flag-border);
+  --color-player-table-header: var(--player-table-header);
+  --color-player-neutral-badge: var(--player-neutral-badge);
+  --color-player-neutral-badge-foreground: var(--player-neutral-badge-foreground);
+  --color-player-neutral-badge-border: var(--player-neutral-badge-border);
+  --color-player-option-badge: var(--player-option-badge);
+  --color-player-connected: var(--player-connected);
 }
 
 .dark {
@@ -112,4 +145,94 @@
   --sidebar-accent-foreground: var(--color-gray-50);
   --sidebar-border: var(--color-gray-800);
   --sidebar-ring: var(--color-brand-200);
+}
+
+:root[data-contrast="inverted"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #232323;
+  --popover-foreground: #ffffff;
+  --primary: #d59369;
+  --primary-foreground: #000000;
+  --primary-hover: #e6bba0;
+  --secondary: #101010;
+  --secondary-foreground: #ffffff;
+  --muted: #1b1b1b;
+  --muted-foreground: #cccccc;
+  --accent: #262626;
+  --accent-foreground: #ffffff;
+  --warning: #262626;
+  --warning-foreground: #f2c602;
+  --success: #147b50;
+  --success-foreground: #ffffff;
+  --info: #0d0d14;
+  --info-foreground: #84e1d5;
+  --destructive: #66e8ff;
+  --border: #7a7a7a;
+  --checkbox: #c1c1c1;
+  --input: #c1c1c1;
+  --color-focus: #f1670f;
+  --ring: #f1670f;
+  --player-accent: #d59369;
+  --player-accent-foreground: #000000;
+  --player-accent-soft: #44270f;
+  --player-accent-soft-foreground: #ffffff;
+  --player-accent-soft-border: #d59369;
+  --player-selected-border: #d59369;
+  --player-flag: #262626;
+  --player-flag-foreground: #f2c602;
+  --player-flag-border: #b2b2b2;
+  --player-table-header: #000000;
+  --player-neutral-badge: #101010;
+  --player-neutral-badge-foreground: #cccccc;
+  --player-neutral-badge-border: #7a7a7a;
+  --player-option-badge: #333333;
+  --player-connected: #84e1d5;
+}
+
+:root[data-contrast="yellowOnBlack"] {
+  --background: #000000;
+  --foreground: #ffff00;
+  --card: #000000;
+  --card-foreground: #ffff00;
+  --popover: #232323;
+  --popover-foreground: #ffff00;
+  --primary: #ffff00;
+  --primary-foreground: #000000;
+  --primary-hover: #d9d900;
+  --secondary: #1b1b1b;
+  --secondary-foreground: #ffff00;
+  --muted: #272727;
+  --muted-foreground: #ffff99;
+  --accent: #262626;
+  --accent-foreground: #ffff00;
+  --warning: #262626;
+  --warning-foreground: #f2c602;
+  --success: #002b2b;
+  --success-foreground: #ffff54;
+  --info: #002b2b;
+  --info-foreground: #00ffff;
+  --destructive: #f04242;
+  --border: #aaaaaa;
+  --checkbox: #ffff00;
+  --input: #ffff00;
+  --color-focus: #00ffff;
+  --ring: #00ffff;
+  --player-accent: #ffff00;
+  --player-accent-foreground: #000000;
+  --player-accent-soft: #002b2b;
+  --player-accent-soft-foreground: #ffff00;
+  --player-accent-soft-border: #00ffff;
+  --player-selected-border: #00ffff;
+  --player-flag: #262626;
+  --player-flag-foreground: #ffff00;
+  --player-flag-border: #ffff00;
+  --player-table-header: #000000;
+  --player-neutral-badge: #272727;
+  --player-neutral-badge-foreground: #ffff00;
+  --player-neutral-badge-border: #aaaaaa;
+  --player-option-badge: #333333;
+  --player-connected: #00ffff;
 }
