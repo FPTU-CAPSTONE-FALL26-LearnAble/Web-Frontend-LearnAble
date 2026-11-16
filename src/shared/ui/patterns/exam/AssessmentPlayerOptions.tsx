@@ -198,6 +198,7 @@ export function AssessmentPlayerOptions({
               variant="ghost"
               size="xl"
               disabled={!canOpenSetting("remainingTime")}
+              aria-pressed={selectedSetting === "remainingTime"}
               className={cn(
                 "min-h-[54px] justify-between rounded border border-border bg-background px-5 text-base font-normal hover:bg-muted/60",
                 selectedSetting === "remainingTime" &&

@@ -33,7 +33,6 @@ export function AssessmentPlayerFooter({
     <div className="relative shrink-0 p-2">
       <nav
         aria-label={strings.previousNext}
-        tabIndex={0}
         className="absolute bottom-[calc(100%+1rem)] right-8 z-30 flex gap-1.5 [&_[data-slot=button]]:rounded!"
       >
         <Button
@@ -94,6 +93,7 @@ export function AssessmentPlayerFooter({
             <List aria-hidden />
           </Button>
           <div
+            role="group"
             aria-label={strings.questionNavigation}
             className="hidden min-w-0 max-w-full flex-1 items-center justify-start gap-0.5 overflow-x-auto rounded border border-border bg-background px-0.5 shadow-xs lg:flex"
           >

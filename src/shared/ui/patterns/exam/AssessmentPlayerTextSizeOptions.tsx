@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
+import { handleRadioGroupKeyDown } from "./radio-group-keys";
 
 export const TEXT_SCALES = [100, 150, 175] as const;
 export type TextScaleOption = (typeof TEXT_SCALES)[number];
@@ -33,6 +34,10 @@ export function AssessmentPlayerTextSizeOptions({
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              onKeyDown={(event) =>
+                handleRadioGroupKeyDown(event, TEXT_SCALES, value, onChange)
+              }
               variant="ghost"
               size="xl"
               className={cn(

@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
+import { handleRadioGroupKeyDown } from "./radio-group-keys";
 
 export type ContrastOption = "default" | "inverted" | "yellowOnBlack";
 
@@ -77,6 +78,15 @@ export function AssessmentPlayerContrastOptions({
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              onKeyDown={(event) =>
+                handleRadioGroupKeyDown(
+                  event,
+                  contrastOptions.map((item) => item.id),
+                  value,
+                  onChange,
+                )
+              }
               variant="ghost"
               size="xl"
               className={cn(
