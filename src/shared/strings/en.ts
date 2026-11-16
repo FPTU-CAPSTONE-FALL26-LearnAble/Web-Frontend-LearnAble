@@ -117,7 +117,7 @@ export const en = {
     pageTitle: "Accessibility settings — LearnAble",
     intro: "High-contrast colors and legible text are enabled by default. Use these settings to fine-tune your experience.",
     themeSection: "Colours and contrast",
-    themeHint: "Choose the colours that are easiest for you to read. Every option keeps strong contrast. Your choice is saved in this browser for your account only, and applies to every student page.",
+    themeHint: "Choose the colours that are easiest for you to read. Every option keeps strong contrast. Your choice is saved on this device only and applies to every page.",
     themeLegend: "Colour theme",
     themes: {
       default: { name: "Light", description: "Dark text on a white page" },
