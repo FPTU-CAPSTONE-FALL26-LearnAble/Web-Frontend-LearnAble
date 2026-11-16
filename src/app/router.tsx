@@ -42,6 +42,7 @@ import { UniversitiesRoute } from "@/features/admin/routes/UniversitiesRoute";
 import { SystemMonitoringRoute } from "@/features/admin/routes/SystemMonitoringRoute";
 import { VoiceSettingsRoute } from "@/features/admin/routes/VoiceSettingsRoute";
 import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
+import { GestureConfigRoute } from "@/features/admin/routes/GestureConfigRoute";
 import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
@@ -211,6 +212,10 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/exam-shortcuts",
                 element: <ExamShortcutsRoute />,
+              },
+              {
+                path: "/admin/gesture-settings",
+                element: <GestureConfigRoute />,
               },
               /*
                * Academic data (departments, majors, subjects, topics, semesters,
