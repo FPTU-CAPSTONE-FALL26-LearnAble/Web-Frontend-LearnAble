@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useNavigate } from "react-router";
+import { getUnreadNotificationCount } from "@/api/notifications";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { Button } from "@/shared/ui/primitives/button";
 import { cn } from "@/shared/ui/cn";
@@ -9,7 +11,9 @@ const navItems = [
   { to: "/practice", label: vi.practice.title },
   { to: "/assistant", label: vi.assistant.title },
   { to: "/progress", label: vi.progress.title },
+  { to: "/schedule", label: vi.schedule.title },
   { to: "/results", label: vi.results.title },
+  { to: "/notifications", label: vi.notifications.title },
   { to: "/settings/accessibility", label: vi.a11ySettings.title },
 ];
 
@@ -18,6 +22,12 @@ export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const unread = useQuery({
+    queryKey: ["my-notifications", "unread-count"],
+    queryFn: getUnreadNotificationCount,
+    staleTime: 30_000,
+  });
+  const unreadCount = unread.data?.unreadCount ?? 0;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -32,12 +42,18 @@ export function AppLayout() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "flex min-h-11 items-center rounded-md px-3 font-medium hover:bg-accent",
+                    "flex min-h-11 items-center gap-2 rounded-md px-3 font-medium hover:bg-accent",
                     isActive && "bg-accent text-accent-foreground",
                   )
                 }
               >
                 {item.label}
+                {item.to === "/notifications" && unreadCount > 0 ? (
+                  <span className="rounded-full border-2 border-foreground px-2 text-sm font-bold">
+                    <span aria-hidden>{unreadCount > 99 ? "99+" : unreadCount}</span>
+                    <span className="sr-only">{vi.notifications.navUnread(unreadCount)}</span>
+                  </span>
+                ) : null}
               </NavLink>
             ))}
           </nav>

@@ -1,7 +1,8 @@
 import { HttpResponse, delay, http } from "msw";
-import { mockExamResults, mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
+import { mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
 import { adminSystemHandlers } from "@/mocks/adminSystem";
 import { shortcutHandlers } from "@/mocks/shortcuts";
+import { studentScheduleHandlers } from "@/mocks/studentSchedule";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
@@ -9,6 +10,16 @@ import { shortcutHandlers } from "@/mocks/shortcuts";
  */
 
 const BASE = "http://18.190.2.18:8080/api";
+
+let mockPreferences = {
+  voiceCode: null as string | null,
+  speechRate: 1,
+  fontSize: 16,
+  zoomPercent: 100,
+  contrastTheme: "Default",
+  preferredInputMethod: "Keyboard",
+  audioFeedbackEnabled: true,
+};
 
 export const handlers = [
   // API-01 — đăng nhập
@@ -40,16 +51,15 @@ export const handlers = [
     });
   }),
 
-  // API-02 — đọc hồ sơ trợ năng
-  http.get(`${BASE}/students/me/accessibility-profile`, async () => {
+  // Student accessibility preferences — mirrors /StudentProfiles/me/preferences.
+  http.get("*/StudentProfiles/me/preferences", async () => {
     await delay(200);
-    return HttpResponse.json({ ttsVoiceUri: null, ttsRate: 1 });
+    return HttpResponse.json({ success: true, message: null, data: mockPreferences, errors: null });
   }),
-
-  // API-03 — cập nhật hồ sơ trợ năng
-  http.put(`${BASE}/students/me/accessibility-profile`, async ({ request }) => {
+  http.put("*/StudentProfiles/me/preferences", async ({ request }) => {
     await delay(200);
-    return HttpResponse.json(await request.json());
+    mockPreferences = { ...mockPreferences, ...((await request.json()) as typeof mockPreferences) };
+    return HttpResponse.json({ success: true, message: null, data: mockPreferences, errors: null });
   }),
 
   // API-09 — danh sách bộ đề luyện tập
@@ -102,22 +112,12 @@ export const handlers = [
     return HttpResponse.json(mockProgress);
   }),
 
-  // API-12 — kết quả thi
-  http.get(`${BASE}/students/me/exam-results`, async () => {
-    await delay(300);
-    return HttpResponse.json(mockExamResults);
-  }),
-  http.get(`${BASE}/students/me/exam-results/:sessionId`, async ({ params }) => {
-    await delay(200);
-    const found = mockExamResults.find((r) => r.sessionId === params.sessionId);
-    return found
-      ? HttpResponse.json(found)
-      : HttpResponse.json({ message: "Not found" }, { status: 404 });
-  }),
-
   // Admin system configuration — proposed contract, not yet in the backend.
   ...adminSystemHandlers,
 
   // Exam keyboard shortcuts (FR-52) — mirrors the deployed MyShortcuts API.
   ...shortcutHandlers,
+
+  // Student exam schedule and inbox (FFCB-106, FFCB-279) — mirrors the deployed API.
+  ...studentScheduleHandlers,
 ];

@@ -18,6 +18,8 @@ const studentRoutes = [
   "/assistant",
   "/progress",
   "/results",
+  "/schedule",
+  "/notifications",
   "/settings/accessibility",
 ];
 

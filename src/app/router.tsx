@@ -86,6 +86,8 @@ import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemo
 import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
+import { StudentNotificationsRoute } from "@/features/notifications/routes/StudentNotificationsRoute";
+import { ScheduleRoute } from "@/features/schedule/routes/ScheduleRoute";
 import { NotificationManagementRoute } from "@/features/notifications/routes/NotificationManagementRoute";
 
 function LegacyParameterizedRedirect({
@@ -349,8 +351,10 @@ export const router = createBrowserRouter([
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
               { path: "/progress", element: <ProgressRoute /> },
+              { path: "/schedule", element: <ScheduleRoute /> },
+              { path: "/notifications", element: <StudentNotificationsRoute /> },
               { path: "/results", element: <ResultsListRoute /> },
-              { path: "/results/:sessionId", element: <ResultDetailRoute /> },
+              { path: "/results/:scheduleId", element: <ResultDetailRoute /> },
               {
                 path: "/cai-dat/tro-nang",
                 element: <Navigate to="/settings/accessibility" replace />,
@@ -367,6 +371,8 @@ export const router = createBrowserRouter([
                 path: "/tien-do",
                 element: <Navigate to="/progress" replace />,
               },
+              { path: "/lich-thi", element: <Navigate to="/schedule" replace /> },
+              { path: "/thong-bao", element: <Navigate to="/notifications" replace /> },
               { path: "/ket-qua", element: <Navigate to="/results" replace /> },
               {
                 path: "/ket-qua/:sessionId",
