@@ -18,7 +18,7 @@ function renderGuard(role: string) {
         <Route element={<RequireLecturer />}>
           <Route path="/lecturer/dashboard" element={<p>Lecturer area</p>} />
         </Route>
-        <Route path="/practice" element={<p>Student area</p>} />
+        <Route path="/home" element={<p>Student area</p>} />
         <Route path="/examiner/dashboard" element={<p>Examiner area</p>} />
         <Route path="/admin/dashboard" element={<p>Admin area</p>} />
         <Route path="/login" element={<p>Login page</p>} />

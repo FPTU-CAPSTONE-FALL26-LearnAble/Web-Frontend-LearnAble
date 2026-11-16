@@ -2,9 +2,9 @@ import { getStudentPostLoginDestination } from "@/features/auth/routes/StudentLo
 
 describe("StudentLoginRoute", () => {
   it("only preserves a requested Student route", () => {
-    expect(getStudentPostLoginDestination()).toBe("/practice");
+    expect(getStudentPostLoginDestination()).toBe("/home");
     expect(getStudentPostLoginDestination("/results")).toBe("/results");
     expect(getStudentPostLoginDestination("/practice/set-1")).toBe("/practice/set-1");
-    expect(getStudentPostLoginDestination("/examiner/dashboard")).toBe("/practice");
+    expect(getStudentPostLoginDestination("/examiner/dashboard")).toBe("/home");
   });
 });

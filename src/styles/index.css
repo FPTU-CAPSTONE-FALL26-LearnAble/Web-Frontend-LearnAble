@@ -171,6 +171,14 @@ pre {
   * {
     @apply border-border outline-ring;
   }
+  /*
+   * Whatever the keyboard moves to is highlighted, on every page and in every
+   * theme. Components that draw their own focus ring override this.
+   */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: 2px;
+  }
   body {
     @apply bg-background text-foreground;
   }

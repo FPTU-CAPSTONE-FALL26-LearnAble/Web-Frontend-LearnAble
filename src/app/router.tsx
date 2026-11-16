@@ -7,6 +7,7 @@ import { LoginRoute } from "@/features/auth/routes/LoginRoute";
 import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
+import { StudentHomeRoute } from "@/features/home/routes/StudentHomeRoute";
 import { PersonalShortcutsRoute } from "@/features/accessibility/routes/PersonalShortcutsRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
 import { PracticeAttemptRoute } from "@/features/practice/routes/PracticeAttemptRoute";
@@ -357,6 +358,7 @@ export const router = createBrowserRouter([
                 path: "/settings/accessibility",
                 element: <AccessibilitySettingsRoute />,
               },
+              { path: "/home", element: <StudentHomeRoute /> },
               { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },

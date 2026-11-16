@@ -24,7 +24,7 @@ describe("LoginRoute", () => {
   it("routes lecturers to their dashboard and preserves other role flows", () => {
     expect(getPostLoginDestination("LECTURER")).toBe("/lecturer/dashboard");
     expect(getPostLoginDestination("Examiner")).toBe("/examiner/dashboard");
-    expect(getPostLoginDestination("Student")).toBe("/practice");
+    expect(getPostLoginDestination("Student")).toBe("/home");
     expect(getPostLoginDestination("Lecturer", "/lecturer/dashboard")).toBe(
       "/lecturer/dashboard",
     );
@@ -35,7 +35,7 @@ describe("LoginRoute", () => {
       "/examiner/dashboard",
     );
     expect(getPostLoginDestination("Student", "/examiner/dashboard")).toBe(
-      "/practice",
+      "/home",
     );
     expect(getPostLoginDestination("Admin")).toBe("/admin/dashboard");
     expect(getPostLoginDestination("Admin", "/admin/users")).toBe(
@@ -44,7 +44,7 @@ describe("LoginRoute", () => {
     expect(getPostLoginDestination("Admin", "/lecturer/dashboard")).toBe(
       "/admin/dashboard",
     );
-    expect(getPostLoginDestination("Student", "/admin/users")).toBe("/practice");
+    expect(getPostLoginDestination("Student", "/admin/users")).toBe("/home");
     expect(getPostLoginDestination("Registrar")).toBeNull();
   });
   it("validates required fields and toggles password visibility", async () => {

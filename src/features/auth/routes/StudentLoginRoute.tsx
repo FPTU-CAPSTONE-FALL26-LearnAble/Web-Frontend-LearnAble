@@ -37,7 +37,7 @@ function describeLoginError(error: unknown) {
 }
 
 export function getStudentPostLoginDestination(requestedPath?: string) {
-  return getRoleDestination("student", requestedPath) ?? "/practice";
+  return getRoleDestination("student", requestedPath) ?? "/home";
 }
 
 export function StudentLoginRoute() {

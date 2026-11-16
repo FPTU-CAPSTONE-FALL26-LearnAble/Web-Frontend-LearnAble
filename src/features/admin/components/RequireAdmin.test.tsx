@@ -16,7 +16,7 @@ function renderGuard(role: string) {
         </Route>
         <Route path="/lecturer/dashboard" element={<p>Lecturer area</p>} />
         <Route path="/examiner/dashboard" element={<p>Examiner area</p>} />
-        <Route path="/practice" element={<p>Student area</p>} />
+        <Route path="/home" element={<p>Student area</p>} />
         <Route path="/login" element={<p>Login page</p>} />
       </Routes>
     </MemoryRouter>,
@@ -41,7 +41,7 @@ describe("RequireAdmin", () => {
     expect(screen.getByText("Examiner area")).toBeInTheDocument();
   });
 
-  it("returns students to practice", () => {
+  it("returns students to their main menu", () => {
     renderGuard("Student");
     expect(screen.getByText("Student area")).toBeInTheDocument();
   });

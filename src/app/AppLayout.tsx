@@ -1,6 +1,9 @@
+import { useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { getUnreadNotificationCount } from "@/api/notifications";
+import { KeyHints, PAGE_KEYS_SLOT } from "@/lib/a11y/PageKeys";
+import { useArrowKeyNavigation } from "@/lib/a11y/useArrowKeyNavigation";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { Button } from "@/shared/ui/primitives/button";
 import { cn } from "@/shared/ui/cn";
@@ -8,6 +11,7 @@ import { vi } from "@/shared/strings/vi";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
 const navItems = [
+  { to: "/home", label: vi.home.nav },
   { to: "/practice", label: vi.practice.title },
   { to: "/assistant", label: vi.assistant.title },
   { to: "/progress", label: vi.progress.title },
@@ -29,6 +33,25 @@ export function AppLayout() {
     staleTime: 30_000,
   });
   const unreadCount = unread.data?.unreadCount ?? 0;
+  // ↑ ↓ travel the controls of whichever page is open.
+  useArrowKeyNavigation("main");
+
+  const signOut = useCallback(() => {
+    logout();
+    navigate("/login");
+  }, [logout, navigate]);
+
+  // Alt+H returns to the main menu from any student page.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.code !== "KeyH" && event.key.toLowerCase() !== "h") return;
+      event.preventDefault();
+      navigate("/home");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navigate]);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -60,23 +83,40 @@ export function AppLayout() {
           </nav>
           <div className="ms-auto flex items-center gap-3">
             {user ? <p className="text-muted-foreground">{user.fullName}</p> : null}
-            <Button
-              variant="ghost"
-              onClick={() => {
-                logout();
-                navigate("/login");
-              }}
-            >
+            <Button variant="ghost" onClick={signOut}>
               {vi.common.logout}
             </Button>
           </div>
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 p-6">
-        <Outlet />
+        <Outlet context={{ signOut }} />
       </main>
-      <footer role="contentinfo" className="border-t-2 border-border px-6 py-3 text-muted-foreground">
-        {vi.app.name}
+      {/* Always in view. Page keys and keys that work everywhere are separate, labelled groups. */}
+      <footer
+        role="contentinfo"
+        className="sticky bottom-0 flex flex-wrap items-center gap-x-8 gap-y-2 border-t-2 border-border bg-background px-6 py-3"
+      >
+        <p className="font-bold">{vi.app.name}</p>
+        <div
+          role="group"
+          aria-label={vi.app.keys.barLabel}
+          className="ms-auto grid gap-x-8 gap-y-2 sm:grid-cols-[auto_auto]"
+        >
+          <div className="hidden flex-wrap items-center gap-x-4 gap-y-2 has-[kbd]:flex">
+            <p className="font-semibold text-muted-foreground">{vi.app.keys.page}:</p>
+            <div id={PAGE_KEYS_SLOT} />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:border-s-2 sm:border-border sm:ps-8">
+            <p className="font-semibold text-muted-foreground">{vi.app.keys.everywhere}:</p>
+            <KeyHints
+              keys={[
+                ["↑ ↓", vi.app.keys.moveControls],
+                [vi.app.keys.backToMenuKey, vi.app.keys.backToMenu],
+              ]}
+            />
+          </div>
+        </div>
       </footer>
     </div>
   );

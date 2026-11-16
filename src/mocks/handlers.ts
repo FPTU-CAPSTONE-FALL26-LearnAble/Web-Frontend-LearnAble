@@ -4,6 +4,7 @@ import { adminSystemHandlers } from "@/mocks/adminSystem";
 import { gestureConfigHandlers } from "@/mocks/gestureConfig";
 import { shortcutHandlers } from "@/mocks/shortcuts";
 import { studentScheduleHandlers } from "@/mocks/studentSchedule";
+import { learningAssistantHandlers } from "@/mocks/learningAssistant";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
@@ -116,30 +117,6 @@ export const handlers = [
       : HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
 
-  // API-10 — trợ lý AI (RULE-14: có/không có nguồn)
-  http.post(`${BASE}/assistant/chat`, async ({ request }) => {
-    await delay(900);
-    const { question } = (await request.json()) as { question: string };
-    // Ca khó: câu hỏi ngoài tài liệu → trả lời không có nguồn
-    if (question.toLowerCase().includes("outside the materials")) {
-      return HttpResponse.json({
-        answer:
-          "This topic is not present in the uploaded course materials, so the response is only general guidance.",
-        grounded: false,
-        citations: [],
-      });
-    }
-    return HttpResponse.json({
-      answer:
-        "Encapsulation hides an object's internal state and provides controlled access through public methods. See chapter 2 of the course book.",
-      grounded: true,
-      citations: [
-        { title: "PRO192 Course Book — Chapter 2: Encapsulation", page: 34 },
-        { title: "Week 3 lecture slides", page: 12 },
-      ],
-    });
-  }),
-
   // API-11 — tiến độ luyện tập
   http.get(`${BASE}/students/me/practice-progress`, async () => {
     await delay(300);
@@ -156,4 +133,7 @@ export const handlers = [
 
   // Student exam schedule and inbox (FFCB-106, FFCB-279) — mirrors the deployed API.
   ...studentScheduleHandlers,
+
+  // Learning assistant (FFCB-139) — mirrors the deployed LearningAssistant API.
+  ...learningAssistantHandlers,
 ];
