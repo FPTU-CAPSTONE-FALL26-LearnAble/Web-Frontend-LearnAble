@@ -146,9 +146,7 @@ export function InlineChoiceQuestion({
                   const option = slot.options.find(
                     (item) => item.value === value,
                   );
-                  if (option)
-                    announce(vi.announce.answerSelected(option.label));
-                  onValueChange(slot.id, value);
+                  if (option) onValueChange(slot.id, value);
                 }}
               >
                 <SelectTrigger
