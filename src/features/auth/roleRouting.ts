@@ -6,7 +6,7 @@ export type SupportedRole =
   | "staff";
 
 const defaultDestination: Record<SupportedRole, string> = {
-  student: "/practice",
+  student: "/home",
   lecturer: "/lecturer/dashboard",
   examiner: "/examiner/dashboard",
   admin: "/admin/dashboard",
@@ -14,6 +14,7 @@ const defaultDestination: Record<SupportedRole, string> = {
 };
 
 const studentRoutes = [
+  "/home",
   "/practice",
   "/assistant",
   "/progress",

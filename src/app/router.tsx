@@ -7,6 +7,7 @@ import { LoginRoute } from "@/features/auth/routes/LoginRoute";
 import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
+import { StudentHomeRoute } from "@/features/home/routes/StudentHomeRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
 import { PracticeAttemptRoute } from "@/features/practice/routes/PracticeAttemptRoute";
 import { AssistantRoute } from "@/features/assistant/routes/AssistantRoute";
@@ -348,6 +349,7 @@ export const router = createBrowserRouter([
                 path: "/settings/accessibility",
                 element: <AccessibilitySettingsRoute />,
               },
+              { path: "/home", element: <StudentHomeRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
               { path: "/progress", element: <ProgressRoute /> },
