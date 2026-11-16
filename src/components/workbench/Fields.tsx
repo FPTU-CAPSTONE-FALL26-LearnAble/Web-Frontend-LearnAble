@@ -71,6 +71,7 @@ export function TextField({
   onChange: (value: string) => void;
   multiline?: boolean;
   type?: string;
+  placeholder?: string;
   min?: string;
   max?: string;
   step?: string;

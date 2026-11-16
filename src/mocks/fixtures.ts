@@ -1,6 +1,5 @@
 import type { PracticeSet } from "@/api/practice";
 import type { PracticeProgress } from "@/api/progress";
-import type { ExamResult } from "@/api/results";
 import type { User } from "@/api/auth";
 
 /**
@@ -95,34 +94,3 @@ export const mockProgress: PracticeProgress = {
     },
   ],
 };
-
-export const mockExamResults: ExamResult[] = [
-  {
-    sessionId: "phien-thi-001",
-    examName: "PRO192 Final Exam — Session 1",
-    score: 78,
-    maxScore: 100,
-    status: "passed",
-    submittedAt: "2026-07-20T10:45:00+07:00",
-    durationMinutes: 58,
-  },
-  {
-    // Ca khó: phiên thi bị gắn cờ giám sát — điểm tạm thời (FR-10)
-    sessionId: "phien-thi-002",
-    examName: "PRO192 Retake — Session 2",
-    score: 65,
-    maxScore: 100,
-    status: "flagged",
-    submittedAt: "2026-08-01T15:20:00+07:00",
-    durationMinutes: 60,
-  },
-  {
-    sessionId: "phien-thi-003",
-    examName: "MAD101 Midterm Exam",
-    score: 0,
-    maxScore: 100,
-    status: "pending",
-    submittedAt: "2026-08-10T11:00:00+07:00",
-    durationMinutes: 45,
-  },
-];

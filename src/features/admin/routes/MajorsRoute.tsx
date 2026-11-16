@@ -24,6 +24,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   departmentLabel,
@@ -55,6 +56,9 @@ const emptyDraft: Draft = {
 
 export function MajorsRoute() {
   useRouteAnnouncer("Majors · LearnAble Admin", "Majors");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
@@ -76,6 +80,7 @@ export function MajorsRoute() {
       active,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getMajors({
@@ -84,6 +89,7 @@ export function MajorsRoute() {
         IsActive: active === "all" ? undefined : active === "active",
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);

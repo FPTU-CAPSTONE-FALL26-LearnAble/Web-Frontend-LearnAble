@@ -15,10 +15,12 @@ interface AuthShellProps {
   heroTitleClassName?: string;
   heroBody: string;
   badge?: string;
+  eyebrow?: string;
+  highlights?: Array<{ value: string; label: string }>;
   className?: string;
 }
 
-const highlights = [
+const defaultHighlights = [
   { value: "Top 201–300", label: "Sustainable development" },
   { value: "#87", label: "Quality Education" },
   { value: "#14", label: "Good jobs & growth" },
@@ -34,6 +36,8 @@ export function AuthShell({
   heroTitleClassName,
   heroBody,
   badge,
+  eyebrow = "Hanoi • Ho Chi Minh City • Da Nang • Can Tho • Quy Nhon",
+  highlights = defaultHighlights,
   className,
 }: AuthShellProps) {
   return (
@@ -63,17 +67,17 @@ export function AuthShell({
             />
             <div
               className={cn(
-                "absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/40",
+                "absolute inset-x-0 bottom-0 h-[72%] bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent",
                 imageOverlayClassName,
               )}
             />
             <div className="relative flex h-full flex-col justify-between gap-8 text-white">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Hanoi • Ho Chi Minh City • Da Nang • Can Tho • Quy Nhon
+              <p className="text-xs font-semibold uppercase tracking-wide text-white">
+                {eyebrow}
               </p>
               <div className="mt-auto max-w-lg space-y-4">
                 {badge ? (
-                  <Badge className="gap-1.5 bg-primary/90 text-primary-foreground backdrop-blur-sm">
+                  <Badge>
                     <ShieldCheck aria-hidden className="size-3.5" />
                     <span>{badge}</span>
                   </Badge>
@@ -86,7 +90,7 @@ export function AuthShell({
                 >
                   {heroTitle}
                 </h2>
-                <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
+                <p className="text-sm leading-relaxed text-slate-300">
                   {heroBody}
                 </p>
                 <dl className="grid grid-cols-1 gap-3 border-t border-white/15 pt-6 sm:grid-cols-3">
@@ -98,11 +102,8 @@ export function AuthShell({
                       <dt className="text-sm font-bold tracking-tight text-amber-400 sm:text-base">
                         {item.value}
                       </dt>
-                      <dd className="mt-1 text-xs text-slate-300">
+                      <dd className="mt-1 text-[11px] text-slate-300">
                         {item.label}
-                        <span className="sr-only">
-                          , THE Impact Ratings 2026
-                        </span>
                       </dd>
                     </div>
                   ))}
@@ -116,8 +117,8 @@ export function AuthShell({
   );
 }
 
-export function AuthBrand() {
-  return <BrandIdentity />;
+export function AuthBrand({ prominent = false }: { prominent?: boolean }) {
+  return <BrandIdentity prominent={prominent} />;
 }
 
 export function GoogleIcon() {

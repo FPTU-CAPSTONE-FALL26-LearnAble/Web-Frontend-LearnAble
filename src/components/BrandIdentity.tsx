@@ -1,71 +1,48 @@
 import { cn } from "@/lib/utils";
 
-/** Preserve the complete source logo, including its transparent safe area. */
 export function BrandIdentity({
   lecturer = false,
   roleLabel,
   compact = false,
+  prominent = false,
   className,
 }: {
   lecturer?: boolean;
   roleLabel?: string;
   compact?: boolean;
+  prominent?: boolean;
   className?: string;
 }) {
   return (
     <div
-      className={cn(
-        lecturer
-          ? "flex min-w-0 items-center gap-3"
-          : "flex min-w-0 flex-wrap items-center gap-4",
-        className,
-      )}
+      className={cn("flex min-w-0 items-center gap-3", className)}
     >
       <img
-        src="/assets/auth/fpt-university-logo.png"
-        alt="FPT University"
+        src="/assets/brand/learnable-logo.png"
+        alt="LearnAble — Accessible learning"
         className={cn(
-          "shrink-0 object-contain",
-          lecturer
-            ? compact
-              ? "-mx-5 -my-7 h-24 w-32"
-              : "-mx-7 -my-9 h-32 w-40"
-            : "-my-6 h-36 w-48 sm:h-40 sm:w-56",
+          "w-auto shrink-0 object-contain",
+          prominent
+            ? "h-16 sm:h-20"
+            : compact
+              ? "h-9"
+              : lecturer
+                ? "h-12"
+                : "h-11",
         )}
       />
-      <span
-        aria-hidden="true"
-        className={cn(
-          "shrink-0 self-center bg-foreground",
-          lecturer
-            ? compact
-              ? "h-8 w-px"
-              : "h-10 w-px"
-            : "h-12 w-[2px] sm:h-14",
-        )}
-      />
-      <div className={cn("min-w-0", lecturer && "text-left")}>
+      {lecturer ? (
+        <div className="min-w-0 border-l border-border pl-3 text-left">
         <p
           className={cn(
-            "font-extrabold tracking-tight text-primary",
-            lecturer
-              ? compact
-                ? "text-base leading-none"
-                : "text-lg leading-none"
-              : "text-lg sm:text-xl",
+            "truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground",
+            !compact && "text-xs",
           )}
         >
-          LearnAble
+          {roleLabel || "Lecturer"}
         </p>
-        <p
-          className={cn(
-            "mt-1 text-[10px] font-bold uppercase tracking-wider",
-            "text-muted-foreground",
-          )}
-        >
-          {lecturer ? roleLabel || "Lecturer" : "Accessible learning"}
-        </p>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

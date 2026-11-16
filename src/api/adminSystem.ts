@@ -8,10 +8,11 @@ import { envelopeFailure, request } from "@/api/client";
  * These endpoints are NOT in the deployed OpenAPI document yet:
  *   - FR-35 voice settings      → FFCB-203 (backend)
  *   - FR-28 system health       → FFCB-151 (DevOps monitoring)
- *   - exam keyboard shortcuts   → backend owner: Cường
  * The shapes below are the proposal handed to backend; `src/mocks/adminSystem.ts`
  * serves them when `VITE_USE_MSW=true`. Until the API ships, a real call
  * fails and the page shows its error state instead of invented data.
+ *
+ * Exam keyboard shortcuts (FR-52) are deployed and live in `src/api/shortcuts.ts`.
  *
  * Every response uses the same `{ success, message, data, errors }` envelope as
  * the rest of the admin API.
@@ -133,46 +134,3 @@ export type SystemHealth = z.infer<typeof systemHealthSchema>;
 /** GET /admin/system/health */
 export const getSystemHealth = () =>
   read("/admin/system/health", systemHealthSchema);
-
-/* ------------------------------------------------------ exam shortcuts */
-
-export const shortcutBindingSchema = z.object({
-  actionKey: z.string(),
-  actionName: z.string(),
-  description: z.string().nullable(),
-  /** Canonical combination, e.g. `Alt+N` or `Ctrl+Shift+Enter`. */
-  keys: z.string(),
-});
-
-export const shortcutConfigSchema = z.object({
-  /** Incremented on every save; the desktop app compares it on start-up. */
-  version: z.number(),
-  updatedAt: z.string().nullable(),
-  updatedBy: z.string().nullable(),
-  /**
-   * Rule (05/11/2026): no change while any exam session is in progress.
-   * The backend enforces it; the UI only explains it.
-   */
-  activeExamSessions: z.number(),
-  bindings: z.array(shortcutBindingSchema),
-});
-
-export type ShortcutBinding = z.infer<typeof shortcutBindingSchema>;
-export type ShortcutConfig = z.infer<typeof shortcutConfigSchema>;
-export type ShortcutConfigBody = {
-  /** Optimistic concurrency: the version the admin edited. */
-  version: number;
-  bindings: Pick<ShortcutBinding, "actionKey" | "keys">[];
-};
-
-/** GET /admin/exam-shortcuts */
-export const getShortcutConfig = () =>
-  read("/admin/exam-shortcuts", shortcutConfigSchema);
-
-/**
- * PUT /admin/exam-shortcuts — on success the backend bumps `version`, asks
- * students to download the new desktop build, and sends the web + email
- * notification. It rejects the save while an exam session is running.
- */
-export const saveShortcutConfig = (body: ShortcutConfigBody) =>
-  write("/admin/exam-shortcuts", shortcutConfigSchema, body);

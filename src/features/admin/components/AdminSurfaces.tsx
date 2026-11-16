@@ -113,6 +113,7 @@ export function TablePanel({
   size,
   onPage,
   onSize,
+  tableClassName = "min-w-[1120px]",
   children,
 }: {
   heading: string;
@@ -126,6 +127,7 @@ export function TablePanel({
   size: string;
   onPage: (page: number) => void;
   onSize: (size: string) => void;
+  tableClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -142,7 +144,7 @@ export function TablePanel({
         retry={() => void read.refetch()}
       />
       {!read.isPending && !read.error && (
-        <Table containerLabel={tableLabel} className="min-w-[1120px]">
+        <Table containerLabel={tableLabel} className={tableClassName}>
           {children}
         </Table>
       )}
@@ -188,6 +190,7 @@ export function FormDialog({
   submitLabel,
   pending,
   errors,
+  errorsBelowActions = false,
   onSubmit,
   children,
 }: {
@@ -198,6 +201,7 @@ export function FormDialog({
   submitLabel: string;
   pending: boolean;
   errors: string[];
+  errorsBelowActions?: boolean;
   onSubmit: () => void;
   children: ReactNode;
 }) {
@@ -223,7 +227,7 @@ export function FormDialog({
             tooltip instead, which the accessibility contract forbids.
           */}
           <form onSubmit={submit} noValidate className="space-y-5">
-            {errors.length > 0 && (
+            {errors.length > 0 && !errorsBelowActions && (
               <div
                 id="admin-form-errors"
                 role="alert"
@@ -256,6 +260,20 @@ export function FormDialog({
                 {pending ? "Saving…" : submitLabel}
               </Button>
             </div>
+            {errors.length > 0 && errorsBelowActions && (
+              <div
+                id="admin-form-errors"
+                role="alert"
+                className="rounded-xl border border-destructive bg-destructive/10 p-4 text-destructive"
+              >
+                <p className="font-bold">Couldn’t save this account:</p>
+                <ul className="mt-2 list-inside list-disc text-sm">
+                  {errors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </form>
         </DialogContent>
       ) : null}
@@ -270,6 +288,8 @@ export function ConfirmAction({
   title,
   description,
   confirmLabel,
+  pendingLabel = "Deleting…",
+  pending = false,
   onConfirm,
 }: {
   open: boolean;
@@ -277,6 +297,8 @@ export function ConfirmAction({
   title: string;
   description: string;
   confirmLabel: string;
+  pendingLabel?: string;
+  pending?: boolean;
   onConfirm: () => void;
 }) {
   return (
@@ -288,9 +310,15 @@ export function ConfirmAction({
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirm}>
-              {confirmLabel}
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={pending} onClick={onConfirm}>
+              {pending ? (
+                <Loader2
+                  aria-hidden
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+              ) : null}
+              {pending ? pendingLabel : confirmLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

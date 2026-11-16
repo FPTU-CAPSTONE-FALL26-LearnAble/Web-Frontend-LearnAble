@@ -1,8 +1,11 @@
 import { type ReactNode } from "react";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { toast } from "@/shared/ui/primitives/sonner";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { LiveRegion } from "@/shared/a11y/LiveRegion";
-import { Toaster } from "@/shared/ui/primitives/sonner";
+import { Toaster, toast } from "@/shared/ui/primitives/toast";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 import { ApiFailure } from "@/api/client";
@@ -18,8 +21,14 @@ export function describeError(error: unknown): string {
         return vi.errors.unauthorized;
       case "not_found":
         return vi.errors.notFound;
-      case "server":
+      case "server": {
+        const detail =
+          error.detail.errors?.find(Boolean) ?? error.detail.message;
+        if (detail) return detail;
+        if (error.detail.status === 409)
+          return "An account with the same user code or email already exists.";
         return vi.errors.server;
+      }
       case "parse":
         return vi.errors.unknown;
     }
@@ -29,15 +38,23 @@ export function describeError(error: unknown): string {
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (error) => {
+    onError: (error, query) => {
+      // A query that shows its own inline state (for example audio that does not exist yet) opts out.
+      if (query.meta?.silent) return;
       const message = describeError(error);
       // Toast tự có aria-live — không gọi announce() song song để NVDA khỏi đọc hai lần.
-      toast.error(vi.common.error, { description: message });
+      toast({ title: vi.common.error, description: message, variant: "error" });
     },
   }),
   defaultOptions: {
     queries: {
-      retry: 1,
+      // A missing resource or an ended session will not succeed on a second try.
+      retry: (failureCount, error) =>
+        failureCount < 1 &&
+        !(
+          error instanceof ApiFailure &&
+          (error.detail.kind === "unauthorized" || error.detail.kind === "not_found")
+        ),
       staleTime: 30_000,
     },
   },

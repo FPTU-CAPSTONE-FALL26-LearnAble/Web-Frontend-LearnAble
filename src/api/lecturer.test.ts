@@ -1,4 +1,5 @@
 import {
+  createQuestion,
   getMaterials,
   getQuestion,
   getQuestions,
@@ -17,6 +18,9 @@ const page = {
   hasNextPage: false,
 };
 const question = {
+  examTypeId: "exam-type-final",
+  examTypeCode: "FE",
+  examTypeName: "Final Exam",
   questionId: "q1",
   topicId: "t1",
   createdBy: "lecturer",
@@ -27,6 +31,7 @@ const question = {
   status: "Active",
   createdAt: "2026-09-15",
 };
+const universityId = "university-1";
 const response = (items: unknown[]) =>
   new Response(
     JSON.stringify({ success: true, data: { items, ...page }, errors: null }),
@@ -63,14 +68,32 @@ describe("Lecturer read API", () => {
       (await getQuestions({ CreatedBy: "lecturer", Status: "Active" })).items[0]
         .questionId,
     ).toBe("q1");
-    expect(spy.mock.calls[0][0]).toBe(
-      "/api/v1/Questions?CreatedBy=lecturer&Status=Active",
+    expect(String(spy.mock.calls[0][0])).toMatch(
+      /\/api\/v1\/Questions\?CreatedBy=lecturer&Status=Active$/,
     );
     expect(spy.mock.calls[0][1]?.headers).toMatchObject({
       Authorization: "Bearer access",
     });
     expect(spy.mock.calls[0][1]?.method).toBeUndefined();
     expect(spy.mock.calls[0][1]?.body).toBeUndefined();
+  });
+  it("sends the backend exam type when creating a question", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: question, errors: null })),
+    );
+    await createQuestion({
+      examTypeId: "exam-type-final",
+      topicId: "t1",
+      content: "Explain routing.",
+      questionType: "Single",
+      difficulty: "Easy",
+      defaultScore: 1,
+    });
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body))).toMatchObject({
+      examTypeId: "exam-type-final",
+      topicId: "t1",
+      sourceType: "Manual",
+    });
   });
   it("preserves missing accessibility information in materials", async () => {
     const spy = vi
@@ -107,6 +130,7 @@ describe("Lecturer read API", () => {
         response([
           {
             subjectId: "s1",
+            universityId,
             subjectCode: "SWE201",
             subjectNameEn: "Software Engineering",
           },
@@ -143,6 +167,7 @@ describe("Lecturer read API", () => {
         response([
           {
             semesterId: "sem1",
+            universityId,
             semesterCode: null,
             semesterName: null,
             academicYear: null,
@@ -159,7 +184,7 @@ describe("Lecturer read API", () => {
       status: "Not available",
     });
     expect(detail.options[0].content).toBe("Not available");
-    expect(spy.mock.calls[0][0]).toBe("/api/v1/Questions/q1");
+    expect(String(spy.mock.calls[0][0])).toMatch(/\/api\/v1\/Questions\/q1$/);
     const semesters = await getSemesters();
     expect(semesters.items[0]).toMatchObject({
       semesterName: "Not available",
@@ -172,6 +197,13 @@ describe("Lecturer read API", () => {
   it("handles empty pages", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(response([]));
     expect((await getQuestions({})).items).toEqual([]);
+  });
+  it("accepts the Multiple question type exposed by the active backend", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response([{ ...question, questionType: "Multiple" }]),
+    );
+    expect((await getQuestions({ QuestionType: "Multiple" })).items[0].questionType)
+      .toBe("Multiple");
   });
   it("rejects success false without fixture fallback", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(

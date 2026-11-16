@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, Trash2, UserPlus, UserRound } from "lucide-react";
+import { GraduationCap, Pencil, Trash2, UserPlus, UserRound } from "lucide-react";
 import {
   changeEnrollmentStatus,
   createStudentProfile,
   deleteStudentProfile,
   enrollmentStatuses,
+  getAdminUsers,
   getStudentProfiles,
-  updateStudentProfile,
   type EnrollmentStatus,
   type StudentProfile,
 } from "@/api/admin";
@@ -27,6 +27,8 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { describeError } from "@/app/providers";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   curriculumLabel,
@@ -46,20 +48,19 @@ import {
   TablePanel,
   formatDate,
 } from "../components/AdminSurfaces";
+import { StudentAcademicDialog } from "../components/StudentAcademicDialog";
 
 type Draft = {
   userId: string;
   majorId: string;
   curriculumId: string;
   intakeYear: string;
-  currentSemester: string;
 };
 const emptyDraft: Draft = {
   userId: "",
   majorId: "",
   curriculumId: "",
   intakeYear: "",
-  currentSemester: "1",
 };
 
 const statusTone = (status: string) =>
@@ -74,7 +75,10 @@ const statusTone = (status: string) =>
           : ("neutral" as const);
 
 export function StudentProfilesRoute() {
-  useRouteAnnouncer("Student Profiles · LearnAble Admin", "Student Profiles");
+  useRouteAnnouncer("Student Profiles · LearnAble", "Student Profiles");
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   const [major, setMajor] = useState("all");
   const [curriculum, setCurriculum] = useState("all");
   const [enrollment, setEnrollment] = useState("all");
@@ -83,7 +87,7 @@ export function StudentProfilesRoute() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<StudentProfile | null>(null);
+  const [studentAccountSearch, setStudentAccountSearch] = useState("");
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [statusChange, setStatusChange] = useState<{
@@ -91,8 +95,24 @@ export function StudentProfilesRoute() {
     next: EnrollmentStatus;
   } | null>(null);
   const [removing, setRemoving] = useState<StudentProfile | null>(null);
+  const [editingAcademic, setEditingAcademic] = useState<StudentProfile | null>(null);
 
   const students = useUserOptions("Student");
+  const studentCandidates = useQuery({
+    queryKey: adminKeys.list("users", [
+      "student-profile-candidates",
+      studentAccountSearch,
+    ]),
+    queryFn: () =>
+      getAdminUsers({
+        Role: "Student",
+        Status: "Active",
+        SearchTerm: studentAccountSearch.trim(),
+        PageNumber: 1,
+        PageSize: 25,
+      }),
+    enabled: creating && studentAccountSearch.trim().length >= 2,
+  });
   const majors = useMajorOptions();
   // Draft narrows its own curriculum options to the chosen major.
   const draftMajor = creating ? draft.majorId : undefined;
@@ -100,6 +120,7 @@ export function StudentProfilesRoute() {
   const allCurriculums = useCurriculumOptions();
 
   const studentRows = students.data?.items ?? [];
+  const studentCandidateRows = studentCandidates.data?.items ?? [];
   const majorRows = majors.data?.items ?? [];
   const curriculumRows = allCurriculums.data?.items ?? [];
 
@@ -111,6 +132,7 @@ export function StudentProfilesRoute() {
       appliedIntake,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getStudentProfiles({
@@ -120,6 +142,7 @@ export function StudentProfilesRoute() {
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -127,7 +150,7 @@ export function StudentProfilesRoute() {
 
   const closeForm = () => {
     setCreating(false);
-    setEditing(null);
+    setStudentAccountSearch("");
     setDraft(emptyDraft);
     setErrors([]);
   };
@@ -140,16 +163,6 @@ export function StudentProfilesRoute() {
         majorId: draft.majorId,
         curriculumId: draft.curriculumId,
         intakeYear: Number(draft.intakeYear),
-        currentSemester: Number(draft.currentSemester),
-      }),
-    onSuccess: closeForm,
-  });
-  const update = useAdminWrite({
-    resource: "studentProfiles",
-    action: "Update student profile",
-    mutationFn: () =>
-      updateStudentProfile(editing!.userId, {
-        currentSemester: Number(draft.currentSemester),
       }),
     onSuccess: closeForm,
   });
@@ -183,13 +196,9 @@ export function StudentProfilesRoute() {
       )
         found.push("Intake year must be a four-digit year.");
     }
-    const semesterValue = Number(draft.currentSemester);
-    if (!Number.isInteger(semesterValue) || semesterValue < 1)
-      found.push("Current semester must be 1 or higher.");
     setErrors(found);
     if (found.length) return;
-    if (creating) create.mutate();
-    else update.mutate();
+    create.mutate();
   };
   const reset = () => {
     setMajor("all");
@@ -207,15 +216,13 @@ export function StudentProfilesRoute() {
 
   return (
     <div className="space-y-6">
-      <PageHeading
-        title="Student Profiles"
-        description="The academic record behind a student account: major, curriculum, intake and enrollment status."
-      >
+      <PageHeading title="Student Profiles">
         <Button
           disabled={!studentRows.length || !majorRows.length}
           onClick={() => {
             setDraft(emptyDraft);
             setErrors([]);
+            setStudentAccountSearch("");
             setCreating(true);
           }}
         >
@@ -240,25 +247,21 @@ export function StudentProfilesRoute() {
         <SummaryCard
           label="Total profiles"
           value={list.data?.totalCount ?? "Not available"}
-          detail="Matching your current query"
           icon={<UserRound aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Studying on this page"
           value={count("Studying")}
-          detail="Currently enrolled"
           icon={<GraduationCap aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Reserved on this page"
           value={count("Reserved")}
-          detail="Temporarily paused"
           icon={<UserRound aria-hidden className="size-5" />}
         />
         <SummaryCard
           label="Graduated on this page"
           value={count("Graduated")}
-          detail="Programme completed"
           icon={<GraduationCap aria-hidden className="size-5" />}
         />
       </section>
@@ -353,7 +356,6 @@ export function StudentProfilesRoute() {
             <TableHead>Major</TableHead>
             <TableHead>Curriculum</TableHead>
             <TableHead>Intake</TableHead>
-            <TableHead>Semester</TableHead>
             <TableHead>Enrollment</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -379,9 +381,6 @@ export function StudentProfilesRoute() {
                   "Not available"}
               </TableCell>
               <TableCell className="tabular-nums">{row.intakeYear}</TableCell>
-              <TableCell className="tabular-nums">
-                {row.currentSemester}
-              </TableCell>
               <TableCell>
                 <StatusBadge
                   value={row.enrollmentStatus}
@@ -392,18 +391,10 @@ export function StudentProfilesRoute() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setEditing(row);
-                      setErrors([]);
-                      setDraft({
-                        userId: row.userId,
-                        majorId: row.majorId,
-                        curriculumId: row.curriculumId,
-                        intakeYear: String(row.intakeYear),
-                        currentSemester: String(row.currentSemester),
-                      });
-                    }}
+                    aria-label={`Edit academic record of ${userLabel(studentRows, row.userId) ?? "this student"}`}
+                    onClick={() => setEditingAcademic(row)}
                   >
+                    <Pencil aria-hidden />
                     Edit
                   </Button>
                   <Button
@@ -439,7 +430,7 @@ export function StudentProfilesRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={7}
+              columns={6}
               title="No student profiles match your filters."
               hint="Adjust the selects, or create a profile for a student account."
             />
@@ -448,27 +439,48 @@ export function StudentProfilesRoute() {
       </TablePanel>
 
       <FormDialog
-        open={creating || editing !== null}
+        open={creating}
         onOpenChange={(open) => {
           if (!open) closeForm();
         }}
-        title={creating ? "New student profile" : "Edit student profile"}
-        description={
-          creating
-            ? "Account, major, curriculum and intake year are permanent once the profile exists."
-            : "Only the current semester can be changed. Use the status control in the table to move enrollment."
-        }
-        submitLabel={creating ? "Create profile" : "Save changes"}
-        pending={create.isPending || update.isPending}
+        title="New student profile"
+        description="Choose the student account, major, curriculum and intake year. You can correct the academic record later with Edit."
+        submitLabel="Create profile"
+        pending={create.isPending}
         errors={errors}
         onSubmit={submit}
       >
+        <TextField
+          label="Find student account"
+          value={studentAccountSearch}
+          placeholder="Search by student code or full name"
+          onChange={(value) => {
+            setStudentAccountSearch(value);
+            setDraft((old) => ({ ...old, userId: "" }));
+          }}
+        />
+        {studentCandidates.error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {describeError(studentCandidates.error)}
+          </p>
+        ) : !studentAccountSearch.trim() ? (
+          <p className="text-sm text-muted-foreground">
+            Enter at least 2 characters to search active student accounts.
+          </p>
+        ) : studentAccountSearch.trim().length < 2 ? (
+          <p className="text-sm text-muted-foreground">
+            Type one more character to start the search.
+          </p>
+        ) : null}
         <ChoiceField
           label="Student account"
           value={draft.userId}
           placeholder="Select a student account"
-          disabled={!creating}
-          options={studentRows.map((row) => ({
+          disabled={
+            studentAccountSearch.trim().length < 2 ||
+            studentCandidates.isPending
+          }
+          options={studentCandidateRows.map((row) => ({
             value: row.userId,
             label: `${row.userCode} · ${row.fullName}`,
           }))}
@@ -478,7 +490,6 @@ export function StudentProfilesRoute() {
           label="Major of student"
           value={draft.majorId}
           placeholder="Select a major"
-          disabled={!creating}
           options={majorRows.map((row) => ({
             value: row.majorId,
             label: `${row.majorCode} · ${row.majorName}`,
@@ -495,11 +506,7 @@ export function StudentProfilesRoute() {
           label="Curriculum of student"
           value={draft.curriculumId}
           placeholder="Select a curriculum"
-          disabled={!creating}
-          options={(creating
-            ? (curriculums.data?.items ?? [])
-            : curriculumRows
-          ).map((row) => ({
+          options={(curriculums.data?.items ?? []).map((row) => ({
             value: row.curriculumId,
             label: `${row.curriculumCode} · ${row.version} · ${row.intakeYear}`,
           }))}
@@ -507,38 +514,32 @@ export function StudentProfilesRoute() {
             setDraft((old) => ({ ...old, curriculumId: value }))
           }
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="Intake year of student"
-            type="number"
-            min="1900"
-            value={draft.intakeYear}
-            disabled={!creating}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, intakeYear: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Intake year"))
-                ? "Intake year must be a four-digit year."
-                : undefined
-            }
-          />
-          <TextField
-            label="Current semester"
-            type="number"
-            min="1"
-            value={draft.currentSemester}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, currentSemester: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Current semester"))
-                ? "Current semester must be 1 or higher."
-                : undefined
-            }
-          />
-        </div>
+        <TextField
+          label="Intake year of student"
+          type="number"
+          min="1900"
+          value={draft.intakeYear}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, intakeYear: value }))
+          }
+          error={
+            errors.some((e) => e.startsWith("Intake year"))
+              ? "Intake year must be a four-digit year."
+              : undefined
+          }
+        />
       </FormDialog>
+
+      {editingAcademic ? (
+        <StudentAcademicDialog
+          key={editingAcademic.userId}
+          profile={editingAcademic}
+          studentLabel={userLabel(studentRows, editingAcademic.userId) ?? "this student"}
+          currentCurriculumLabel={curriculumLabel(curriculumRows, editingAcademic.curriculumId)}
+          majors={majorRows}
+          onClose={() => setEditingAcademic(null)}
+        />
+      ) : null}
 
       <ConfirmAction
         open={statusChange !== null}

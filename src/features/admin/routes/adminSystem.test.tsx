@@ -4,19 +4,15 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import {
-  getShortcutConfig,
   getSystemHealth,
   getVoiceSettings,
-  saveShortcutConfig,
   saveVoiceSettings,
-  type ShortcutConfig,
   type VoiceSettings,
 } from "@/api/adminSystem";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { AdminDashboardRoute } from "./AdminDashboardRoute";
-import { ExamShortcutsRoute } from "./ExamShortcutsRoute";
 import { SystemMonitoringRoute } from "./SystemMonitoringRoute";
 import { VoiceSettingsRoute, validateVoiceSettings } from "./VoiceSettingsRoute";
 
@@ -34,17 +30,6 @@ const voiceSettings: VoiceSettings = {
   updatedAt: "2026-11-01T09:30:00Z",
   updatedBy: "System Admin",
 };
-
-const shortcuts = (activeExamSessions = 0): ShortcutConfig => ({
-  version: 3,
-  updatedAt: "2026-10-28T14:00:00Z",
-  updatedBy: "System Admin",
-  activeExamSessions,
-  bindings: [
-    { actionKey: "question.next", actionName: "Next question", description: "Moves on.", keys: "Alt+N" },
-    { actionKey: "question.previous", actionName: "Previous question", description: "Moves back.", keys: "Alt+P" },
-  ],
-});
 
 vi.mock("@/api/admin", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/admin")>();
@@ -68,8 +53,6 @@ vi.mock("@/api/adminSystem", async (importOriginal) => {
     getVoiceSettings: vi.fn(),
     saveVoiceSettings: vi.fn(async (body) => ({ ...body, updatedAt: null, updatedBy: null })),
     getSystemHealth: vi.fn(),
-    getShortcutConfig: vi.fn(),
-    saveShortcutConfig: vi.fn(async () => shortcuts()),
   };
 });
 
@@ -87,7 +70,6 @@ function view(element: ReactNode) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getVoiceSettings).mockResolvedValue(structuredClone(voiceSettings));
-  vi.mocked(getShortcutConfig).mockResolvedValue(shortcuts());
   vi.mocked(getSystemHealth).mockResolvedValue({
     status: "Degraded",
     checkedAt: "2026-11-05T14:00:00Z",
@@ -248,50 +230,5 @@ describe("System monitoring", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("button", { name: "Pause live updates" }));
     expect(screen.getByText(/Live updates are paused/)).toBeInTheDocument();
     await expectNoAxeViolations(result.container);
-  });
-});
-
-describe("Keyboard shortcuts", { timeout: 30000 }, () => {
-  it("locks editing while an exam is in progress", async () => {
-    vi.mocked(getShortcutConfig).mockResolvedValue(shortcuts(2));
-    view(<ExamShortcutsRoute />);
-    expect(
-      await screen.findByText("Editing is locked while exams are running."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Change shortcut for Next question" }),
-    ).toBeDisabled();
-  });
-
-  it("records keys, rejects a duplicate and publishes after confirmation", async () => {
-    const user = userEvent.setup();
-    const result = view(<ExamShortcutsRoute />);
-    await user.click(
-      await screen.findByRole("button", { name: "Change shortcut for Next question" }),
-    );
-    const field = screen.getByLabelText("New shortcut");
-    await user.click(field);
-    await user.keyboard("{Alt>}p{/Alt}");
-    expect(field).toHaveValue("Alt+P");
-    await user.click(screen.getByRole("button", { name: "Use this shortcut" }));
-    expect(screen.getByText("Alt+P is already used by “Previous question”.")).toBeInTheDocument();
-
-    await user.click(field);
-    await user.keyboard("{Alt>}m{/Alt}");
-    await user.click(screen.getByRole("button", { name: "Use this shortcut" }));
-    expect(await screen.findByText("1 unpublished change.")).toBeInTheDocument();
-    await expectNoAxeViolations(result.container);
-
-    await user.click(screen.getByRole("button", { name: "Publish changes" }));
-    await user.click(await screen.findByRole("button", { name: "Publish" }));
-    await waitFor(() =>
-      expect(saveShortcutConfig).toHaveBeenCalledWith({
-        version: 3,
-        bindings: [
-          { actionKey: "question.next", keys: "Alt+M" },
-          { actionKey: "question.previous", keys: "Alt+P" },
-        ],
-      }),
-    );
   });
 });

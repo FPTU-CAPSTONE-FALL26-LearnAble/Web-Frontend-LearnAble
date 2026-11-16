@@ -14,10 +14,13 @@ export const userSchema = z.object({
   email: z.string(),
   role: z.string(),
   universityId: z.string().optional(),
+  isSuperAdmin: z.boolean().optional(),
 });
 export type User = z.infer<typeof userSchema>;
 
 const authTokensSchema = z.object({
+  universityId: z.string().optional(),
+  isSuperAdmin: z.boolean().optional(),
   accessToken: z.string().nullable(),
   refreshToken: z.string().nullable(),
   accessTokenExpiresAt: z.string(),
@@ -33,19 +36,32 @@ const authResponseSchema = z.object({
 const currentUserResponseSchema = z.object({
   success: z.boolean(),
   message: z.string().nullable(),
-  data: z.object({
-    universityId: z.string().optional(),
-    userId: z.string(),
-    fullName: z.string().nullable(),
-    email: z.string().nullable(),
-    role: z.string().nullable(),
-  }).nullable(),
+  data: z
+    .object({
+      universityId: z.string().optional(),
+      isSuperAdmin: z.boolean().optional(),
+      userId: z.string(),
+      fullName: z.string().nullable(),
+      email: z.string().nullable(),
+      role: z.string().nullable(),
+    })
+    .nullable(),
   errors: z.array(z.string()).nullable(),
 });
 
-export async function login(body: { identifier: string; password: string }): Promise<AuthTokens> {
-  const response = await request("/auth/login", authResponseSchema, { method: "POST", json: body });
-  if (!response.success || !response.data?.accessToken || !response.data.refreshToken) {
+export async function login(body: {
+  identifier: string;
+  password: string;
+}): Promise<AuthTokens> {
+  const response = await request("/auth/login", authResponseSchema, {
+    method: "POST",
+    json: body,
+  });
+  if (
+    !response.success ||
+    !response.data?.accessToken ||
+    !response.data.refreshToken
+  ) {
     throw new ApiFailure({ kind: "unauthorized" }, apiMessage(response));
   }
   return {
@@ -66,5 +82,6 @@ export async function getCurrentUser(): Promise<User> {
     email: response.data.email ?? "",
     role: response.data.role ?? "User",
     universityId: response.data.universityId,
+    isSuperAdmin: response.data.isSuperAdmin,
   };
 }

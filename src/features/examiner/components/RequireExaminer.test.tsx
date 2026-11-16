@@ -13,7 +13,7 @@ function renderGuard() {
         </Route>
         <Route path="/lecturer/dashboard" element={<p>Lecturer area</p>} />
         <Route path="/admin/dashboard" element={<p>Admin area</p>} />
-        <Route path="/practice" element={<p>Student area</p>} />
+        <Route path="/home" element={<p>Student area</p>} />
         <Route path="/login" element={<p>Login page</p>} />
       </Routes>
     </MemoryRouter>,

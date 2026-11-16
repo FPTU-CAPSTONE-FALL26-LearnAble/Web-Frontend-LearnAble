@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Archive, CheckCircle2, Plus, ScrollText } from "lucide-react";
+import { Archive, CheckCircle2, ListChecks, Pencil, Plus, ScrollText } from "lucide-react";
 import {
   approveCurriculum,
   archiveCurriculum,
@@ -26,6 +26,7 @@ import {
 } from "@/components/workbench/Workbench";
 import { ChoiceField, TextField } from "@/components/workbench/Fields";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import {
   adminKeys,
   majorLabel,
@@ -42,6 +43,7 @@ import {
   formatDate,
   toDateInput,
 } from "../components/AdminSurfaces";
+import { CurriculumSubjectsDialog } from "../components/CurriculumSubjectsDialog";
 
 type Draft = {
   majorId: string;
@@ -51,7 +53,6 @@ type Draft = {
   intakeYear: string;
   effectiveFrom: string;
   effectiveTo: string;
-  totalCredits: string;
 };
 const emptyDraft: Draft = {
   majorId: "",
@@ -61,7 +62,6 @@ const emptyDraft: Draft = {
   intakeYear: "",
   effectiveFrom: "",
   effectiveTo: "",
-  totalCredits: "",
 };
 
 const statusTone = (status: string) =>
@@ -74,6 +74,9 @@ const statusTone = (status: string) =>
         : ("info" as const);
 
 export function CurriculumsRoute() {
+  const isStaff = useAuthStore(
+    (state) => state.user?.role?.toLowerCase() === "staff",
+  );
   useRouteAnnouncer("Curriculums · LearnAble Admin", "Curriculums");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -85,6 +88,7 @@ export function CurriculumsRoute() {
   const [size, setSize] = useState("10");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Curriculum | null>(null);
+  const [subjectsFor, setSubjectsFor] = useState<Curriculum | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const [transition, setTransition] = useState<{
@@ -102,6 +106,7 @@ export function CurriculumsRoute() {
       appliedIntake,
       page,
       size,
+      isStaff,
     ]),
     queryFn: () =>
       getCurriculums({
@@ -111,6 +116,7 @@ export function CurriculumsRoute() {
         IntakeYear: appliedIntake ? Number(appliedIntake) : undefined,
         PageNumber: page,
         PageSize: Number(size),
+        ...(isStaff ? { SortBy: "-createdAt" } : {}),
       }),
   });
   useExpiredAdminSession(list.error);
@@ -134,7 +140,6 @@ export function CurriculumsRoute() {
         intakeYear: Number(draft.intakeYear),
         effectiveFrom: draft.effectiveFrom || null,
         effectiveTo: draft.effectiveTo || null,
-        totalCredits: draft.totalCredits ? Number(draft.totalCredits) : null,
       }),
     onSuccess: closeForm,
   });
@@ -147,7 +152,6 @@ export function CurriculumsRoute() {
         version: draft.version.trim(),
         effectiveFrom: draft.effectiveFrom || null,
         effectiveTo: draft.effectiveTo || null,
-        totalCredits: draft.totalCredits ? Number(draft.totalCredits) : null,
       }),
     onSuccess: closeForm,
   });
@@ -183,8 +187,6 @@ export function CurriculumsRoute() {
       draft.effectiveFrom >= draft.effectiveTo
     )
       found.push("Effective-to date must be after the effective-from date.");
-    if (draft.totalCredits && Number(draft.totalCredits) < 0)
-      found.push("Total credits cannot be negative.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -228,7 +230,6 @@ export function CurriculumsRoute() {
           Create a major first — every curriculum belongs to one.
         </p>
       )}
-
       <section
         aria-label="Curriculum summary"
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
@@ -336,7 +337,6 @@ export function CurriculumsRoute() {
             <TableHead>Major</TableHead>
             <TableHead>Intake</TableHead>
             <TableHead>Effective period</TableHead>
-            <TableHead>Credits</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -360,9 +360,6 @@ export function CurriculumsRoute() {
               <TableCell className="min-w-48 tabular-nums">
                 {formatDate(row.effectiveFrom)} → {formatDate(row.effectiveTo)}
               </TableCell>
-              <TableCell className="tabular-nums">
-                {row.totalCredits ?? "Not available"}
-              </TableCell>
               <TableCell>
                 <StatusBadge value={row.status} tone={statusTone(row.status)} />
                 {row.approvedAt && (
@@ -370,11 +367,19 @@ export function CurriculumsRoute() {
                     Approved {formatDate(row.approvedAt)}
                   </p>
                 )}
+                {row.status === "Archived" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Reopening is not available yet.
+                  </p>
+                )}
               </TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-max flex-nowrap gap-1">
                   <Button
                     variant="outline"
+                    size="icon"
+                    title="Edit"
+                    aria-label={`Edit ${row.curriculumCode}`}
                     onClick={() => {
                       setEditing(row);
                       setErrors([]);
@@ -386,29 +391,40 @@ export function CurriculumsRoute() {
                         intakeYear: String(row.intakeYear),
                         effectiveFrom: toDateInput(row.effectiveFrom),
                         effectiveTo: toDateInput(row.effectiveTo),
-                        totalCredits:
-                          row.totalCredits === null
-                            ? ""
-                            : String(row.totalCredits),
                       });
                     }}
                   >
-                    Edit
+                    <Pencil aria-hidden />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Manage subjects"
+                    aria-label={`Manage subjects of ${row.curriculumCode}`}
+                    onClick={() => setSubjectsFor(row)}
+                  >
+                    <ListChecks aria-hidden />
                   </Button>
                   {row.status === "Draft" && (
                     <Button
                       variant="ghost"
+                      size="icon"
+                      title="Approve"
+                      aria-label={`Approve ${row.curriculumCode}`}
                       onClick={() => setTransition({ row, action: "approve" })}
                     >
-                      Approve
+                      <CheckCircle2 aria-hidden />
                     </Button>
                   )}
                   {row.status !== "Archived" && (
                     <Button
                       variant="ghost"
+                      size="icon"
+                      title="Archive"
+                      aria-label={`Archive ${row.curriculumCode}`}
                       onClick={() => setTransition({ row, action: "archive" })}
                     >
-                      Archive
+                      <Archive aria-hidden />
                     </Button>
                   )}
                 </div>
@@ -417,7 +433,7 @@ export function CurriculumsRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={8}
+              columns={7}
               title="No curriculums match your filters."
               hint="Try another search, or draft a curriculum for a major intake."
             />
@@ -507,20 +523,6 @@ export function CurriculumsRoute() {
                 : undefined
             }
           />
-          <TextField
-            label="Total credits"
-            type="number"
-            min="0"
-            value={draft.totalCredits}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, totalCredits: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Total credits"))
-                ? "Total credits cannot be negative."
-                : undefined
-            }
-          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
@@ -546,6 +548,14 @@ export function CurriculumsRoute() {
           />
         </div>
       </FormDialog>
+
+      {subjectsFor ? (
+        <CurriculumSubjectsDialog
+          key={subjectsFor.curriculumId}
+          curriculum={subjectsFor}
+          onClose={() => setSubjectsFor(null)}
+        />
+      ) : null}
 
       <ConfirmAction
         open={transition !== null}

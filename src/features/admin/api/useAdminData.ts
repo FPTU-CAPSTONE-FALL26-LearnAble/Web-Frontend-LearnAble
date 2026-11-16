@@ -20,7 +20,7 @@ import {
 } from "@/api/admin";
 import { describeError } from "@/app/providers";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { toast } from "@/shared/ui/primitives/sonner";
+import { toast } from "@/shared/ui/primitives/toast";
 
 /** Query keys are namespaced so one write invalidates exactly its resource. */
 export const adminKeys = {
@@ -45,35 +45,41 @@ export function useExpiredAdminSession(error: unknown) {
  * refetched so the table shows server truth rather than an optimistic guess; on
  * failure the typed API error is reported and nothing is invalidated.
  */
-export function useAdminWrite<TVariables = void>({
+export function useAdminWrite<TVariables = void, TData = void>({
   resource,
   action,
   mutationFn,
   onSuccess,
+  onError,
   alsoInvalidate = [],
 }: {
   resource: string;
   action: string;
-  mutationFn: (variables: TVariables) => Promise<void>;
-  onSuccess?: () => void;
+  mutationFn: (variables: TVariables) => Promise<TData>;
+  onSuccess?: (data: TData) => void;
+  onError?: (error: unknown) => void;
   alsoInvalidate?: string[];
 }) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => {
+    onSuccess: (data) => {
       for (const name of [resource, ...alsoInvalidate]) {
         void queryClient.invalidateQueries({
           queryKey: adminKeys.resource(name),
         });
       }
-      toast.success(`${action} succeeded`);
-      onSuccess?.();
+      toast({ title: `${action} succeeded` });
+      onSuccess?.(data);
     },
-    onError: (error: unknown) =>
-      toast.error(`${action} failed`, {
+    onError: (error: unknown) => {
+      toast({
+        title: `${action} failed`,
         description: `${describeError(error)} No change has been saved.`,
-      }),
+        variant: "error",
+      });
+      onError?.(error);
+    },
   });
 }
 
@@ -130,7 +136,10 @@ export function useCurriculumOptions(majorId?: string) {
   const query = useQuery({
     queryKey: adminKeys.list("curriculums", ["options", majorId ?? "all"]),
     queryFn: () =>
-      getCurriculums({ PageSize: OPTIONS_PAGE_SIZE, MajorId: majorId || undefined }),
+      getCurriculums({
+        PageSize: OPTIONS_PAGE_SIZE,
+        MajorId: majorId || undefined,
+      }),
   });
   useExpiredAdminSession(query.error);
   return query;

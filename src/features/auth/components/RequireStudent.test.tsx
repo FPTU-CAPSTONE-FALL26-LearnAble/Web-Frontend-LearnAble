@@ -38,4 +38,16 @@ describe("RequireStudent", () => {
     renderGuard(role);
     expect(screen.getByText(destination)).toBeInTheDocument();
   });
+
+  it("shows the student's own colour theme in the student area only", () => {
+    localStorage.setItem("learnable.contrastTheme.user-1", "black");
+    const student = renderGuard("Student");
+    expect(document.documentElement).toHaveAttribute("data-contrast", "black");
+    student.unmount();
+    expect(document.documentElement).not.toHaveAttribute("data-contrast");
+
+    renderGuard("Lecturer");
+    expect(document.documentElement).not.toHaveAttribute("data-contrast");
+    localStorage.clear();
+  });
 });

@@ -1,15 +1,58 @@
 /**
- * Keyboard-combination helpers for the exam shortcut configuration.
+ * Keyboard-combination helpers for the exam shortcut configuration (FR-52).
  *
- * Combinations are stored in one canonical form — modifiers in the order
- * Ctrl, Alt, Shift, then one key — so `Shift+ctrl+n` and `Ctrl+Shift+N` can
- * never be saved as two different shortcuts.
+ * The backend catalog decides how a combination is written: which keys can be
+ * bound, how they are spelled and in which order modifiers appear. These
+ * helpers turn a key press into that spelling, and compare combinations by
+ * meaning, so `shift+ctrl+n`, `Ctrl+Shift+N` and `Control+Shift+KeyN` can
+ * never be saved as different shortcuts.
  */
 
-const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift"] as const;
-type Modifier = (typeof MODIFIER_ORDER)[number];
+export type ShortcutRules = {
+  /** Bindable key names as the backend spells them; empty means unrestricted. */
+  keyCodes: string[];
+  /** Modifier names in the backend's order. */
+  modifierOrder: string[];
+  reservedCombinations: string[];
+};
 
-const FUNCTION_KEY = /^F([1-9]|1[0-2])$/;
+export const DEFAULT_RULES: ShortcutRules = {
+  keyCodes: [],
+  modifierOrder: ["Ctrl", "Alt", "Shift"],
+  reservedCombinations: [],
+};
+
+const MODIFIER_IDS = ["ctrl", "alt", "shift", "meta"] as const;
+type ModifierId = (typeof MODIFIER_IDS)[number];
+
+const MODIFIER_NAMES: Record<ModifierId, string> = {
+  ctrl: "Ctrl",
+  alt: "Alt",
+  shift: "Shift",
+  meta: "Meta",
+};
+
+function modifierId(token: string): ModifierId | null {
+  switch (token.trim().toLowerCase()) {
+    case "ctrl":
+    case "control":
+      return "ctrl";
+    case "alt":
+    case "option":
+      return "alt";
+    case "shift":
+      return "shift";
+    case "meta":
+    case "win":
+    case "windows":
+    case "cmd":
+    case "command":
+    case "super":
+      return "meta";
+    default:
+      return null;
+  }
+}
 
 /** Physical-key names, so the combination does not depend on keyboard layout. */
 const CODE_NAMES: Record<string, string> = {
@@ -61,7 +104,8 @@ const NON_BINDABLE_CODES = new Set([
 /**
  * Combinations the exam app must never take over: they belong to the
  * operating system, the browser shell, or NVDA / JAWS, which blind and
- * low-vision students rely on during the exam.
+ * low-vision students rely on during the exam. The backend catalog adds its
+ * own list on top of this one.
  */
 export const RESERVED_COMBINATIONS: Record<string, string> = {
   "Alt+F4": "closes the window",
@@ -90,13 +134,91 @@ type KeyLike = Pick<
   "code" | "key" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey"
 >;
 
+/** Short, layout-independent name of a key token (`KeyN` → `N`, `ArrowUp` → `Up`). */
+function shortKey(token: string): string {
+  if (/^Key[A-Za-z]$/.test(token)) return token.slice(3).toUpperCase();
+  if (/^Digit[0-9]$/.test(token)) return token.slice(5);
+  if (/^Numpad[0-9]$/.test(token)) return token.slice(6);
+  const code = Object.keys(CODE_NAMES).find(
+    (name) => name.toLowerCase() === token.toLowerCase(),
+  );
+  if (code) return CODE_NAMES[code];
+  return token.length === 1 ? token.toUpperCase() : token;
+}
+
+/** Every spelling one key may have in a backend catalog. */
+function keyAliases(token: string): string[] {
+  const short = shortKey(token);
+  const aliases = [token, short];
+  if (/^[A-Z]$/.test(short)) aliases.push(`Key${short}`);
+  if (/^[0-9]$/.test(short)) aliases.push(`Digit${short}`);
+  for (const [code, name] of Object.entries(CODE_NAMES)) {
+    if (name.toLowerCase() === short.toLowerCase()) aliases.push(code);
+  }
+  return aliases;
+}
+
+/** The catalog's own spelling of a key, or `null` when it does not list it. */
+function catalogKey(token: string, rules: ShortcutRules): string | null {
+  for (const alias of keyAliases(token)) {
+    const found = rules.keyCodes.find(
+      (code) => code.toLowerCase() === alias.toLowerCase(),
+    );
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Modifiers in the backend's order and spelling, unknown ones last. */
+function orderedModifiers(rules: ShortcutRules): { id: ModifierId; name: string }[] {
+  const ordered: { id: ModifierId; name: string }[] = [];
+  for (const name of rules.modifierOrder) {
+    const id = modifierId(name);
+    if (id && !ordered.some((item) => item.id === id)) ordered.push({ id, name });
+  }
+  for (const id of MODIFIER_IDS) {
+    if (!ordered.some((item) => item.id === id))
+      ordered.push({ id, name: MODIFIER_NAMES[id] });
+  }
+  return ordered;
+}
+
+function parseCombo(value: string): { modifiers: Set<ModifierId>; key: string } | null {
+  const parts = value
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const modifiers = new Set<ModifierId>();
+  let key: string | null = null;
+  for (const part of parts) {
+    const id = modifierId(part);
+    if (id) modifiers.add(id);
+    else if (key) return null;
+    else key = part;
+  }
+  return key ? { modifiers, key } : null;
+}
+
+function write(
+  modifiers: Set<ModifierId>,
+  key: string,
+  rules: ShortcutRules,
+): string {
+  return [
+    ...orderedModifiers(rules)
+      .filter((item) => modifiers.has(item.id))
+      .map((item) => item.name),
+    catalogKey(key, rules) ?? shortKey(key),
+  ].join("+");
+}
+
 function keyName(event: KeyLike): string | null {
   const { code, key } = event;
   if (NON_BINDABLE_CODES.has(code)) return null;
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
-  if (FUNCTION_KEY.test(code)) return code;
+  if (/^F([1-9]|1[0-2])$/.test(code)) return code;
   if (CODE_NAMES[code]) return CODE_NAMES[code];
   // Unknown physical code (jsdom, exotic keyboards): fall back to the key value.
   if (!key || ["Control", "Alt", "Shift", "Meta", "CapsLock", "Insert"].includes(key))
@@ -108,36 +230,43 @@ function keyName(event: KeyLike): string | null {
  * The combination a key press represents, or `null` while only modifiers are
  * held. The Windows / Command key is never part of an exam shortcut.
  */
-export function comboFromEvent(event: KeyLike): string | null {
+export function comboFromEvent(
+  event: KeyLike,
+  rules: ShortcutRules = DEFAULT_RULES,
+): string | null {
   if (event.metaKey) return null;
   const key = keyName(event);
   if (!key) return null;
-  const modifiers: Modifier[] = [];
-  if (event.ctrlKey) modifiers.push("Ctrl");
-  if (event.altKey) modifiers.push("Alt");
-  if (event.shiftKey) modifiers.push("Shift");
-  return [...modifiers, key].join("+");
+  const modifiers = new Set<ModifierId>();
+  if (event.ctrlKey) modifiers.add("ctrl");
+  if (event.altKey) modifiers.add("alt");
+  if (event.shiftKey) modifiers.add("shift");
+  return write(modifiers, key, rules);
 }
 
-/** Canonical form of a stored or typed combination; `null` when malformed. */
-export function normalizeCombo(value: string): string | null {
-  const parts = value
-    .split("+")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (!parts.length) return null;
-  const modifiers = new Set<Modifier>();
-  let key: string | null = null;
-  for (const part of parts) {
-    const lower = part.toLowerCase();
-    if (lower === "ctrl" || lower === "control") modifiers.add("Ctrl");
-    else if (lower === "alt") modifiers.add("Alt");
-    else if (lower === "shift") modifiers.add("Shift");
-    else if (key) return null;
-    else key = part.length === 1 ? part.toUpperCase() : part;
-  }
-  if (!key) return null;
-  return [...MODIFIER_ORDER.filter((m) => modifiers.has(m)), key].join("+");
+/** A stored or typed combination in the backend's spelling; `null` when malformed. */
+export function normalizeCombo(
+  value: string,
+  rules: ShortcutRules = DEFAULT_RULES,
+): string | null {
+  const parsed = parseCombo(value);
+  return parsed ? write(parsed.modifiers, parsed.key, rules) : null;
+}
+
+/** Spelling-independent identity of a combination. */
+function signature(value: string): string | null {
+  const parsed = parseCombo(value);
+  if (!parsed) return null;
+  return [
+    ...MODIFIER_IDS.filter((id) => parsed.modifiers.has(id)),
+    shortKey(parsed.key).toLowerCase(),
+  ].join("+");
+}
+
+/** Whether two combinations are the same keys, however they are written. */
+export function sameCombo(a: string, b: string): boolean {
+  const left = signature(a);
+  return left !== null && left === signature(b);
 }
 
 /** The parts of a combination, for rendering each key separately. */
@@ -150,18 +279,28 @@ export const comboParts = (combo: string) => combo.split("+");
 export function validateCombo(
   combo: string | null,
   taken: Map<string, string>,
+  rules: ShortcutRules = DEFAULT_RULES,
 ): string | null {
   if (!combo) return "Press a key combination to record it.";
-  const normalized = normalizeCombo(combo);
-  if (!normalized) return "This is not a valid key combination.";
-  const parts = comboParts(normalized);
-  const key = parts[parts.length - 1];
-  const hasCtrlOrAlt = parts.includes("Ctrl") || parts.includes("Alt");
-  if (!hasCtrlOrAlt && !FUNCTION_KEY.test(key))
-    return "Use Ctrl or Alt with the key, or a function key (F1–F12), so typing an answer never triggers it.";
-  const reserved = RESERVED_COMBINATIONS[normalized];
-  if (reserved) return `${normalized} cannot be used because it ${reserved}.`;
-  const owner = taken.get(normalized);
-  if (owner) return `${normalized} is already used by “${owner}”.`;
+  const parsed = parseCombo(combo);
+  const normalized = normalizeCombo(combo, rules);
+  if (!parsed || !normalized) return "This is not a valid key combination.";
+  if (parsed.modifiers.has("meta"))
+    return "The Windows or Command key cannot be part of an exam shortcut.";
+  // Rule agreed on 01/11/2026: every exam shortcut holds Ctrl.
+  if (!parsed.modifiers.has("ctrl"))
+    return "Hold Ctrl together with the key. Every exam shortcut uses Ctrl so typing an answer or a screen-reader command never triggers it.";
+  if (rules.keyCodes.length > 0 && !catalogKey(parsed.key, rules))
+    return `${shortKey(parsed.key)} is not a key the exam app can use in a shortcut.`;
+  for (const [reserved, reason] of Object.entries(RESERVED_COMBINATIONS)) {
+    if (sameCombo(reserved, combo))
+      return `${normalized} cannot be used because it ${reason}.`;
+  }
+  if (rules.reservedCombinations.some((reserved) => sameCombo(reserved, combo)))
+    return `${normalized} is reserved by the system and cannot be used.`;
+  for (const [other, owner] of taken) {
+    if (sameCombo(other, combo))
+      return `${normalized} is already used by “${owner}”.`;
+  }
   return null;
 }

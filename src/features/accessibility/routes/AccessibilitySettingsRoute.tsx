@@ -13,6 +13,7 @@ import { Label } from "@/shared/ui/primitives/label";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
+import { ContrastThemePicker } from "@/features/accessibility/components/ContrastThemePicker";
 import { useTtsStore } from "@/features/accessibility/store/ttsStore";
 import { useEnglishVoices, useViVoices } from "@/features/accessibility/hooks/useViVoices";
 import {
@@ -72,6 +73,14 @@ export function AccessibilitySettingsRoute() {
         {vi.a11ySettings.title}
       </h1>
       <p className="max-w-prose text-muted-foreground">{vi.a11ySettings.intro}</p>
+
+      <Card className="max-w-2xl">
+        <div className="flex flex-col gap-5">
+          <CardTitle>{vi.a11ySettings.themeSection}</CardTitle>
+          <p className="text-muted-foreground">{vi.a11ySettings.themeHint}</p>
+          <ContrastThemePicker />
+        </div>
+      </Card>
 
       <Card className="flex max-w-2xl flex-col gap-5">
         <CardTitle>{vi.a11ySettings.ttsSection}</CardTitle>
