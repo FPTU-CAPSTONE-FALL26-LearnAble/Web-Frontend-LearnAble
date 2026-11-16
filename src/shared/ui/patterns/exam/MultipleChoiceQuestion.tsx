@@ -24,7 +24,7 @@ export interface MultipleChoiceQuestionProps {
   options: MultipleChoiceOption[];
   value: string | null;
   onValueChange: (optionId: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -57,12 +57,14 @@ export function MultipleChoiceQuestion({
 
   return (
     <section
-      aria-labelledby={questionId}
       className={cn("flex w-full flex-col gap-6", className)}
     >
-      <p className="text-base font-medium text-muted-foreground">
+      <p
+        id={`${questionId}-position`}
+        className="text-base font-medium uppercase text-muted-foreground"
+      >
         {questionCount
-          ? vi.exam.player.questionOf(questionNumber, questionCount)
+          ? `${vi.exam.questionPosition(questionNumber, questionCount)}.`
           : vi.exam.questionNumber(questionNumber)}
       </p>
 
@@ -84,6 +86,9 @@ export function MultipleChoiceQuestion({
         >
           <h2
             id={questionId}
+            aria-labelledby={
+              questionCount ? `${questionId}-position ${questionId}` : undefined
+            }
             lang={stemLang}
             tabIndex={-1}
             className="text-lg font-medium leading-snug text-foreground"
@@ -107,10 +112,48 @@ export function MultipleChoiceQuestion({
             aria-label={vi.exam.selectOneAlternative}
             value={value ?? ""}
             disabled={disabled}
-            onValueChange={(optionId) => {
-              const option = options.find((item) => item.id === optionId);
-              if (option) announce(vi.announce.answerSelected(option.text));
-              onValueChange(optionId);
+            onValueChange={onValueChange}
+            onKeyDown={(event) => {
+              // Radix defers arrow focus. A fast keyup can clear its selection
+              // flag before focus arrives, so select on keydown and let Radix
+              // keep owning focus, wrapping and scroll behavior.
+              if (
+                disabled ||
+                event.altKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                ![
+                  "ArrowUp",
+                  "ArrowDown",
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "Home",
+                  "End",
+                ].includes(event.key)
+              )
+                return;
+              const target = (event.target as HTMLElement).closest(
+                '[role="radio"]',
+              );
+              const enabled = options.filter((option) => !option.disabled);
+              const index = enabled.findIndex(
+                (option) => option.id === target?.getAttribute("value"),
+              );
+              if (index < 0 || !enabled.length) return;
+              const rtl =
+                getComputedStyle(event.currentTarget).direction === "rtl";
+              const forward =
+                event.key === "ArrowDown" ||
+                event.key === (rtl ? "ArrowLeft" : "ArrowRight");
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? enabled.length - 1
+                    : (index + (forward ? 1 : -1) + enabled.length) %
+                      enabled.length;
+              if (enabled[next].id !== value) onValueChange(enabled[next].id);
             }}
             className="flex flex-col gap-1"
           >
@@ -124,6 +167,7 @@ export function MultipleChoiceQuestion({
                 <Label
                   key={option.id}
                   htmlFor={optionId}
+                  lang={stemLang}
                   className={cn(
                     "relative flex min-h-[54px] w-full cursor-pointer items-center gap-3 rounded border p-4 transition-colors",
                     selected
@@ -135,6 +179,7 @@ export function MultipleChoiceQuestion({
                 >
                   <RadioGroupItem
                     id={optionId}
+                    lang={stemLang}
                     value={option.id}
                     disabled={optionDisabled}
                     className="sr-only"
@@ -196,10 +241,10 @@ export function MultipleChoiceQuestion({
           type="button"
           variant="outline"
           size="lg"
-          disabled={disabled || value === null}
+          disabled={disabled || !onReset || value === null}
           className="h-auto min-h-10 max-h-none rounded px-[0.75em] py-[0.5em] text-base font-normal"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >

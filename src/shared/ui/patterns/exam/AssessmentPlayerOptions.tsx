@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  CircleHelp,
   Contrast,
   EyeOff,
   Send,
@@ -24,7 +25,11 @@ import {
   type TextScaleOption,
 } from "./AssessmentPlayerTextSizeOptions";
 
-export type PlayerSetting = "contrast" | "textSize" | "remainingTime";
+export type PlayerSetting =
+  | "language"
+  | "contrast"
+  | "textSize"
+  | "remainingTime";
 export type { ContrastOption, TextScaleOption };
 
 export interface AssessmentPlayerOptionsProps {
@@ -38,6 +43,9 @@ export interface AssessmentPlayerOptionsProps {
   onTextScaleChange?: (textScale: TextScaleOption) => void;
   onGoToSubmission?: () => void;
   onSelectSetting?: (setting: PlayerSetting) => void;
+  interactionLocked?: boolean;
+  enabledSettings?: PlayerSetting[];
+  onRestoreFocus?: () => void;
 }
 
 /** Full-window options overlay opened from the player header. */
@@ -51,10 +59,17 @@ export function AssessmentPlayerOptions({
   onTextScaleChange,
   onGoToSubmission,
   onSelectSetting,
+  interactionLocked = false,
+  enabledSettings,
+  onRestoreFocus,
 }: AssessmentPlayerOptionsProps) {
   const strings = vi.exam.player;
   const [view, setView] = useState<"menu" | "contrast" | "textSize">("menu");
+  const handoff = useRef(false);
   const displaySettings = [
+    ...(enabledSettings?.includes("language") || onSelectSetting
+      ? ([{ id: "language", label: strings.language, icon: CircleHelp }] as const)
+      : []),
     { id: "contrast", label: strings.contrast, icon: Contrast },
     { id: "textSize", label: strings.textSize, icon: ZoomIn },
   ] as const;
@@ -64,9 +79,23 @@ export function AssessmentPlayerOptions({
     onOpenChange(nextOpen);
   };
 
+  const canOpenSetting = (id: PlayerSetting) => {
+    if (enabledSettings !== undefined && !enabledSettings.includes(id)) {
+      return false;
+    }
+    if (id === "contrast" && onContrastChange) return true;
+    if (id === "textSize" && onTextScaleChange) return true;
+    return Boolean(onSelectSetting);
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!handoff.current) onRestoreFocus?.();
+          handoff.current = false;
+        }}
         overlayClassName="bg-transparent duration-0 supports-backdrop-filter:backdrop-blur-none data-open:animate-none data-closed:animate-none"
         closeButtonSize="icon-xl"
         className="inset-0 h-dvh max-w-none translate-x-0 translate-y-0 rounded-none bg-secondary p-4 font-sans duration-0 data-open:animate-none data-closed:animate-none sm:max-w-none sm:p-6"
@@ -108,8 +137,13 @@ export function AssessmentPlayerOptions({
           <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 font-sans">
             <Button
               size="xl"
+              disabled={!onGoToSubmission || interactionLocked}
               className="min-h-[54px] justify-between rounded bg-player-accent px-5 text-base font-semibold text-player-accent-foreground hover:bg-player-accent/90"
-              onClick={onGoToSubmission}
+              onClick={() => {
+                handoff.current = true;
+                handleOpenChange(false);
+                onGoToSubmission?.();
+              }}
             >
               <span className="flex items-center gap-4">
                 <Send
@@ -127,17 +161,28 @@ export function AssessmentPlayerOptions({
             <div className="divide-y divide-border overflow-hidden rounded border border-border bg-background">
               {displaySettings.map(({ id, label, icon: Icon }) => {
                 const selected = selectedSetting === id;
+                const enabled = canOpenSetting(id);
                 return (
                   <Button
                     key={id}
                     variant="ghost"
                     size="xl"
+                    disabled={!enabled}
                     className={cn(
                       "min-h-[54px] w-full justify-between rounded-none px-5 text-base font-normal hover:bg-muted/60",
                       selected && "bg-muted/60 font-semibold",
                     )}
                     onClick={() => {
-                      if (id === "contrast" || id === "textSize") setView(id);
+                      if (
+                        (id === "contrast" && onContrastChange) ||
+                        (id === "textSize" && onTextScaleChange)
+                      ) {
+                        setView(id);
+                        onSelectSetting?.(id);
+                        return;
+                      }
+                      handoff.current = true;
+                      handleOpenChange(false);
                       onSelectSetting?.(id);
                     }}
                   >
@@ -160,12 +205,18 @@ export function AssessmentPlayerOptions({
             <Button
               variant="ghost"
               size="xl"
+              disabled={!canOpenSetting("remainingTime")}
               className={cn(
                 "min-h-[54px] justify-between rounded border border-border bg-background px-5 text-base font-normal hover:bg-muted/60",
                 selectedSetting === "remainingTime" &&
                   "border-player-selected-border bg-player-accent-soft font-semibold text-player-accent-soft-foreground hover:bg-player-accent-soft",
               )}
-              onClick={() => onSelectSetting?.("remainingTime")}
+              onClick={() => {
+                if (onSelectSetting && !onContrastChange && !onTextScaleChange) {
+                  handleOpenChange(false);
+                }
+                onSelectSetting?.("remainingTime");
+              }}
             >
               <span className="flex items-center gap-4">
                 <EyeOff

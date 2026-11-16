@@ -26,7 +26,7 @@ export interface MultipleResponseQuestionProps {
   options: MultipleResponseOption[];
   selectedOptionIds: string[];
   onSelectionChange: (optionId: string, selected: boolean) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -59,12 +59,14 @@ export function MultipleResponseQuestion({
 
   return (
     <section
-      aria-labelledby={questionId}
       className={cn("flex w-full flex-col gap-6", className)}
     >
-      <p className="text-base font-medium text-muted-foreground">
+      <p
+        id={`${questionId}-position`}
+        className="text-base font-medium uppercase text-muted-foreground"
+      >
         {questionCount
-          ? vi.exam.player.questionOf(questionNumber, questionCount)
+          ? `${vi.exam.questionPosition(questionNumber, questionCount)}.`
           : vi.exam.questionNumber(questionNumber)}
       </p>
 
@@ -86,6 +88,9 @@ export function MultipleResponseQuestion({
         >
           <h2
             id={questionId}
+            aria-labelledby={
+              questionCount ? `${questionId}-position ${questionId}` : undefined
+            }
             lang={stemLang}
             tabIndex={-1}
             className="text-lg font-medium leading-snug text-foreground"
@@ -115,6 +120,7 @@ export function MultipleResponseQuestion({
                 <Label
                   key={option.id}
                   htmlFor={optionId}
+                  lang={stemLang}
                   className={cn(
                     "relative flex min-h-[54px] w-full cursor-pointer items-center gap-3 rounded border p-4 transition-colors",
                     selected
@@ -126,6 +132,7 @@ export function MultipleResponseQuestion({
                 >
                   <Checkbox
                     id={optionId}
+                    lang={stemLang}
                     checked={selected}
                     disabled={optionDisabled}
                     className={cn(
@@ -135,11 +142,6 @@ export function MultipleResponseQuestion({
                     )}
                     onCheckedChange={(checked) => {
                       const nextSelected = checked === true;
-                      announce(
-                        nextSelected
-                          ? vi.announce.answerSelected(option.text)
-                          : vi.announce.answerDeselected(option.text),
-                      );
                       onSelectionChange(option.id, nextSelected);
                     }}
                   />
@@ -189,10 +191,10 @@ export function MultipleResponseQuestion({
           type="button"
           variant="outline"
           size="lg"
-          disabled={disabled || !hasSelection}
+          disabled={disabled || !onReset || !hasSelection}
           className="h-auto min-h-10 max-h-none rounded px-[0.75em] py-[0.5em] text-base font-normal"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >

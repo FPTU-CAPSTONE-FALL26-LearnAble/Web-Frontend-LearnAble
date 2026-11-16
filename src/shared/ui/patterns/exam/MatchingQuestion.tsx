@@ -26,6 +26,8 @@ export interface MatchingQuestionProps extends Omit<
 }
 export function MatchingQuestion({
   questionNumber,
+  questionCount,
+  stemLang,
   stem,
   options,
   targets,
@@ -42,6 +44,8 @@ export function MatchingQuestion({
   return (
     <QuestionFrame
       questionNumber={questionNumber}
+      questionCount={questionCount}
+      stemLang={stemLang}
       stem={stem}
       hasAnswer={Object.values(value).some(Boolean)}
       onReset={onReset}

@@ -93,4 +93,44 @@ describe("AssessmentPlayer", () => {
     await user.click(screen.getByRole("radio", { name: "Yellow on black" }));
     expect(onContrastChange).toHaveBeenCalledWith("yellowOnBlack");
   });
+
+  it("supports controlled navigation, interactionLocked, and disabled clear when canClearAnswer is false", async () => {
+    const onAnswerChange = vi.fn();
+    const onNavigationChange = vi.fn();
+    const { rerender } = render(
+      <AssessmentPlayer
+        title="Live exam"
+        candidate={{ id: "C1", name: "Candidate" }}
+        questions={[{ id: "one", kind: "single", title: "Multiple choice", prompt: "First stem", options: [{ id: "opt-1", text: "A" }, { id: "opt-2", text: "B" }] }]}
+        answers={{ one: "opt-1" }}
+        flagged={[]}
+        navigation={{ questionId: "one", view: "question", filter: "all" }}
+        onNavigationChange={onNavigationChange}
+        canClearAnswer={false}
+        onAnswerChange={onAnswerChange}
+        onToggleFlag={vi.fn()}
+      />,
+    );
+
+    const user = userEvent.setup();
+    expect(screen.getByRole("radio", { name: "A" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Reset answer" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Navigate to table of contents" }));
+    expect(onNavigationChange).toHaveBeenCalledWith({ questionId: "one", view: "contents", filter: "all" });
+
+    rerender(
+      <AssessmentPlayer
+        title="Live exam"
+        candidate={{ id: "C1", name: "Candidate" }}
+        questions={[{ id: "one", kind: "single", title: "Multiple choice", prompt: "First stem", options: [{ id: "opt-1", text: "A" }, { id: "opt-2", text: "B" }] }]}
+        answers={{ one: "opt-1" }}
+        flagged={[]}
+        navigation={{ questionId: "one", view: "question", filter: "all" }}
+        interactionLocked
+        onAnswerChange={onAnswerChange}
+        onToggleFlag={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: "B" })).toBeDisabled();
+  });
 });

@@ -36,13 +36,21 @@ export interface CompositeConfig {
   choices: string[];
 }
 
+export interface PlayerOption {
+  id: string;
+  text: string;
+  disabled?: boolean;
+}
+
 export interface PlayerQuestion {
   id: string;
   kind: QuestionKind;
   /** Question type shown in the contents table, e.g. "Multiple choice". */
   title: string;
   prompt: string;
-  options?: string[];
+  stemLang?: string;
+  /** Strings retain the demo's label-as-ID behavior; live choices use explicit IDs. */
+  options?: (string | PlayerOption)[];
   image?: { src: string; alt: string };
   /** Unit shown after a numeric entry field. */
   suffix?: string;
@@ -59,6 +67,13 @@ export type Answers = Record<string, Answer>;
 
 export type PlayerView = "question" | "contents" | "review";
 export type PlayerFilter = "all" | "unanswered" | "flagged";
+
+/** Host-controlled position, stable across question ordering and reloads. */
+export interface PlayerNavigation {
+  questionId: string | null;
+  view: PlayerView;
+  filter: PlayerFilter;
+}
 
 export function answerState(answer: Answer) {
   return Array.isArray(answer) ? answer.length > 0 : Boolean(answer);

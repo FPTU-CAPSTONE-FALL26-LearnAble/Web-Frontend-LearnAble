@@ -1,11 +1,10 @@
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Check, Flag } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import {
   SaveStatus,
   type SaveState,
 } from "@/shared/ui/patterns/exam/SaveStatus";
-import { announce } from "@/shared/a11y/announcer";
 import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
 
@@ -49,11 +48,16 @@ export function ExamShell({
   children,
 }: ExamShellProps) {
   const total = questions.length;
+  const mainRef = useRef<HTMLElement>(null);
+  const previousIndex = useRef(currentIndex);
+  useEffect(() => {
+    if (previousIndex.current !== currentIndex) mainRef.current?.querySelector<HTMLElement>("h2")?.focus();
+    previousIndex.current = currentIndex;
+  }, [currentIndex]);
 
   const goTo = (index: number) => {
     if (index < 0 || index >= total) return;
     onNavigate(index);
-    announce(vi.announce.questionChanged(index + 1, total));
   };
 
   return (
@@ -122,7 +126,7 @@ export function ExamShell({
           </ul>
         </nav>
 
-        <main id="main" className="flex-1">
+        <main ref={mainRef} id="main" className="flex-1">
           {children}
         </main>
       </div>

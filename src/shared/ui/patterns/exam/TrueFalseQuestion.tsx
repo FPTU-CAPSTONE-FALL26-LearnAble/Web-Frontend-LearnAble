@@ -14,9 +14,10 @@ export interface TrueFalseQuestionProps {
   questionCount: number;
   title: string;
   stem: string;
+  stemLang?: string;
   value: string | null;
   onValueChange: (value: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   className?: string;
@@ -27,6 +28,7 @@ export function TrueFalseQuestion({
   questionCount,
   title,
   stem,
+  stemLang,
   value,
   onValueChange,
   onReset,
@@ -37,7 +39,6 @@ export function TrueFalseQuestion({
   const strings = vi.exam.player;
   return (
     <section
-      aria-labelledby="question-heading"
       className={cn(
         "rounded-2xl bg-card p-6 shadow-sm ring-1 ring-foreground/10 sm:p-8",
         className,
@@ -45,11 +46,13 @@ export function TrueFalseQuestion({
     >
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-primary">
-            {strings.questionOf(questionNumber, questionCount)}
+          <p id="question-position" className="text-sm font-semibold text-primary uppercase">
+            {vi.exam.questionPosition(questionNumber, questionCount)}.
           </p>
           <h2
             id="question-heading"
+            aria-labelledby="question-position question-stem"
+            tabIndex={-1}
             className="mt-1 text-balance text-2xl font-medium"
           >
             {title}
@@ -70,7 +73,7 @@ export function TrueFalseQuestion({
           </Button>
         ) : null}
       </div>
-      <p className="mb-8 max-w-3xl text-pretty text-lg leading-8">{stem}</p>
+      <p id="question-stem" lang={stemLang} className="mb-8 max-w-3xl text-pretty text-lg leading-8">{stem}</p>
       <RadioGroup
         value={value ?? ""}
         onValueChange={onValueChange}
@@ -88,7 +91,7 @@ export function TrueFalseQuestion({
         ))}
       </RadioGroup>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
-        <Button variant="ghost" size="xl" onClick={onReset}>
+        <Button variant="ghost" size="xl" onClick={onReset} disabled={!onReset}>
           <RotateCcw aria-hidden />
           {strings.resetResponse}
         </Button>

@@ -6,11 +6,13 @@ import type { PlayerFilter, PlayerView } from "./assessment-player-types";
 export interface AssessmentPlayerOverviewProps {
   /** Assessment name shown above the contents table. */
   title: string;
+  entryDescription?: string;
   answeredCount: number;
   flaggedCount: number;
   questionCount: number;
   view: PlayerView;
   onFinishAndSubmit?: () => void;
+  interactionLocked?: boolean;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -21,11 +23,13 @@ const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
  */
 export function AssessmentPlayerOverview({
   title,
+  entryDescription,
   answeredCount,
   flaggedCount,
   questionCount,
   view,
   onFinishAndSubmit,
+  interactionLocked = false,
 }: AssessmentPlayerOverviewProps) {
   const strings = vi.exam.player;
   const unattemptedCount = questionCount - answeredCount;
@@ -48,6 +52,7 @@ export function AssessmentPlayerOverview({
             <div className="min-w-0">
               <h2
                 id="review-heading"
+                tabIndex={-1}
                 className="text-xl font-semibold text-foreground"
               >
                 {strings.reviewHeading}
@@ -61,21 +66,35 @@ export function AssessmentPlayerOverview({
                 )}
               </p>
             </div>
-            <Button
-              size="xl"
-              className="shrink-0 rounded bg-player-accent font-semibold text-player-accent-foreground hover:bg-player-accent/90"
-              onClick={onFinishAndSubmit}
-            >
-              {strings.finishAndSubmit}
-            </Button>
+            {onFinishAndSubmit ? (
+              <Button
+                size="xl"
+                disabled={interactionLocked}
+                className="shrink-0 rounded bg-player-accent font-semibold text-player-accent-foreground hover:bg-player-accent/90"
+                onClick={onFinishAndSubmit}
+              >
+                {strings.finishAndSubmit}
+              </Button>
+            ) : null}
           </>
         ) : (
-          <h2
-            id="contents-heading"
-            className="text-xl font-semibold text-foreground"
-          >
-            {title}
-          </h2>
+          <>
+            <h2
+              id="contents-heading"
+              aria-describedby={
+                entryDescription ? "player-entry-description" : undefined
+              }
+              tabIndex={-1}
+              className="text-xl font-semibold text-foreground"
+            >
+              {title}
+            </h2>
+            {entryDescription ? (
+              <p id="player-entry-description" className="sr-only">
+                {entryDescription}
+              </p>
+            ) : null}
+          </>
         )}
       </div>
       <TabsList

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { Tabs, TabsContent } from "@/shared/ui/primitives/tabs";
@@ -8,6 +8,7 @@ import {
   type Answer,
   type Answers,
   type PlayerFilter,
+  type PlayerNavigation,
   type PlayerQuestion as PlayerQuestionData,
   type PlayerView,
 } from "./assessment-player-types";
@@ -38,6 +39,18 @@ export interface AssessmentPlayerProps {
   onToggleFlag: (questionId: string) => void;
   /** Clears answers and flags; kept optional for host compatibility. */
   onStartOver?: () => void;
+  /** Supply with onNavigationChange for a controlled live attempt. */
+  navigation?: PlayerNavigation;
+  onNavigationChange?: (navigation: PlayerNavigation) => void;
+  /** Connection/save status label; defaults to "Connected" for standalone demos. */
+  status?: ReactNode;
+  timer?: ReactNode;
+  saveStatus?: ReactNode;
+  inputModeIndicator?: ReactNode;
+  /** Prevent answer, reset and flag changes while submitting or expired. */
+  interactionLocked?: boolean;
+  /** Disable until the host can durably clear a response on the server. */
+  canClearAnswer?: boolean;
   selectedSetting?: PlayerSetting;
   contrast?: ContrastOption;
   onContrastChange?: (contrast: ContrastOption) => void;
@@ -45,6 +58,15 @@ export interface AssessmentPlayerProps {
   onTextScaleChange?: (textScale: TextScaleOption) => void;
   onGoToSubmission?: () => void;
   onSelectSetting?: (setting: PlayerSetting) => void;
+  enabledSettings?: PlayerSetting[];
+  optionsOpen?: boolean;
+  onOptionsOpenChange?: (open: boolean) => void;
+  /** Host feedback inside the frame, above the scrolling questions. */
+  feedback?: ReactNode;
+  /** Focus the recovered view when a full-page host finishes loading it. */
+  focusOnMount?: boolean;
+  /** Admission context read with the first Contents heading only. */
+  entryDescription?: string;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -63,6 +85,14 @@ export function AssessmentPlayer({
   flagged,
   onAnswerChange,
   onToggleFlag,
+  navigation,
+  onNavigationChange,
+  status = vi.exam.player.connected,
+  timer,
+  saveStatus,
+  inputModeIndicator,
+  interactionLocked = false,
+  canClearAnswer = true,
   selectedSetting,
   contrast,
   onContrastChange,
@@ -70,14 +100,72 @@ export function AssessmentPlayer({
   onTextScaleChange,
   onGoToSubmission,
   onSelectSetting,
+  enabledSettings,
+  optionsOpen: controlledOptionsOpen,
+  onOptionsOpenChange,
+  feedback,
+  focusOnMount = false,
+  entryDescription,
 }: AssessmentPlayerProps) {
-  const [index, setIndex] = useState(0);
-  const [view, setView] = useState<PlayerView>("contents");
-  const [filter, setFilter] = useState<PlayerFilter>("all");
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [localNavigation, setLocalNavigation] = useState<PlayerNavigation>({
+    questionId: null,
+    view: "contents",
+    filter: "all",
+  });
+  const position = navigation ?? localNavigation;
+  const { view, filter } = position;
+  const [showEntryDescription, setShowEntryDescription] = useState(true);
+  useEffect(() => {
+    if (view !== "contents") setShowEntryDescription(false);
+  }, [view]);
+  const index = Math.max(
+    0,
+    questions.findIndex((q) => q.id === position.questionId),
+  );
+  const navigate = (patch: Partial<PlayerNavigation>) => {
+    const next = { ...position, ...patch };
+    if (!navigation) setLocalNavigation(next);
+    onNavigationChange?.(next);
+  };
+
+  const [localOptionsOpen, setLocalOptionsOpen] = useState(false);
+  const optionsOpen = controlledOptionsOpen ?? localOptionsOpen;
+  const setOptionsOpen = (open: boolean) => {
+    if (controlledOptionsOpen === undefined) setLocalOptionsOpen(open);
+    onOptionsOpenChange?.(open);
+  };
+
   const current = questions[index];
+  const mainRef = useRef<HTMLElement>(null);
+  const optionsButtonRef = useRef<HTMLButtonElement>(null);
+  const previousPosition = useRef({ view, questionId: current?.id });
+  const initialFocus = useRef(true);
+  useEffect(() => {
+    const previous = previousPosition.current;
+    previousPosition.current = { view, questionId: current?.id };
+    const first = initialFocus.current;
+    initialFocus.current = false;
+    if (
+      !(first && focusOnMount) &&
+      previous.view === view &&
+      previous.questionId === current?.id
+    ) {
+      return;
+    }
+    const heading =
+      view === "question"
+        ? mainRef.current?.querySelector<HTMLElement>("h2")
+        : document.getElementById(
+            view === "review" ? "review-heading" : "contents-heading",
+          );
+    heading?.focus();
+  }, [view, current?.id, focusOnMount]);
+
   const answeredCount = questions.filter((question) =>
     answerState(answers[question.id]),
+  ).length;
+  const flaggedCount = questions.filter((question) =>
+    flagged.includes(question.id),
   ).length;
   const visibleQuestions = useMemo(
     () =>
@@ -92,33 +180,39 @@ export function AssessmentPlayer({
   );
 
   const goTo = (nextIndex: number) => {
-    setIndex(nextIndex);
-    setView("question");
+    const question = questions[nextIndex];
+    if (question) navigate({ questionId: question.id, view: "question" });
   };
 
   return (
     <Tabs
       value={filter}
-      onValueChange={(value) => setFilter(value as PlayerFilter)}
+      onValueChange={(value) => navigate({ filter: value as PlayerFilter })}
       className="gap-0"
     >
       <AssessmentPlayerShell
         candidate={candidate}
-        status={vi.exam.player.connected}
+        status={status}
         meta={examCode}
-        center={remainingTime}
+        center={timer ?? remainingTime}
         trailing={
-          <Button
-            variant="outline"
-            size="xl"
-            className="rounded"
-            aria-label={vi.exam.player.openOptions}
-            aria-expanded={optionsOpen}
-            onClick={() => setOptionsOpen((open) => !open)}
-          >
-            <Menu aria-hidden className="size-[calc(1.25rem*var(--text-scale))]" />
-            <span>{vi.exam.player.options}</span>
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {saveStatus}
+            {inputModeIndicator}
+            <Button
+              ref={optionsButtonRef}
+              data-player-options
+              variant="outline"
+              size="xl"
+              className="rounded"
+              aria-label={vi.exam.player.openOptions}
+              aria-expanded={optionsOpen}
+              onClick={() => setOptionsOpen(!optionsOpen)}
+            >
+              <Menu aria-hidden className="size-[calc(1.25rem*var(--text-scale))]" />
+              <span>{vi.exam.player.options}</span>
+            </Button>
+          </div>
         }
         footer={
           <AssessmentPlayerFooter
@@ -128,7 +222,7 @@ export function AssessmentPlayer({
             questions={questions}
             view={view}
             onGoTo={goTo}
-            onViewChange={setView}
+            onViewChange={(nextView: PlayerView) => navigate({ view: nextView })}
           />
         }
       >
@@ -142,23 +236,54 @@ export function AssessmentPlayer({
           onTextScaleChange={onTextScaleChange}
           onGoToSubmission={onGoToSubmission}
           onSelectSetting={onSelectSetting}
+          interactionLocked={interactionLocked}
+          enabledSettings={enabledSettings}
+          onRestoreFocus={() => optionsButtonRef.current?.focus()}
         />
-
-        <main className="flex min-h-0 w-full flex-1 flex-col px-2 pt-0">
+        {feedback}
+        <main
+          ref={mainRef}
+          id="main"
+          className="flex min-h-0 w-full flex-1 flex-col px-2 pt-0"
+        >
           <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded border border-border bg-background px-4 py-8 sm:px-8 sm:py-10">
             <div className="mx-auto w-full max-w-player">
               {view === "question" && current ? (
-                <PlayerQuestion
-                  question={current}
-                  questionNumber={index + 1}
-                  questionCount={questions.length}
-                  answer={answers[current.id]}
-                  flagged={flagged.includes(current.id)}
-                  onAnswerChange={(value) => onAnswerChange(current.id, value)}
-                  onReset={() => onAnswerChange(current.id, undefined)}
-                  onToggleFlag={() => onToggleFlag(current.id)}
-                  className="mx-auto max-w-player"
-                />
+                <fieldset disabled={interactionLocked} className="min-w-0">
+                  <PlayerQuestion
+                    key={current.id}
+                    question={current}
+                    questionNumber={index + 1}
+                    questionCount={questions.length}
+                    answer={answers[current.id]}
+                    flagged={flagged.includes(current.id)}
+                    onAnswerChange={(value) => {
+                      if (
+                        !interactionLocked &&
+                        !optionsOpen &&
+                        (canClearAnswer || answerState(value))
+                      ) {
+                        onAnswerChange(current.id, value);
+                      }
+                    }}
+                    onReset={
+                      canClearAnswer
+                        ? () => {
+                            if (!interactionLocked && !optionsOpen) {
+                              onAnswerChange(current.id, undefined);
+                            }
+                          }
+                        : undefined
+                    }
+                    onToggleFlag={() => {
+                      if (!interactionLocked && !optionsOpen) {
+                        onToggleFlag(current.id);
+                      }
+                    }}
+                    disabled={interactionLocked}
+                    className="mx-auto max-w-player"
+                  />
+                </fieldset>
               ) : (
                 <section
                   aria-labelledby={
@@ -167,11 +292,15 @@ export function AssessmentPlayer({
                 >
                   <AssessmentPlayerOverview
                     title={title}
+                    entryDescription={
+                      showEntryDescription ? entryDescription : undefined
+                    }
                     answeredCount={answeredCount}
-                    flaggedCount={flagged.length}
+                    flaggedCount={flaggedCount}
                     questionCount={questions.length}
                     view={view}
                     onFinishAndSubmit={onGoToSubmission}
+                    interactionLocked={interactionLocked}
                   />
                   {filters.map((tab) => (
                     <TabsContent key={tab} value={tab} className="mt-5">

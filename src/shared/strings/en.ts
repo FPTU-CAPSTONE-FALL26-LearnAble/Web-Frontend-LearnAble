@@ -93,6 +93,7 @@ export const en = {
   exam: {
     pageTitle: (name: string) => `${name} — LearnAble`,
     question: (index: number, total: number) => `Question ${index}/${total}`,
+    questionPosition: (index: number, total: number) => `Question ${index} of ${total}`,
     questionNumber: (index: number) => `Question ${index}`,
     questionListLabel: "Question list",
     answerOptionsLabel: "Answer options",

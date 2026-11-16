@@ -27,9 +27,10 @@ export interface PlayerQuestionProps {
   answer: Answer;
   flagged: boolean;
   onAnswerChange: (value: Answer) => void;
-  onReset: () => void;
+  onReset?: () => void;
   onToggleFlag: () => void;
   className?: string;
+  disabled?: boolean;
 }
 
 const selectClassName =
@@ -46,13 +47,20 @@ export function PlayerQuestion({
   onReset,
   onToggleFlag,
   className,
+  disabled = false,
 }: PlayerQuestionProps) {
   const strings = vi.exam.player;
   const value = typeof answer === "string" ? answer : "";
   const options = question.options ?? [];
+  const choices = options.map((option) =>
+    typeof option === "string" ? { id: option, text: option } : option,
+  );
   const shared = {
     questionNumber,
+    questionCount,
     stem: question.prompt,
+    stemLang: question.stemLang,
+    disabled,
     flagged,
     onToggleFlag,
     onReset,
@@ -64,9 +72,8 @@ export function PlayerQuestion({
       return (
         <MultipleChoiceQuestion
           {...shared}
-          questionCount={questionCount}
           image={question.image}
-          options={options.map((option) => ({ id: option, text: option }))}
+          options={choices}
           value={value || null}
           onValueChange={onAnswerChange}
         />
@@ -76,10 +83,9 @@ export function PlayerQuestion({
       return (
         <MultipleResponseQuestion
           {...shared}
-          questionCount={questionCount}
           image={question.image}
           imageLayout="above"
-          options={options.map((option) => ({ id: option, text: option }))}
+          options={choices}
           selectedOptionIds={selected}
           onSelectionChange={(optionId, isSelected) =>
             onAnswerChange(
@@ -183,9 +189,9 @@ export function PlayerQuestion({
                 ? "graphic"
                 : "inline"
           }
-          options={options.map((label, index) => ({
-            id: `option-${index}`,
-            label,
+          options={options.map((option, index) => ({
+            id: typeof option === "string" ? `option-${index}` : option.id,
+            label: typeof option === "string" ? option : option.text,
           }))}
           targets={question.targets ?? []}
         />

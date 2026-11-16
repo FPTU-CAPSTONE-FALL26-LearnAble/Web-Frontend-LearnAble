@@ -27,6 +27,26 @@ function renderQuestion(question: PlayerQuestionData, answer?: Answer) {
 const base = { id: "q", title: "Type", prompt: "Stem text" };
 
 describe("PlayerQuestion", () => {
+  it("restores and selects stable IDs even when two choices have the same label", async () => {
+    const { user, onAnswerChange } = renderQuestion({
+      ...base, kind: "single", options: [{ id: "srv-a", text: "Same label" }, { id: "srv-b", text: "Same label" }],
+    }, "srv-a");
+    const radios = screen.getAllByRole("radio", { name: "Same label" });
+    expect(radios[0]).toBeChecked();
+    expect(radios[1]).not.toBeChecked();
+    await user.click(radios[1]);
+    expect(onAnswerChange).toHaveBeenCalledWith("srv-b");
+  });
+
+  it("uses stable IDs for multiple response without changing string demos", async () => {
+    const { user, onAnswerChange } = renderQuestion({
+      ...base, kind: "multi", options: [{ id: "srv-a", text: "Alpha" }, { id: "srv-b", text: "Beta" }],
+    }, ["srv-a"]);
+    expect(screen.getByRole("checkbox", { name: "Alpha" })).toBeChecked();
+    await user.click(screen.getByRole("checkbox", { name: "Beta" }));
+    expect(onAnswerChange).toHaveBeenCalledWith(["srv-a", "srv-b"]);
+  });
+
   it.each<[PlayerQuestionData, () => HTMLElement]>([
     [{ ...base, kind: "single", options: ["A", "B"] }, () => screen.getByRole("radio", { name: "A" })],
     [{ ...base, kind: "multi", options: ["A", "B"] }, () => screen.getByRole("checkbox", { name: "A" })],

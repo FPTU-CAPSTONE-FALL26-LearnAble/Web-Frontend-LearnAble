@@ -30,6 +30,7 @@ export type InlineChoiceSegment = string | { slotId: string };
 
 export interface InlineChoiceQuestionProps {
   questionNumber: number;
+  questionCount?: number;
   stem: string;
   stemLang?: string;
   image?: { src: string; alt: string };
@@ -38,7 +39,7 @@ export interface InlineChoiceQuestionProps {
   slots: InlineChoiceSlot[];
   values: Record<string, string | undefined>;
   onValueChange: (slotId: string, value: string) => void;
-  onReset: () => void;
+  onReset?: () => void;
   flagged?: boolean;
   onToggleFlag?: () => void;
   disabled?: boolean;
@@ -51,6 +52,7 @@ export interface InlineChoiceQuestionProps {
  */
 export function InlineChoiceQuestion({
   questionNumber,
+  questionCount,
   stem,
   stemLang,
   image,
@@ -70,14 +72,13 @@ export function InlineChoiceQuestion({
 
   return (
     <section
-      aria-labelledby={questionId}
       className={cn(
         "mt-4 grid gap-y-6 sm:grid-cols-[6rem_minmax(0,1fr)_3rem] sm:gap-x-4",
         className,
       )}
     >
-      <p className="text-base font-semibold text-foreground sm:col-start-1">
-        {vi.exam.questionNumber(questionNumber)}
+      <p id={`${questionId}-position`} className="text-base font-semibold text-foreground sm:col-start-1">
+        {questionCount ? `${vi.exam.questionPosition(questionNumber, questionCount)}.` : vi.exam.questionNumber(questionNumber)}
       </p>
 
       {onToggleFlag ? (
@@ -113,6 +114,7 @@ export function InlineChoiceQuestion({
         >
           <h2
             id={questionId}
+            aria-labelledby={questionCount ? `${questionId}-position ${questionId}` : undefined}
             lang={stemLang}
             tabIndex={-1}
             className="text-base font-normal text-foreground"
@@ -179,10 +181,10 @@ export function InlineChoiceQuestion({
         <Button
           type="button"
           variant="ghost"
-          disabled={disabled || !hasSelection}
+          disabled={disabled || !onReset || !hasSelection}
           className="-ml-2 font-normal text-base"
           onClick={() => {
-            onReset();
+            onReset?.();
             announce(vi.announce.answerCleared);
           }}
         >
