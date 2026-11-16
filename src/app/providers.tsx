@@ -48,7 +48,13 @@ const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      retry: 1,
+      // A missing resource or an ended session will not succeed on a second try.
+      retry: (failureCount, error) =>
+        failureCount < 1 &&
+        !(
+          error instanceof ApiFailure &&
+          (error.detail.kind === "unauthorized" || error.detail.kind === "not_found")
+        ),
       staleTime: 30_000,
     },
   },
