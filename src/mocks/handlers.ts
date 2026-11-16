@@ -1,6 +1,7 @@
 import { HttpResponse, delay, http } from "msw";
 import { mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
 import { adminSystemHandlers } from "@/mocks/adminSystem";
+import { gestureConfigHandlers } from "@/mocks/gestureConfig";
 import { shortcutHandlers } from "@/mocks/shortcuts";
 import { studentScheduleHandlers } from "@/mocks/studentSchedule";
 
@@ -117,6 +118,8 @@ export const handlers = [
 
   // Exam keyboard shortcuts (FR-52) — mirrors the deployed MyShortcuts API.
   ...shortcutHandlers,
+  // Exam hand gestures (FR-47) — mirrors /gesture-configurations.
+  ...gestureConfigHandlers,
 
   // Student exam schedule and inbox (FFCB-106, FFCB-279) — mirrors the deployed API.
   ...studentScheduleHandlers,
