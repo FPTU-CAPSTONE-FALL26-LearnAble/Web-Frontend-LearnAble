@@ -12,7 +12,8 @@ it("makes saved Vietnamese voices unavailable while previewing and saving an Eng
   const speak = vi.fn();
   vi.stubGlobal("speechSynthesis", { getVoices: () => [english, vietnamese], addEventListener: vi.fn(), removeEventListener: vi.fn(), cancel: vi.fn(), speak });
   vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
-  const fetch = vi.fn(async () => new Response(JSON.stringify({ ttsVoiceUri: "vi-voice", ttsRate: 1 })));
+  // The deployed preferences envelope: a saved Vietnamese voice.
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ success: true, data: { voiceCode: "vi-voice", speechRate: 1 } })));
   vi.stubGlobal("fetch", fetch);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><main><AccessibilitySettingsRoute /></main></QueryClientProvider>);
@@ -25,5 +26,5 @@ it("makes saved Vietnamese voices unavailable while previewing and saving an Eng
   expect(await screen.findByRole("option", { name: /Vietnamese voice/ })).toHaveAttribute("aria-disabled", "true");
   fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ method: "PUT", body: JSON.stringify({ ttsVoiceUri: "en-voice", ttsRate: 1 }) })));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ method: "PUT", body: JSON.stringify({ voiceCode: "en-voice", speechRate: 1 }) })));
 });
