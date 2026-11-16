@@ -6,7 +6,7 @@ vi.mock("@/api/client", async (importOriginal) => {
   return { ...actual, request: client.request };
 });
 
-import { createManagedNotification, getNotificationRecipientCandidates, getUnreadNotificationCount, publishManagedNotification, updateManagedNotification } from "./notifications";
+import { getMyNotifications, markAllNotificationsRead, markNotificationRead, createManagedNotification, getNotificationRecipientCandidates, getUnreadNotificationCount, publishManagedNotification, updateManagedNotification } from "./notifications";
 
 describe("notification API", () => {
   beforeEach(() => client.request.mockReset());
@@ -44,5 +44,25 @@ describe("notification API", () => {
     client.request.mockResolvedValue({ success: true, message: null, errors: null, data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 100, totalPages: 0, hasNextPage: false, hasPreviousPage: false } });
     await getNotificationRecipientCandidates("LEC0001", "Lecturer");
     expect(client.request).toHaveBeenCalledWith("/notifications/recipient-candidates?Page=1&PageSize=100&Search=LEC0001&Role=Lecturer", expect.anything(), undefined);
+  });
+
+  it("reads the personal inbox, including a published exam schedule", async () => {
+    const item = { notificationId: "n1", title: "Exam schedule published", content: "PRO192", notificationType: "ExamSchedulePublished", actionUrl: "/exam-schedules/11111111-1111-4111-8111-111111111111", relatedEntityType: "ExamSchedule", relatedEntityId: "11111111-1111-4111-8111-111111111111", publishedAt: "2026-11-10T00:00:00Z", expiresAt: null, receivedAt: "2026-11-10T00:00:00Z", readAt: null };
+    client.request.mockResolvedValue({ success: true, message: null, errors: null, data: { items: [item], totalCount: 1, pageNumber: 1, pageSize: 50, totalPages: 1, hasNextPage: false, hasPreviousPage: false } });
+    await expect(getMyNotifications()).resolves.toMatchObject({ items: [item] });
+    expect(client.request).toHaveBeenCalledWith("/me/notifications?Page=1&PageSize=50", expect.anything(), undefined);
+  });
+
+  it("marks one notification, or all of them, as read", async () => {
+    client.request.mockResolvedValue({ success: true, message: null, errors: null, data: { updatedCount: 1 } });
+    await expect(markNotificationRead("n1")).resolves.toEqual({ updatedCount: 1 });
+    expect(client.request).toHaveBeenCalledWith("/me/notifications/n1/read", expect.anything(), { method: "PATCH" });
+    await markAllNotificationsRead();
+    expect(client.request).toHaveBeenCalledWith("/me/notifications/read-all", expect.anything(), { method: "PATCH" });
+  });
+
+  it("reports a refused inbox read with the Backend message", async () => {
+    client.request.mockResolvedValue({ success: false, message: "Inbox unavailable.", errors: null, data: null });
+    await expect(getMyNotifications()).rejects.toMatchObject({ detail: { kind: "server", message: "Inbox unavailable." } });
   });
 });

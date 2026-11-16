@@ -7,6 +7,8 @@ export interface TokenStore {
   get(): string | null;
   getRefreshToken(): string | null;
   set(tokens: AuthTokens, remember: boolean): void;
+  /** Replaces the tokens after a refresh, keeping them where the sign-in put them. */
+  update(tokens: AuthTokens): void;
   clear(): void;
 }
 
@@ -35,6 +37,10 @@ export const tokenStore: TokenStore = {
     localStorage.removeItem(KEY);
     sessionStorage.removeItem(KEY);
     const target = remember ? localStorage : sessionStorage;
+    target.setItem(KEY, JSON.stringify(tokens));
+  },
+  update: (tokens) => {
+    const target = localStorage.getItem(KEY) !== null ? localStorage : sessionStorage;
     target.setItem(KEY, JSON.stringify(tokens));
   },
   clear: () => {
