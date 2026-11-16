@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiFailure, request } from "@/api/client";
+import { ApiFailure, request, requestBlob } from "@/api/client";
 import { pageSchema, queryString, type ReadFilters } from "@/api/catalog";
 import { fetchAllPages } from "@/api/pagination";
 
@@ -23,7 +23,8 @@ async function unwrap<T extends z.ZodTypeAny>(
   if (!response.success || response.data == null) {
     throw new ApiFailure({ kind: "server", status: 200 });
   }
-  return response.data;
+  // Keep the domain boundary strict even in tests or alternate clients that bypass request()'s envelope parsing.
+  return schema.parse(response.data);
 }
 
 async function command(path: string, init: RequestInit & { json?: unknown }) {
@@ -60,7 +61,17 @@ export const examQuestionSchema = z.object({
   difficulty: z.string().nullable().optional(),
   maxScore: z.number().nullable().optional(),
   displayOrder: z.number().nullable().optional(),
-});
+  snapshot: z.object({
+    content: z.string().nullable().optional(),
+    questionType: z.string().nullable().optional(),
+    difficulty: z.string().nullable().optional(),
+  }).nullable().optional(),
+}).transform((question) => ({
+  ...question,
+  content: question.content ?? question.snapshot?.content ?? null,
+  questionType: question.questionType ?? question.snapshot?.questionType ?? null,
+  difficulty: question.difficulty ?? question.snapshot?.difficulty ?? null,
+}));
 
 export const examPaperSchema = z.object({
   examPaperId: z.string(),
@@ -422,8 +433,8 @@ export const examPaperPreviewSchema = z.object({
 });
 export type ExamPaperPreview = z.infer<typeof examPaperPreviewSchema>;
 
-export const getExamPaperPreview = (paperId: string) =>
-  unwrap(`/exampapers/${paperId}/preview?simulateShuffle=true`, examPaperPreviewSchema);
+export const getExamPaperPreview = (paperId: string, simulateShuffle = true) =>
+  unwrap(`/exampapers/${paperId}/preview?simulateShuffle=${simulateShuffle}`, examPaperPreviewSchema);
 
 export async function getExamPaperBank() {
   const subjects = await getExamSubjects();
@@ -723,6 +734,17 @@ export const withdrawSealedPaper = (paperId: string, versionId: string, eTag?: s
 /** Packages handed over to examiners. */
 export const getSealedExamPapers = () => unwrap("/sealed-exam-papers", z.array(sealedPaperSchema));
 
+/** One sealed package by version id, for examiner deep links and refresh-safe detail screens. */
+export const getSealedExamPaper = (versionId: string) =>
+  unwrap(`/sealed-exam-papers/${versionId}`, sealedPaperSchema);
+
+export const getLecturerSealedPaper = (paperId: string, versionId: string) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/versions/${versionId}`, sealedPaperSchema);
+
+/** Starts an editable paper from a locked historical version; the sealed version itself stays unchanged. */
+export const createDraftFromSealedPaper = (paperId: string, versionId: string) =>
+  unwrap(`/lecturer/exam-papers/${paperId}/versions/${versionId}/draft`, examPaperSchema, { method: "POST" });
+
 export const shiftPaperSelectionSchema = z.object({
   selectionId: z.string(),
   shiftId: z.string(),
@@ -847,3 +869,80 @@ export const openSharedExamShift = (shiftId: string, shiftETag?: string | null) 
 
 export const releaseShiftPaper = (shiftId: string, shiftETag?: string | null) =>
   unwrap(`/exam-shifts/${shiftId}/paper-selection/release`, sharedExamShiftSchema, { method: "POST", headers: ifMatch(shiftETag) });
+
+const allocationStudentSchema = z.object({
+  studentId: z.string(), studentName: nullableString, seatId: z.string(), seatCode: nullableString,
+  rowNumber: z.number(), columnNumber: z.number(), extraTimeMinutes: z.number(), accommodationNotes: nullableString,
+});
+const allocationInvigilatorSchema = z.object({ lecturerId: z.string(), lecturerName: nullableString, isChief: z.boolean() });
+const allocationRoomPlanSchema = z.object({
+  roomId: z.string(), roomCode: nullableString, roomName: nullableString, capacity: z.number(),
+  students: z.array(allocationStudentSchema).nullable().transform((value) => value ?? []),
+  invigilators: z.array(allocationInvigilatorSchema).nullable().transform((value) => value ?? []),
+});
+const shiftRoomAllocationSchema = z.object({ scheduleId: z.string(), allocation: allocationRoomPlanSchema });
+const allocationIssueSchema = z.object({
+  code: nullableString, resourceType: nullableString, resourceId: nullableString,
+  conflictingScheduleId: nullableString, message: nullableString,
+});
+
+export const examShiftAllocationPlanSchema = z.object({
+  shiftId: z.string(), requestId: z.string(), revision: z.number(), eTag: nullableString,
+  isValid: z.boolean(), planHash: nullableString,
+  rooms: z.array(shiftRoomAllocationSchema).nullable().transform((value) => value ?? []),
+  unusedLecturerIds: z.array(z.string()).nullable().transform((value) => value ?? []),
+  issues: z.array(allocationIssueSchema).nullable().transform((value) => value ?? []),
+});
+export type ExamShiftAllocationPlan = z.infer<typeof examShiftAllocationPlanSchema>;
+
+export const examShiftAllocationAppliedSchema = z.object({
+  shiftId: z.string(), requestId: z.string(), revision: z.number(), eTag: nullableString,
+  planHash: nullableString, appliedAt: z.string(),
+  rooms: z.array(shiftRoomAllocationSchema).nullable().transform((value) => value ?? []),
+});
+
+export type ExamShiftAllocationInput = {
+  requestId: string;
+  students: Array<{ studentId: string; extraTimeMinutes: number; accommodationNotes?: string | null }>;
+  lecturerIds: string[];
+  invigilatorsPerRoom: number;
+};
+
+export const previewExamShiftAllocation = (shiftId: string, input: ExamShiftAllocationInput) =>
+  unwrap(`/exam-shifts/${shiftId}/allocation/preview`, examShiftAllocationPlanSchema, { method: "POST", json: input });
+
+export const applyExamShiftAllocation = (
+  shiftId: string,
+  input: ExamShiftAllocationInput & { expectedPlanHash?: string | null },
+  shiftETag?: string | null,
+) => unwrap(`/exam-shifts/${shiftId}/allocation`, examShiftAllocationAppliedSchema, {
+  method: "POST", headers: ifMatch(shiftETag), json: input,
+});
+
+export const examInvigilatorCandidateSchema = z.object({
+  lecturerId: z.string(), userCode: nullableString, fullName: nullableString, departmentId: nullableString,
+});
+export type ExamInvigilatorCandidate = z.infer<typeof examInvigilatorCandidateSchema>;
+
+export const getExamShiftInvigilatorCandidates = (shiftId: string, filters: { Page?: number; PageSize?: number; Search?: string } = {}) =>
+  unwrap(`/exam-shifts/${shiftId}/invigilator-candidates${queryString({ Page: 1, PageSize: 100, ...filters })}`, pageSchema(examInvigilatorCandidateSchema));
+
+export const downloadInvigilatorImportTemplate = (shiftId: string) =>
+  requestBlob(`/exam-shifts/${shiftId}/invigilator-import/template`);
+
+const invigilatorImportIssueSchema = z.object({ rowNumber: z.number().nullable(), column: nullableString, code: nullableString, message: nullableString });
+export const invigilatorImportValidationSchema = z.object({
+  shiftId: z.string(), fileSha256: nullableString, totalRows: z.number(), validRows: z.number(), invalidRows: z.number(), canContinue: z.boolean(),
+  rows: z.array(z.object({
+    rowNumber: z.number(), lecturerCode: nullableString, lecturerId: nullableString, fullName: nullableString,
+    isValid: z.boolean(), errors: z.array(invigilatorImportIssueSchema).nullable().transform((value) => value ?? []),
+  })).nullable().transform((value) => value ?? []),
+  errors: z.array(invigilatorImportIssueSchema).nullable().transform((value) => value ?? []),
+});
+export type InvigilatorImportValidation = z.infer<typeof invigilatorImportValidationSchema>;
+
+export function validateInvigilatorImport(shiftId: string, file: File) {
+  const body = new FormData();
+  body.set("File", file);
+  return unwrap(`/exam-shifts/${shiftId}/invigilator-import/validate`, invigilatorImportValidationSchema, { method: "POST", body });
+}

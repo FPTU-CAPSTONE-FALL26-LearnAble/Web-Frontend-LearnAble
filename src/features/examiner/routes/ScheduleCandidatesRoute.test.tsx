@@ -9,7 +9,8 @@ const admin = vi.hoisted(() => ({ getAllStudentProfiles: vi.fn(), getAllStudentU
 const exams = vi.hoisted(() => ({
   getExamRooms: vi.fn(), previewBulkExamSchedules: vi.fn(), createBulkExamSchedules: vi.fn(),
   getSharedExamShift: vi.fn(), getShiftPaperSelection: vi.fn(), getExamSchedule: vi.fn(), getExamSubject: vi.fn(),
-  addExamEnrollments: vi.fn(async () => []), setExamInvigilators: vi.fn(async () => []), autoAssignSeats: vi.fn(async () => []),
+  getExamShiftInvigilatorCandidates: vi.fn(), previewExamShiftAllocation: vi.fn(), applyExamShiftAllocation: vi.fn(),
+  downloadInvigilatorImportTemplate: vi.fn(), validateInvigilatorImport: vi.fn(),
 }));
 const invigilation = vi.hoisted(() => ({ getInvigilationCandidates: vi.fn(), downloadStudentImportTemplate: vi.fn(), validateStudentImport: vi.fn() }));
 vi.mock("@/api/admin", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/api/admin")>()), ...admin }));
@@ -40,6 +41,7 @@ beforeEach(() => {
   exams.getExamSchedule.mockResolvedValue({ examScheduleId: "sch-1", examRoomId: "room-1", roomName: "Lab 1" });
   exams.getShiftPaperSelection.mockResolvedValue(null);
   exams.getExamSubject.mockResolvedValue({ examSubjectId: "exam-subject-1", cameraRequired: false, cameraUnavailablePolicy: "Allow" });
+  exams.getExamShiftInvigilatorCandidates.mockResolvedValue(page([]));
   admin.getRoomSeats.mockResolvedValue([{ isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: false }, { isAvailable: false, hasComputer: true, hasCamera: true }]);
   admin.getAllStudentProfiles.mockResolvedValue(page([profile("33333333-0000-0000-0000-000000000001"), profile("33333333-0000-0000-0000-000000000002", "Reserved"), profile("99999999-0000-0000-0000-000000000003")]));
   admin.getAllStudentUsers.mockResolvedValue(page([
@@ -169,23 +171,22 @@ describe("people step of a shared shift", () => {
     exams.getSharedExamShift.mockResolvedValue({ shiftId: "shift-1", scheduleIds: ["sch-1"], status: "Draft", examSubjectId: "exam-subject-1" });
     exams.getExamSchedule.mockResolvedValue({ examScheduleId: "sch-1", examRoomId: "room-1", roomName: "Lab 1" });
     admin.getRoomSeats.mockResolvedValue([{ isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: false }, { isAvailable: false, hasComputer: true, hasCamera: true }]);
-    admin.getAllLecturerProfiles.mockResolvedValue(page([{ userId: "lec-1", fullName: "Tran Lan", lecturerCode: "GV1" }]));
+    exams.getExamShiftInvigilatorCandidates.mockResolvedValue(page([{ lecturerId: "lec-1", fullName: "Tran Lan", userCode: "GV1", departmentId: null }]));
   });
 
-  it("adds the students, invigilators and seats room by room instead of using a bulk schedule", async () => {
+  it("previews and applies one Backend allocation for the whole shared shift", async () => {
     exams.getShiftPaperSelection.mockResolvedValue({ selectionId: "a", shiftId: "shift-1", versionId: "v", operationId: "o", selectedAt: "2026-11-14T01:00:00Z", releasedAt: null, consumedAt: null });
+    exams.previewExamShiftAllocation.mockResolvedValue({ shiftId: "shift-1", requestId: "request-1", revision: 1, eTag: '"s-1"', isValid: true, planHash: "hash", rooms: [{ scheduleId: "sch-1", allocation: { roomId: "room-1", roomCode: "R1", roomName: "Lab 1", capacity: 3, students: [], invigilators: [] } }], unusedLecturerIds: [], issues: [] });
+    exams.applyExamShiftAllocation.mockResolvedValue({ shiftId: "shift-1", requestId: "request-1", revision: 2, eTag: '"s-2"', planHash: "hash", appliedAt: "now", rooms: [] });
     show();
     await screen.findByText("Nguyễn Văn An");
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(await screen.findByText("Tran Lan"));
     expect(await screen.findByText("1 students · 1 invigilators")).toBeInTheDocument();
-    const add = screen.getByRole("button", { name: "Add people to the shift" });
-    await waitFor(() => expect(add).toBeEnabled());
-    fireEvent.click(add);
-    await waitFor(() => expect(exams.addExamEnrollments).toHaveBeenCalledWith("sch-1", [{ studentId: "33333333-0000-0000-0000-000000000001", extraTimeMinutes: 0, accommodationNotes: null }]));
-    expect(exams.setExamInvigilators).toHaveBeenCalledWith("sch-1", [{ lecturerId: "lec-1", assignmentRole: "Chief" }]);
-    expect(exams.autoAssignSeats).toHaveBeenCalledWith("sch-1");
-    expect(exams.createBulkExamSchedules).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Preview Backend allocation" }));
+    expect(await screen.findByText("Backend allocation is valid")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply allocation" }));
+    await waitFor(() => expect(exams.applyExamShiftAllocation).toHaveBeenCalledWith("shift-1", expect.objectContaining({ requestId: "request-1", expectedPlanHash: "hash", lecturerIds: ["lec-1"] }), '"s-1"'));
   });
 
   it("counts only seats with a computer, and with a camera when the exam blocks students without one", async () => {
@@ -198,14 +199,14 @@ describe("people step of a shared shift", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(await screen.findByText("Tran Lan"));
     expect(await screen.findByText("3 students need seats, but the rooms have 2.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add people to the shift" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Apply allocation" })).toBeDisabled();
   });
 
   it("asks for a package before any person can be added", async () => {
     exams.getShiftPaperSelection.mockResolvedValue(null);
     show();
     expect(await screen.findByText(/Attach a package to the shift first/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add people to the shift" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Preview Backend allocation" })).toBeDisabled();
     expect(exams.createBulkExamSchedules).not.toHaveBeenCalled();
   });
 });

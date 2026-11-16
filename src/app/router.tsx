@@ -8,6 +8,7 @@ import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
 import { StudentHomeRoute } from "@/features/home/routes/StudentHomeRoute";
+import { PersonalShortcutsRoute } from "@/features/accessibility/routes/PersonalShortcutsRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
 import { PracticeAttemptRoute } from "@/features/practice/routes/PracticeAttemptRoute";
 import { AssistantRoute } from "@/features/assistant/routes/AssistantRoute";
@@ -43,6 +44,7 @@ import { UniversitiesRoute } from "@/features/admin/routes/UniversitiesRoute";
 import { SystemMonitoringRoute } from "@/features/admin/routes/SystemMonitoringRoute";
 import { VoiceSettingsRoute } from "@/features/admin/routes/VoiceSettingsRoute";
 import { ExamShortcutsRoute } from "@/features/admin/routes/ExamShortcutsRoute";
+import { GestureConfigRoute } from "@/features/admin/routes/GestureConfigRoute";
 import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
@@ -85,6 +87,7 @@ import {
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
 import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
+import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
 import { StudentNotificationsRoute } from "@/features/notifications/routes/StudentNotificationsRoute";
@@ -183,6 +186,7 @@ export const router = createBrowserRouter([
                 element: <AttendanceRoute />,
               },
               { path: "/lecturer/profile", element: <LecturerProfileRoute /> },
+              { path: "/lecturer/shortcuts", element: <PersonalShortcutsRoute /> },
               {
                 path: "/lecturer/notifications",
                 element: <NotificationsRoute />,
@@ -212,6 +216,10 @@ export const router = createBrowserRouter([
               {
                 path: "/admin/exam-shortcuts",
                 element: <ExamShortcutsRoute />,
+              },
+              {
+                path: "/admin/gesture-settings",
+                element: <GestureConfigRoute />,
               },
               /*
                * Academic data (departments, majors, subjects, topics, semesters,
@@ -273,6 +281,7 @@ export const router = createBrowserRouter([
               { path: "/examiner/exams", element: <ExamBankRoute /> },
               { path: "/examiner/sealed-papers", element: <SealedPapersRoute /> },
               { path: "/examiner/proctoring-policy", element: <ProctoringPolicyRoute /> },
+              { path: "/examiner/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/examiner/schedule/shared/:shiftId", element: <SharedShiftRoute /> },
               {
                 path: "/examiner/exams/new/readiness",
@@ -350,6 +359,8 @@ export const router = createBrowserRouter([
                 element: <AccessibilitySettingsRoute />,
               },
               { path: "/home", element: <StudentHomeRoute /> },
+              { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
+              { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
               { path: "/progress", element: <ProgressRoute /> },

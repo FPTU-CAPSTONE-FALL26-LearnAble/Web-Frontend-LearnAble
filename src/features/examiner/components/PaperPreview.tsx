@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Eye, ListChecks, Monitor, Sigma } from "lucide-react";
 import type { ExamPaperPreview } from "@/api/exams";
+import { QuestionSequenceAudio } from "@/features/lecturer/questions/components/QuestionSequenceAudio";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
@@ -10,12 +11,6 @@ import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { Textarea } from "@/shared/ui/primitives/textarea";
 
 type PreviewQuestion = ExamPaperPreview["questions"][number];
-
-function Audio({ url, label }: { url: string | null; label: string }) {
-  if (!url) return null;
-  // The words spoken are the question and answer text printed right above the player.
-  return <audio controls preload="none" aria-label={label} src={url} className="mt-3 w-full"><track kind="captions" /></audio>;
-}
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -102,7 +97,7 @@ export function PaperPreview({ preview, paperName, paperCode }: { preview: ExamP
             </div>
             <div className="border-t border-border/70 pt-5">
               <p className="whitespace-pre-wrap break-words text-xl font-semibold leading-relaxed">{question.content ?? "Question content unavailable"}</p>
-              <Audio url={question.audioUrl} label={`Audio for question ${index + 1}`} />
+              <QuestionSequenceAudio questionId={question.questionId} optionIds={question.options.map((option) => option.optionId)} />
             </div>
 
             {question.questionType === "Essay" ? (
@@ -141,7 +136,6 @@ export function PaperPreview({ preview, paperName, paperCode }: { preview: ExamP
                             </span>
                           </Label>
                         </div>
-                        {option.audioUrl ? <div className="px-4 pb-2"><Audio url={option.audioUrl} label={`Audio for answer ${option.label ?? letter(position)}`} /></div> : null}
                       </li>
                     );
                   };

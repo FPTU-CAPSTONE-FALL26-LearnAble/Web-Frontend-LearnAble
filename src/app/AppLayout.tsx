@@ -19,6 +19,7 @@ const navItems = [
   { to: "/results", label: vi.results.title },
   { to: "/notifications", label: vi.notifications.title },
   { to: "/settings/accessibility", label: vi.a11ySettings.title },
+  { to: "/settings/shortcuts", label: "Keyboard shortcuts" },
 ];
 
 /** Layout chung (trừ màn làm bài — màn đó full-screen qua ExamShell). */
@@ -91,7 +92,7 @@ export function AppLayout() {
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 p-6">
         <Outlet context={{ signOut }} />
       </main>
-{/* Always in view. Page keys and keys that work everywhere are separate, labelled groups. */}
+      {/* Always in view. Page keys and keys that work everywhere are separate, labelled groups. */}
       <footer
         role="contentinfo"
         className="sticky bottom-0 flex flex-wrap items-center gap-x-8 gap-y-2 border-t-2 border-border bg-background px-6 py-3"

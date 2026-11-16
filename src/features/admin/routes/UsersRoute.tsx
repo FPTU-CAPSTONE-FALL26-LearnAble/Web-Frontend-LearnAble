@@ -170,6 +170,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
       page,
       size,
       isStaff,
+      scope.universityId,
     ]),
     queryFn: () =>
       getAdminUsers({
@@ -183,7 +184,10 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
       }),
   });
   useExpiredAdminSession(list.error);
-  const rows = list.data?.items ?? [];
+  const rows = (list.data?.items ?? []).filter(
+    (row) =>
+      !isStaff || row.universityId === scope.universityId,
+  );
 
   const closeForm = () => {
     setCreating(false);
@@ -201,7 +205,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
       const account =
         createdAccount ??
         (await createUser({
-          universityId: draft.universityId,
+          universityId: isStaff ? scope.universityId : draft.universityId,
           userCode: draft.userCode.trim(),
           fullName: draft.fullName.trim(),
           email: draft.email.trim(),
@@ -320,7 +324,8 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
 
   const submit = () => {
     const found: string[] = [];
-    if (creating && !draft.universityId) found.push("University is required.");
+    if (creating && !(isStaff ? scope.universityId : draft.universityId))
+      found.push("University is required.");
     if (!draft.fullName.trim()) found.push("Full name is required.");
     if (isStaff && staffDateError) found.push(staffDateError);
     if (creating) {
@@ -489,8 +494,8 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.userId}>
-              <TableCell className="font-bold tabular-nums">
-                {row.userCode}
+              <TableCell>
+                <span className="font-bold tabular-nums">{row.userCode}</span>
               </TableCell>
               <TableCell className="min-w-64 max-w-sm whitespace-normal">
                 <p className="font-bold leading-relaxed">{row.fullName}</p>
@@ -522,8 +527,8 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
                   tone={row.status === "Active" ? "success" : "neutral"}
                 />
               </TableCell>
-              <TableCell className="tabular-nums">
-                {formatDate(row.createdAt)}
+              <TableCell>
+                <span className="tabular-nums">{formatDate(row.createdAt)}</span>
               </TableCell>
               <TableCell>
                 <div className="flex min-w-max flex-nowrap gap-2">
@@ -650,7 +655,7 @@ export function UsersRoute({ fixedRole }: UsersRouteProps = {}) {
       >
         <UniversityField
           value={draft.universityId}
-          selectable={creating}
+          selectable={creating && !isStaff}
           onChange={(value) =>
             setDraft((old) => ({ ...old, universityId: value }))
           }

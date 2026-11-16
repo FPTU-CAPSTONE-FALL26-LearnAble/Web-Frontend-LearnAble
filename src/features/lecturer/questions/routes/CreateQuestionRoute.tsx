@@ -59,6 +59,7 @@ import { toast } from "@/shared/ui/primitives/toast";
 import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
 import { getExamTypes } from "@/api/exams";
 import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
+import { QuestionImagesManager } from "@/features/lecturer/questions/components/QuestionImagesManager";
 
 export function CreateQuestionRoute() {
   const studioBodyRef = useRef<HTMLDivElement>(null);
@@ -627,6 +628,7 @@ export function CreateQuestionRoute() {
                     : "Optional. Upload an MP3 only if you want to provide your own recording."}
                 </p>
               </div>
+              {editingId ? <QuestionImagesManager questionId={editingId} /> : <p className="rounded-xl border border-border bg-secondary p-4 text-sm text-muted-foreground">Save the question first, then reopen it to add images and accessible descriptions.</p>}
             </div>
             <QuestionTypeForm
               draft={draft}

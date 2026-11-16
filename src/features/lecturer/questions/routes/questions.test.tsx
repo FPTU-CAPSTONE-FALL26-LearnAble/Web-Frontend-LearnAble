@@ -327,7 +327,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     await user.click(within(tracker).getByRole("button", { name: "Close activation progress" }));
     expect(screen.queryByRole("region", { name: "Bulk activation progress" })).not.toBeInTheDocument();
   });
-  it("previews a question with its answers and audio player", async () => {
+  it("previews a question with one sequential audio player", async () => {
     const user = userEvent.setup();
     lecturerApi.getQuestionAudio.mockResolvedValue({ audio: {}, url: "https://audio.test/question.mp3", expiresAt: "2026-11-10T00:10:00Z" });
     lecturerApi.getQuestionOptionAudio.mockRejectedValue(new Error("no audio"));
@@ -340,8 +340,10 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     expect(within(dialog).getByText("Live review")).toBeInTheDocument();
     expect(within(dialog).queryByText("Student experience")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("Preview mode")).not.toBeInTheDocument();
-    await waitFor(() => expect(within(dialog).getByLabelText("Question audio")).toHaveAttribute("src", "https://audio.test/question.mp3"));
-    expect((await within(dialog).findAllByText("No audio file yet.")).length).toBe(2);
+    await waitFor(() => expect(within(dialog).getByLabelText("Question and all answer options")).toHaveAttribute("src", "https://audio.test/question.mp3"));
+    expect(within(dialog).getByText("Now playing: Question")).toBeInTheDocument();
+    expect(within(dialog).getByText(/2 audio segments are not ready and will be skipped/)).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Audio for answer A")).not.toBeInTheDocument();
     const order = within(dialog).getByRole("region", { name: "Screen reader reading order" });
     expect(within(order).getByText("Original editable question")).toBeInTheDocument();
     expect(within(order).getByText("2 answer options. Select one answer.")).toBeInTheDocument();

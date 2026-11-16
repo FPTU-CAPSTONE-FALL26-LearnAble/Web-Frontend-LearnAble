@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control -- Radix checkbox labels provide the accessible control name. */
 import { useEffect, useRef, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowRight, BookOpenCheck, Camera, FileText, Shuffle } from "lucide-react";
+import { ArrowRight, BookOpenCheck, FileText, Shuffle } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { getSemesters, getSubjects } from "@/api/catalog";
 import { createExamPaper, createExamSubject, getExamTypes, updateExamPaper, updateExamSubject } from "@/api/exams";
@@ -38,13 +38,13 @@ function numberText(value: number) {
   return Number.isFinite(value) ? String(value) : "";
 }
 
-function SectionTitle({ step, title, hint }: { step: number; title: string; hint: string }) {
+function SectionTitle({ step, title, hint }: { step: number; title: string; hint?: string }) {
   return (
     <div className="flex items-start gap-3">
       <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{step}</span>
       <div>
         <h3 className="text-base font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{hint}</p>
+        {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
       </div>
     </div>
   );
@@ -170,23 +170,23 @@ export function ExamSetupRoute() {
     ["Total score", plan.complete ? `${plan.totalScore} points` : "Not planned"],
   ];
   return <main className="space-y-6">
-    <PreparationHeader title={editing ? "Edit draft exam and paper" : "Create exam and paper"} description={editing ? "Change the exam rules and the paper details. The subject, semester and exam type cannot change; create a new exam for that." : "Set the exam rules and create its draft paper. You can select questions after this step is complete."} />
+    <PreparationHeader title={editing ? "Edit draft exam and paper" : "Create exam and paper"} />
     <PreparationSteps steps={steps} current={0} />
     {error ? <ApiNotice tone="error">We couldn’t create this exam. Check the required subject, semester, and exam type, then try again.</ApiNotice> : null}
     <form className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,.8fr)]" onSubmit={(event) => { event.preventDefault(); if (ready) create.mutate(); }}>
-      <section className="examiner-major space-y-8 p-6">
-        <div className="flex items-center gap-3"><BookOpenCheck className="size-5 text-primary" aria-hidden /><div><h2 className="text-xl font-semibold">Exam configuration</h2><p className="text-sm text-muted-foreground">Subject, semester, type and assessment policy.</p></div></div>
+      <section className="space-y-6 rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center gap-3 border-b border-border pb-5"><BookOpenCheck className="size-5 text-primary" aria-hidden /><div><h2 className="text-xl font-semibold">Exam configuration</h2><p className="text-sm text-muted-foreground">Subject, semester, type and assessment policy.</p></div></div>
         {pending ? <div role="status" aria-label="Loading academic catalogs" className="animate-pulse space-y-4"><div className="h-12 rounded-lg bg-muted" /><div className="h-12 rounded-lg bg-muted" /><div className="h-32 rounded-lg bg-muted" /></div> : <>
-          <div className="space-y-4">
-            <SectionTitle step={1} title="What is being examined" hint="The subject, the semester and the kind of exam." />
+          <div className="space-y-4 rounded-xl border border-border bg-background p-5">
+            <SectionTitle step={1} title="What is being examined" />
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2"><Field label="Subject"><Select disabled={editing} value={draft.subjectId} onValueChange={(subjectId) => updateConfiguration({ subjectId })}><SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger><SelectContent>{subjects.data?.items.map((item) => <SelectItem key={item.subjectId} value={item.subjectId}>{item.subjectCode} · {item.subjectNameEn ?? "Unnamed subject"}</SelectItem>)}</SelectContent></Select></Field></div>
               <Field label="Semester"><Select disabled={editing} value={draft.semesterId} onValueChange={(semesterId) => updateConfiguration({ semesterId })}><SelectTrigger className="w-full"><SelectValue placeholder="Select semester" /></SelectTrigger><SelectContent>{semesters.data?.items.map((item) => <SelectItem key={item.semesterId} value={item.semesterId}>{item.semesterName} · {item.academicYear}</SelectItem>)}</SelectContent></Select></Field>
               <Field label="Exam type"><Select disabled={editing} value={draft.examTypeId} onValueChange={(examTypeId) => updateConfiguration({ examTypeId })}><SelectTrigger className="w-full"><SelectValue placeholder="Select exam type" /></SelectTrigger><SelectContent>{buildExamTypeOptions(examTypes.data ?? []).map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></Field>
             </div>
           </div>
-          <div className="space-y-4 border-t border-border pt-6">
-            <SectionTitle step={2} title="Exam details" hint="What students see, and how long and how well they must do." />
+          <div className="space-y-4 rounded-xl border border-border bg-background p-5">
+            <SectionTitle step={2} title="Exam details" />
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2"><Field label="Exam name"><Input value={draft.name} onChange={(event) => updateConfiguration({ name: event.target.value })} placeholder="SWE201 Final Examination" /></Field></div>
               <Field label="Duration (minutes)"><Input type="number" inputMode="numeric" min={1} value={numberText(draft.durationMinutes)} onChange={(event) => updateConfiguration({ durationMinutes: Number(event.target.value) })} onBlur={(event) => { event.target.value = numberText(draft.durationMinutes); }} /></Field>
@@ -194,26 +194,22 @@ export function ExamSetupRoute() {
               <Field label="Number of questions"><Input type="number" inputMode="numeric" min={1} step={1} value={blankIfZero(draft.plannedQuestionCount)} placeholder="For example 40" onChange={(event) => setDraft((current) => ({ ...current, plannedQuestionCount: Math.max(0, Math.floor(Number(event.target.value) || 0)) }))} /></Field>
               <Field label="Points per question"><Input type="number" inputMode="decimal" min={0} step="any" value={blankIfZero(draft.pointsPerQuestion)} placeholder="For example 0.25" onChange={(event) => setDraft((current) => ({ ...current, pointsPerQuestion: Math.max(0, Number(event.target.value) || 0) }))} /></Field>
               <div className="sm:col-span-2" role="status" aria-live="polite">
-                {plan.complete ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{draft.plannedQuestionCount} questions × {draft.pointsPerQuestion} points = <strong>{plan.totalScore} points in total</strong>{plan.passPercent !== null ? `. A pass score of ${draft.passScore} is ${plan.passPercent}% of the total.` : "."}</p> : <p className="text-sm text-muted-foreground">Fill in both to see the total score of the exam. This is a plan for the next step; the Backend adds up the real score from the questions you choose.</p>}
+                {plan.complete ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{draft.plannedQuestionCount} questions × {draft.pointsPerQuestion} points = <strong>{plan.totalScore} points in total</strong>{plan.passPercent !== null ? `. A pass score of ${draft.passScore} is ${plan.passPercent}% of the total.` : "."}</p> : null}
                 {plan.warnings.map((warning) => <p key={warning} className="mt-2 rounded-xl border border-warning bg-warning p-3 text-sm text-warning-foreground">{warning}</p>)}
               </div>
               <div className="sm:col-span-2"><Field label="Student instructions" hint="Shown to students before the exam begins."><Textarea value={draft.instructions} onChange={(event) => updateConfiguration({ instructions: event.target.value })} placeholder="For example: no materials are allowed. Read each question carefully." /></Field></div>
             </div>
           </div>
-          <fieldset className="space-y-4 border-t border-border pt-6">
+          <fieldset className="space-y-4 rounded-xl border border-border bg-background p-5">
             <legend className="sr-only">Assessment policy</legend>
-            <SectionTitle step={3} title="Assessment policy" hint="How questions appear, how they are scored, and the camera rule." />
+            <SectionTitle step={3} title="Assessment policy" hint="How questions appear and how they are scored." />
             <div className="grid gap-3 sm:grid-cols-2">
               <PolicyToggle icon={<Shuffle className="size-4 text-primary" aria-hidden />} title="Shuffle questions" description="Each student sees the questions in a different order." checked={draft.shuffleQuestions} onChange={(shuffleQuestions) => updateConfiguration({ shuffleQuestions })} />
               <PolicyToggle icon={<Shuffle className="size-4 text-primary" aria-hidden />} title="Shuffle answer options" description="The answer choices are mixed for every student." checked={draft.shuffleOptions} onChange={(shuffleOptions) => updateConfiguration({ shuffleOptions })} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Scoring policy" hint="The current Backend supports All-or-Nothing scoring."><Select value={draft.scoringPolicy} onValueChange={(scoringPolicy: "AllOrNothing") => updateConfiguration({ scoringPolicy })}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="AllOrNothing">All-or-Nothing</SelectItem></SelectContent></Select></Field>
-            </div>
-            <div className="space-y-3">
-              <PolicyToggle icon={<Camera className="size-4 text-primary" aria-hidden />} title="Require a camera for this exam" description="Students are asked to turn on their camera before they start." checked={draft.cameraRequired} onChange={(cameraRequired) => updateConfiguration({ cameraRequired })} />
-              {draft.cameraRequired ? <div className="sm:max-w-sm"><Field label="If a camera is unavailable"><Select value={draft.cameraUnavailablePolicy} onValueChange={(cameraUnavailablePolicy: "Block" | "AllowWithFlag" | "Allow") => updateConfiguration({ cameraUnavailablePolicy })}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Block">Block exam entry</SelectItem><SelectItem value="AllowWithFlag">Allow and flag for review</SelectItem><SelectItem value="Allow">Allow without a flag</SelectItem></SelectContent></Select></Field></div> : <p className="text-sm text-muted-foreground">No camera rule applies to this exam.</p>}
-            </div>
+            <p className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+              Camera and proctoring rules are configured by the Examiner after the paper is handed over.
+            </p>
           </fieldset>
         </>}
       </section>

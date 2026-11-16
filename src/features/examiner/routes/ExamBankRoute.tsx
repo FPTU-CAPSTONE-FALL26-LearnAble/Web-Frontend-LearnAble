@@ -123,7 +123,7 @@ function Metric({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="examiner-panel p-5">
+    <div className="rounded-xl bg-muted/40 p-5">
       <div className="flex items-start justify-between">
         <p className="examiner-kicker">{label}</p>
         <span
@@ -281,7 +281,7 @@ export function ExamBankRoute() {
           </>
         }
       />
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Exam paper overview" className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Valid exam packages"
           value={`${(bank.data ?? []).filter((paper) => paper.status === "Published").length}/${bank.data?.length ?? 0}`}

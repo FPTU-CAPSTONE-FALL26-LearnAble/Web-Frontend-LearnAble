@@ -14,6 +14,7 @@ import {
   TimerReset,
   Bell,
   BellRing,
+  Keyboard,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ const dashboard: NavigationItem = {
 };
 
 const notifications: NavigationItem = { label: "Notifications", path: "/examiner/notifications", icon: Bell };
+const shortcuts: NavigationItem = { label: "Keyboard shortcuts", path: "/examiner/shortcuts", icon: Keyboard };
 
 const groups: NavigationGroup[] = [
   {
@@ -210,6 +212,7 @@ export function ExaminerSidebar({
           <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
           <SidebarRailLink to={notifications.path} label={notifications.label} icon={Bell} end badge={unreadCount} />
           <SidebarRailLink to="/examiner/notifications/manage" label="Send notifications" icon={BellRing} end />
+          <SidebarRailLink to={shortcuts.path} label={shortcuts.label} icon={shortcuts.icon} end />
           {groups.map((group) => (
             <Fragment key={group.id}>
               <SidebarRailDivider />
@@ -253,6 +256,7 @@ export function ExaminerSidebar({
         </NavLink>
         <NavLink to={notifications.path} end onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><Bell className="size-5 shrink-0" aria-hidden /><span className="min-w-0 flex-1">{notifications.label}</span>{unreadNotifications.data?.unreadCount ? <span aria-label={`${unreadNotifications.data.unreadCount} unread notifications`} className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">{unreadNotifications.data.unreadCount > 99 ? "99+" : unreadNotifications.data.unreadCount}</span> : null}</NavLink>
         <NavLink to="/examiner/notifications/manage" onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><BellRing className="size-5 shrink-0" aria-hidden /><span>Send notifications</span></NavLink>
+        <NavLink to={shortcuts.path} onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><Keyboard className="size-5 shrink-0" aria-hidden /><span>{shortcuts.label}</span></NavLink>
         {groups.map((group) => (
           <NavigationGroup
             key={group.id}

@@ -45,10 +45,20 @@ const invigilationApi = vi.hoisted(() => ({
   getInvigilationPeriods: vi.fn(),
   getInvigilationPeriod: vi.fn(),
 }));
+const lecturerApi = vi.hoisted(() => ({
+  validateQuestionImport: vi.fn(),
+  importQuestions: vi.fn(),
+  queueMissingSubjectAudioGeneration: vi.fn(),
+  downloadQuestionImportTemplate: vi.fn(),
+}));
 
 vi.mock("@/api/catalog", () => api);
 vi.mock("@/api/exams", () => examApi);
 vi.mock("@/api/invigilation", () => invigilationApi);
+vi.mock("@/api/lecturer", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/lecturer")>()),
+  ...lecturerApi,
+}));
 vi.mock("@/api/admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/admin")>()),
   getRoomSeats: adminApi.getRoomSeats,
@@ -164,6 +174,22 @@ describe("Examiner routes", () => {
     examApi.createExamSchedule.mockImplementation(async ({ examShiftId }: { examShiftId: string }) => ({ examScheduleId: `schedule-${examShiftId}` }));
     examApi.cancelExamShift.mockResolvedValue(undefined);
     examApi.cancelExamSchedule.mockResolvedValue(undefined);
+    lecturerApi.validateQuestionImport.mockResolvedValue({
+      templateVersion: 3,
+      fileSha256: "file-hash",
+      subjectId: "subject-1",
+      totalRows: 2,
+      validRows: 2,
+      invalidRows: 0,
+      canImport: true,
+      requiresWarningAcknowledgement: false,
+      rows: [],
+      errors: [],
+      warnings: [],
+      warningFingerprint: "warning-hash",
+    });
+    lecturerApi.importQuestions.mockResolvedValue({ subjectId: "subject-1", importedQuestions: 2, importedOptions: 8, status: "Draft", items: [] });
+    lecturerApi.queueMissingSubjectAudioGeneration.mockResolvedValue({ requeued: 0, queued: 10 });
   });
 
   function renderRoute(node: React.ReactNode, entries = ["/"]) {
@@ -208,6 +234,32 @@ describe("Examiner routes", () => {
     expect(examApi.getAvailableExamQuestions).toHaveBeenCalledWith("paper-1", {
       EligibleOnly: false,
     });
+  });
+
+  it("imports an Excel question list without leaving the paper builder", async () => {
+    sessionStorage.setItem("learnable:examiner:exam-preparation-v2", JSON.stringify({ examPaperId: "paper-1", paperETag: "etag-1", examTypeId: "type-1", subjectId: "subject-1", selectedQuestions: [] }));
+    renderRoute(<QuestionSelectionRoute />);
+    await screen.findByText("Which process is iterative?", { exact: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Import Excel" }));
+    const dialog = await screen.findByRole("dialog", { name: "Import questions for this paper" });
+    fireEvent.change(within(dialog).getByLabelText("Choose question workbook"), {
+      target: { files: [new File(["questions"], "SWE201-questions.xlsx")] },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Validate workbook" }));
+
+    expect(await within(dialog).findByText("2 of 2 rows are valid.")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Import draft questions" }));
+
+    await waitFor(() => expect(lecturerApi.importQuestions).toHaveBeenCalledWith(
+      "subject-1",
+      expect.objectContaining({ name: "SWE201-questions.xlsx" }),
+      expect.objectContaining({ fileSha256: "file-hash" }),
+      false,
+    ));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Import questions for this paper" })).not.toBeInTheDocument());
+    expect(lecturerApi.queueMissingSubjectAudioGeneration).toHaveBeenCalledWith("subject-1");
+    expect(examApi.getAvailableExamQuestions.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows how balanced the selected questions are by difficulty and type", async () => {
@@ -530,13 +582,11 @@ describe("Examiner routes", () => {
     expect(screen.getByLabelText("Paper name")).toHaveValue("SWE201 Final FA26 Paper 1");
   });
 
-  it("shows the camera fallback only when a camera is required", async () => {
-    sessionStorage.setItem("learnable:examiner:exam-preparation-v2", JSON.stringify({ subjectId: "subject-1", semesterId: "semester-1", examTypeId: "type-1", cameraRequired: false }));
+  it("leaves camera and proctoring rules to the Examiner", async () => {
     renderRoute(<ExamSetupRoute />);
-    expect(await screen.findByText("No camera rule applies to this exam.")).toBeInTheDocument();
+    expect(await screen.findByText(/Camera and proctoring rules are configured by the Examiner/)).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /Require a camera for this exam/ })).not.toBeInTheDocument();
     expect(screen.queryByText("If a camera is unavailable")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("checkbox", { name: /Require a camera for this exam/ }));
-    expect(await screen.findByText("If a camera is unavailable")).toBeInTheDocument();
   });
 
   it("does not render fixture candidates when no routed room id is available", async () => {

@@ -10,6 +10,7 @@ import {
   Bell,
   LayoutDashboard,
   LogOut,
+  Keyboard,
 } from "lucide-react";
 import type { User } from "@/api/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +42,13 @@ const questionLinks = [
   { label: "Practice Questions", path: "/lecturer/questions/practice", icon: GraduationCap },
 ];
 
+const examLinks = [
+  { label: "Exam Papers", path: "/lecturer/exam-papers", icon: FileStack },
+  { label: "Sealed Packages", path: "/lecturer/sealed-papers", icon: PackageCheck },
+  { label: "Exam Schedule", path: "/lecturer/exams", icon: CalendarDays },
+  { label: "Essay Grading", path: "/lecturer/grading", icon: ClipboardCheck },
+];
+
 const navigation = [
   {
     label: "Dashboard",
@@ -54,31 +62,8 @@ const navigation = [
     path: "/lecturer/materials",
     available: true,
   },
-  {
-    label: "Exam Papers",
-    icon: FileStack,
-    path: "/lecturer/exam-papers",
-    available: true,
-  },
-  {
-    label: "Sealed Packages",
-    icon: PackageCheck,
-    path: "/lecturer/sealed-papers",
-    available: true,
-  },
-  {
-    label: "Exam Schedule",
-    icon: CalendarDays,
-    path: "/lecturer/exams",
-    available: true,
-  },
-  {
-    label: "Essay Grading",
-    icon: ClipboardCheck,
-    path: "/lecturer/grading",
-    available: true,
-  },
   { label: "Notifications", icon: Bell, path: "/lecturer/notifications", available: true },
+  { label: "Keyboard Shortcuts", icon: Keyboard, path: "/lecturer/shortcuts", available: true },
 ];
 
 export function LecturerSidebar({
@@ -90,15 +75,20 @@ export function LecturerSidebar({
   onToggleCollapsed,
 }: LecturerSidebarProps) {
   const questionActive = activePath.startsWith("/lecturer/questions");
+  const examActive = examLinks.some(({ path }) => activePath === path || activePath.startsWith(`${path}/`));
   const unreadNotifications = useQuery({
     queryKey: ["my-notifications", "unread-count"],
     queryFn: getUnreadNotificationCount,
     staleTime: 30_000,
   });
   const [questionsOpen, setQuestionsOpen] = useState(questionActive);
+  const [examsOpen, setExamsOpen] = useState(examActive);
   useEffect(() => {
     if (questionActive) setQuestionsOpen(true);
   }, [questionActive]);
+  useEffect(() => {
+    if (examActive) setExamsOpen(true);
+  }, [examActive]);
   const initials =
     user.fullName
       .split(/\s+/)
@@ -122,6 +112,10 @@ export function LecturerSidebar({
           <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
           <SidebarRailDivider />
           {questionLinks.map(({ label, path, icon }) => (
+            <SidebarRailLink key={path} to={path} label={label} icon={icon} />
+          ))}
+          <SidebarRailDivider />
+          {examLinks.map(({ label, path, icon }) => (
             <SidebarRailLink key={path} to={path} label={label} icon={icon} />
           ))}
           <SidebarRailDivider />
@@ -151,14 +145,14 @@ export function LecturerSidebar({
     );
   }
   return (
-    <div className="lecturer-scroll flex h-full flex-col overflow-y-auto bg-card px-4 pb-4 pt-4">
+    <div className="lecturer-scroll flex h-full flex-col overflow-y-auto bg-card px-3 pb-3 pt-3">
       <div>
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-1 pb-4">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-1 pb-3">
           <BrandIdentity />
           {onToggleCollapsed ? <SidebarCollapseButton collapsed={false} onToggle={onToggleCollapsed} /> : null}
         </div>
       </div>
-      <nav aria-label="Lecturer navigation" className="mt-5 space-y-1">
+      <nav aria-label="Lecturer navigation" className="mt-3 space-y-0.5">
         {navigation.slice(0, 1).map((item) => {
           const Icon = item.icon;
           const active =
@@ -166,7 +160,7 @@ export function LecturerSidebar({
             (item.path === activePath ||
               activePath.startsWith(`${item.path}/`));
           const classes = cn(
-            "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+            "flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
             active
               ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
               : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -191,7 +185,7 @@ export function LecturerSidebar({
             aria-controls="lecturer-question-navigation"
             onClick={() => setQuestionsOpen((value) => !value)}
             className={cn(
-              "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+              "flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
               questionActive
                 ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
                 : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -210,7 +204,7 @@ export function LecturerSidebar({
           {questionsOpen ? (
             <div
               id="lecturer-question-navigation"
-              className="ml-5 mt-1 space-y-1 border-l border-border pl-3"
+              className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2"
             >
               {questionLinks.map((item) => {
                 const Icon = item.icon;
@@ -221,7 +215,7 @@ export function LecturerSidebar({
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
+                        "flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold transition-colors",
                         isActive
                           ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
                           : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -236,6 +230,32 @@ export function LecturerSidebar({
             </div>
           ) : null}
         </div>
+        <div>
+          <button
+            type="button"
+            aria-expanded={examsOpen}
+            aria-controls="lecturer-exam-navigation"
+            onClick={() => setExamsOpen((value) => !value)}
+            className={cn(
+              "flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
+              examActive
+                ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+            )}
+          >
+            <FileStack aria-hidden className="size-5 shrink-0" />
+            <span className="flex-1">Exam operations</span>
+            <ChevronDown aria-hidden className={cn("size-4 transition-transform duration-200 motion-reduce:transition-none", examsOpen && "rotate-180")} />
+          </button>
+          {examsOpen ? (
+            <div id="lecturer-exam-navigation" className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
+              {examLinks.map((item) => {
+                const Icon = item.icon;
+                return <NavLink key={item.path} to={item.path} onClick={onNavigate} className={({ isActive }) => cn("flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold transition-colors", isActive ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground" : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground")}><Icon aria-hidden className="size-4 shrink-0" />{item.label}</NavLink>;
+              })}
+            </div>
+          ) : null}
+        </div>
         {navigation.slice(1).map((item) => {
           const Icon = item.icon;
           const active =
@@ -246,7 +266,7 @@ export function LecturerSidebar({
               to={item.path}
               onClick={onNavigate}
               className={cn(
-                "flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+                "flex min-h-11 w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors",
                 active
                   ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
                   : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -259,8 +279,8 @@ export function LecturerSidebar({
           );
         })}
       </nav>
-      <div className="mt-auto pt-8">
-        <Separator className="mb-4" />
+      <div className="mt-auto pt-4">
+        <Separator className="mb-3" />
         <div className="flex items-center gap-2 px-1">
           <NavLink
             to="/lecturer/profile"

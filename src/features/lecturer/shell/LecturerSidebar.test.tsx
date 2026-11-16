@@ -101,3 +101,20 @@ describe("LecturerSidebar question management", () => {
     expect(screen.getByRole("link", { name: "Exam Questions" })).toBeVisible();
   });
 });
+
+describe("LecturerSidebar exam operations", () => {
+  it("keeps exam tools compact and opens the active group automatically", async () => {
+    const actor = userEvent.setup();
+    renderSidebar("/lecturer/dashboard");
+    const group = screen.getByRole("button", { name: "Exam operations" });
+    expect(group).toHaveAttribute("aria-expanded", "false");
+    await actor.click(group);
+    expect(screen.getByRole("link", { name: "Sealed Packages" })).toBeVisible();
+  });
+
+  it("shows the current exam destination without another click", () => {
+    renderSidebar("/lecturer/sealed-papers");
+    expect(screen.getByRole("button", { name: "Exam operations" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Sealed Packages" })).toHaveAttribute("aria-current", "page");
+  });
+});
