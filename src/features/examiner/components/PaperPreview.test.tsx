@@ -1,7 +1,20 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
 import { examPaperPreviewSchema } from "@/api/exams";
 import { PaperPreview } from "./PaperPreview";
+
+const audioApi = vi.hoisted(() => ({
+  getQuestionAudio: vi.fn(async (id: string) => ({ url: `https://audio.test/${id}.mp3` })),
+  getQuestionOptionAudio: vi.fn(async (id: string) => ({ url: `https://audio.test/${id}.mp3` })),
+}));
+
+vi.mock("@/api/lecturer", () => audioApi);
+
+function renderPreview(value = preview, paperCode = "") {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><PaperPreview preview={value} paperName="CSD201 Final" paperCode={paperCode} /></QueryClientProvider>);
+}
 
 const preview = examPaperPreviewSchema.parse({
   examPaperId: "paper-1",
@@ -28,14 +41,15 @@ const preview = examPaperPreviewSchema.parse({
 });
 
 describe("PaperPreview", () => {
-  it("shows the paper facts, one question at a time, and a map to move between them", () => {
-    render(<PaperPreview preview={preview} paperName="CSD201 Final" paperCode="CSD201-FINAL-01" />);
+  it("shows the paper facts, one question at a time, and a map to move between them", async () => {
+    renderPreview(preview, "CSD201-FINAL-01");
     expect(screen.getByRole("heading", { name: "CSD201 Final" })).toBeInTheDocument();
     expect(screen.getByText("90 minutes")).toBeInTheDocument();
     expect(screen.getByText("No materials are allowed.")).toBeInTheDocument();
     expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
     expect(screen.getByText("Which structure is last in, first out?")).toBeInTheDocument();
-    expect(screen.getByLabelText("Audio for question 1")).toHaveAttribute("src", "https://audio.test/q1.mp3");
+    expect(await screen.findByLabelText("Question and all answer options")).toHaveAttribute("src", "https://audio.test/q-1.mp3");
+    expect(screen.getAllByLabelText("Question and all answer options")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
@@ -45,14 +59,14 @@ describe("PaperPreview", () => {
   });
 
   it("marks the correct answers, and hides them when asked", () => {
-    render(<PaperPreview preview={preview} paperName="CSD201 Final" paperCode="" />);
+    renderPreview();
     expect(screen.getByText("Correct answer")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Show correct answers/ }));
     expect(screen.queryByText("Correct answer")).not.toBeInTheDocument();
   });
 
   it("keeps an answer given in the preview and shows it as answered on the map", () => {
-    render(<PaperPreview preview={preview} paperName="CSD201 Final" paperCode="" />);
+    renderPreview();
     fireEvent.click(screen.getByRole("radio", { name: /Queue/ }));
     expect(screen.getByRole("button", { name: /^Question 1 of 2.*answered/ })).toBeInTheDocument();
     expect(screen.getByText("1 of 2 answered in this preview")).toBeInTheDocument();
@@ -62,7 +76,7 @@ describe("PaperPreview", () => {
   });
 
   it("shows the reference answer for an essay while correct answers are shown", () => {
-    render(<PaperPreview preview={preview} paperName="CSD201 Final" paperCode="" />);
+    renderPreview();
     fireEvent.click(screen.getByRole("button", { name: /^Question 2 of 2/ }));
     const essay = screen.getByRole("article", { name: "Question 2" });
     expect(within(essay).getByLabelText("Your response")).toBeInTheDocument();
@@ -70,7 +84,7 @@ describe("PaperPreview", () => {
   });
 
   it("says so when the paper has no questions", () => {
-    render(<PaperPreview preview={{ ...preview, questions: [] }} paperName="Empty" paperCode="" />);
+    renderPreview({ ...preview, questions: [] });
     expect(screen.getByText("This paper has no questions yet.")).toBeInTheDocument();
   });
 });

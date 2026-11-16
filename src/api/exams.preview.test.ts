@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { examPaperPreviewSchema } from "./exams";
+import { examPaperPreviewSchema, examPaperSchema } from "./exams";
 
 // The shape the Backend sends: the question text sits inside "snapshot", the order, score and answers beside it.
 const fromBackend = {
@@ -59,4 +59,26 @@ describe("exam paper preview schema", () => {
     const bare = examPaperPreviewSchema.parse({ ...fromBackend, questions: [{ examQuestionId: "eq-9", displayOrder: 2, maxScore: 2 }] });
     expect(bare.questions[0]).toMatchObject({ questionId: "eq-9", content: null, options: [] });
   });
+});
+it("reads draft paper question content from the Backend snapshot", () => {
+  const paper = examPaperSchema.parse({
+    examPaperId: "paper-1",
+    examSubjectId: "subject-1",
+    paperCode: "AAL301-FINAL-SU27-01",
+    name: "AAL301 Final SU27 Paper 1",
+    version: 1,
+    status: "Draft",
+    publishedAt: null,
+    createdAt: "2027-05-01T00:00:00Z",
+    totalScore: 10,
+    questions: [{
+      examQuestionId: "exam-question-1",
+      questionId: "question-1",
+      displayOrder: 1,
+      maxScore: 1,
+      snapshot: { content: "What is accessibility?", questionType: "Single", difficulty: "Easy" },
+    }],
+  });
+
+  expect(paper.questions[0]).toMatchObject({ content: "What is accessibility?", questionType: "Single", difficulty: "Easy" });
 });

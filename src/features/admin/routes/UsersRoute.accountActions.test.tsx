@@ -25,10 +25,10 @@ vi.mock("@/api/admin", async (importOriginal) => ({ ...(await importOriginal<typ
 import { UsersRoute } from "./UsersRoute";
 
 const page = (items: unknown[]) => ({ items, pageNumber: 1, pageSize: 10, totalCount: items.length, totalPages: 1, hasPreviousPage: false, hasNextPage: false });
-const account = (userId: string, fullName: string, role: string, status = "Active") => ({
+const account = (userId: string, fullName: string, role: string, status = "Active", universityId = "uni-1") => ({
   userId,
   revision: `${userId}-rev`,
-  universityId: "uni-1",
+  universityId,
   userCode: userId.toUpperCase(),
   email: `${userId}@fpt.edu.vn`,
   fullName,
@@ -46,6 +46,7 @@ const accounts = [
   account("u3", "Lecturer Three", "Lecturer"),
   account("u4", "Admin Four", "Admin"),
   account("u5", "Staff Five", "Staff"),
+  account("u6", "Other University Student", "Student", "Active", "uni-2"),
 ];
 
 function renderAs(role: "Staff" | "Admin", id = "viewer-1") {
@@ -79,6 +80,15 @@ beforeEach(() => {
 });
 
 describe("Account actions on the Users screen", () => {
+  it("does not show another university's accounts to Staff", async () => {
+    renderAs("Staff");
+    expect(await screen.findByText("Student One")).toBeInTheDocument();
+    expect(screen.queryByText("Other University Student")).not.toBeInTheDocument();
+    expect(api.getAdminUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ UniversityId: "uni-1" }),
+    );
+  });
+
   it("offers Reactivate only on inactive accounts a Staff member may manage", async () => {
     renderAs("Staff");
     expect(names(await rowOf("Student Two"))).toContain("Reactivate");

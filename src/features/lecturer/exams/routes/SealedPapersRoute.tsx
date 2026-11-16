@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackageCheck } from "lucide-react";
-import { useLocation } from "react-router";
-import { getMySealedPapers, getSealedExamPapers, handoverSealedPaper, withdrawSealedPaper, type SealedPaper } from "@/api/exams";
+import { useLocation, useNavigate } from "react-router";
+import { createDraftFromSealedPaper, getMySealedPapers, getSealedExamPapers, handoverSealedPaper, withdrawSealedPaper, type SealedPaper } from "@/api/exams";
 import { describeError } from "@/app/providers";
 import { SealedPackagePreview } from "@/features/lecturer/exams/components/SealedPackagePreview";
 import { Badge } from "@/shared/ui/primitives/badge";
@@ -24,6 +24,7 @@ const when = (value: string) => new Date(value).toLocaleString();
 /** Sealed packages. A lecturer hands them over or takes them back; an examiner only sees those handed over. */
 export function SealedPapersRoute() {
   const lecturer = !useLocation().pathname.startsWith("/examiner");
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [withdrawing, setWithdrawing] = useState<SealedPaper | null>(null);
   const [previewing, setPreviewing] = useState<SealedPaper | null>(null);
@@ -49,6 +50,15 @@ export function SealedPapersRoute() {
       setWithdrawing(null);
       toast({ title: "The package could not be withdrawn", description: describeError(error), variant: "error" });
     },
+  });
+  const createDraft = useMutation({
+    mutationFn: (paper: SealedPaper) => createDraftFromSealedPaper(paper.paperId, paper.versionId),
+    onSuccess: async () => {
+      toast({ title: "New draft created", description: "The sealed package stays locked. You can now edit the new paper draft." });
+      await queryClient.invalidateQueries({ queryKey: ["exam-papers"] });
+      void navigate("/lecturer/exam-papers");
+    },
+    onError: (error) => toast({ title: "A draft could not be created", description: describeError(error), variant: "error" }),
   });
   const items = [...(papers.data ?? [])].sort((a, b) => b.sealedAt.localeCompare(a.sealedAt));
   return (
@@ -100,6 +110,9 @@ export function SealedPapersRoute() {
               {lecturer ? (
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={() => setPreviewing(paper)}>Preview</Button>
+                  <Button variant="outline" disabled={createDraft.isPending} onClick={() => createDraft.mutate(paper)}>
+                    {createDraft.isPending && createDraft.variables?.versionId === paper.versionId ? "Creating draft…" : "Create new draft"}
+                  </Button>
                   {paper.publishedToPoolAt ? (
                     <Button variant="outline" disabled={withdraw.isPending} onClick={() => setWithdrawing(paper)}>Withdraw</Button>
                   ) : (

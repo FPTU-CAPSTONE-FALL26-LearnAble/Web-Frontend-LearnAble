@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { BookOpenText, CalendarClock, ChevronRight, DoorOpen, FileStack, Library } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Link } from "react-router";
 import { cn } from "@/shared/ui/cn";
@@ -10,12 +10,14 @@ const focusRing = "outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 /** A titled region of a dashboard. Every panel is a labelled landmark so screen readers can jump between them. */
 export function DashboardPanel({
   title,
+  icon,
   action,
   id,
   className,
   children,
 }: {
   title: string;
+  icon?: ReactNode;
   action?: { label: string; to: string };
   id?: string;
   className?: string;
@@ -25,9 +27,16 @@ export function DashboardPanel({
   return (
     <section id={id} aria-labelledby={headingId} className={cn("min-w-0 rounded-2xl border border-border bg-card", className)}>
       <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
-        <h2 id={headingId} className="text-lg font-semibold">
-          {title}
-        </h2>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {icon ? (
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary" aria-hidden>
+              {icon}
+            </span>
+          ) : null}
+          <h2 id={headingId} className="text-lg font-semibold">
+            {title}
+          </h2>
+        </div>
         {action ? (
           <Link
             to={action.to}
@@ -226,15 +235,30 @@ export function SplitBar({ segments, emptyText }: { segments: BarSegment[]; empt
 
 export type Stat = { key: string; label: string; value: string; detail: string; to?: string };
 
+const statVisuals: Record<string, { icon: typeof BookOpenText; className: string }> = {
+  questions: { icon: BookOpenText, className: "bg-primary/10 text-primary" },
+  materials: { icon: Library, className: "bg-success text-success-foreground" },
+  shifts: { icon: CalendarClock, className: "bg-warning text-warning-foreground" },
+  papers: { icon: FileStack, className: "bg-primary/10 text-primary" },
+  rooms: { icon: DoorOpen, className: "bg-success text-success-foreground" },
+};
+
 /** One band of headline numbers; each cell links to where the numbers can be acted on. */
 export function StatBand({ stats, label = "Overview" }: { stats: Stat[]; label?: string }) {
   return (
     <section aria-label={label} className="overflow-hidden rounded-2xl border border-border bg-border">
       <ul className="grid grid-cols-2 gap-px xl:grid-cols-4">
         {stats.map((stat) => {
+          const visual = statVisuals[stat.key] ?? statVisuals.questions;
+          const Icon = visual.icon;
           const body = (
             <>
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">{stat.label}</span>
+                <span aria-hidden className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", visual.className)}>
+                  <Icon className="size-5" />
+                </span>
+              </span>
               <span className="text-2xl font-semibold tabular-nums">{stat.value}</span>
               <span className="text-sm text-muted-foreground wrap-anywhere">{stat.detail}</span>
             </>

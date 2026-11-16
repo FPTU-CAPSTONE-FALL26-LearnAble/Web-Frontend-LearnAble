@@ -34,8 +34,8 @@ describe("LecturerLayout sidebar", () => {
   it("starts open and gives the page the remaining width when folded", async () => {
     const person = userEvent.setup();
     renderLayout();
-    expect(screen.getByRole("complementary").className).toContain("w-64");
-    expect(screen.getByRole("main").className).toContain("lg:ml-64");
+    expect(screen.getByRole("complementary").className).toContain("w-56");
+    expect(screen.getByRole("main").className).toContain("lg:ml-56");
     await person.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("complementary").className).toContain("w-16");
     expect(screen.getByRole("main").className).toContain("lg:ml-16");
@@ -44,7 +44,7 @@ describe("LecturerLayout sidebar", () => {
   it("follows the same rule in the question studio layout", async () => {
     const person = userEvent.setup();
     renderLayout("/lecturer/questions/new");
-    expect(screen.getByRole("main").className).toContain("lg:ml-64");
+    expect(screen.getByRole("main").className).toContain("lg:ml-56");
     await person.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("main").className).toContain("lg:ml-16");
     expect(screen.getByRole("main").className).toContain("xl:overflow-hidden");

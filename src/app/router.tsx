@@ -7,6 +7,7 @@ import { LoginRoute } from "@/features/auth/routes/LoginRoute";
 import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
+import { PersonalShortcutsRoute } from "@/features/accessibility/routes/PersonalShortcutsRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
 import { PracticeAttemptRoute } from "@/features/practice/routes/PracticeAttemptRoute";
 import { AssistantRoute } from "@/features/assistant/routes/AssistantRoute";
@@ -84,6 +85,7 @@ import {
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
 import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
+import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
 import { StudentNotificationsRoute } from "@/features/notifications/routes/StudentNotificationsRoute";
@@ -182,6 +184,7 @@ export const router = createBrowserRouter([
                 element: <AttendanceRoute />,
               },
               { path: "/lecturer/profile", element: <LecturerProfileRoute /> },
+              { path: "/lecturer/shortcuts", element: <PersonalShortcutsRoute /> },
               {
                 path: "/lecturer/notifications",
                 element: <NotificationsRoute />,
@@ -272,6 +275,7 @@ export const router = createBrowserRouter([
               { path: "/examiner/exams", element: <ExamBankRoute /> },
               { path: "/examiner/sealed-papers", element: <SealedPapersRoute /> },
               { path: "/examiner/proctoring-policy", element: <ProctoringPolicyRoute /> },
+              { path: "/examiner/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/examiner/schedule/shared/:shiftId", element: <SharedShiftRoute /> },
               {
                 path: "/examiner/exams/new/readiness",
@@ -348,6 +352,8 @@ export const router = createBrowserRouter([
                 path: "/settings/accessibility",
                 element: <AccessibilitySettingsRoute />,
               },
+              { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
+              { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
               { path: "/progress", element: <ProgressRoute /> },

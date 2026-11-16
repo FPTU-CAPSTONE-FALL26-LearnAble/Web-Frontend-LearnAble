@@ -41,7 +41,7 @@ export function LecturerLayout() {
   return (
     <div className="lecturer-shell min-h-screen bg-background lg:flex">
       <SkipLink />
-      <aside className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-border lg:block", collapsed ? "w-16" : "w-64")}>
+      <aside className={cn("fixed inset-y-0 left-0 z-30 hidden border-r border-border lg:block", collapsed ? "w-16" : "w-56")}>
         <LecturerSidebar {...sidebarProps} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
@@ -77,7 +77,7 @@ export function LecturerLayout() {
           isStudio
             ? "lg:pl-4 xl:h-dvh xl:overflow-hidden"
             : "px-4 py-6 sm:px-6 lg:px-8 lg:py-8",
-          collapsed ? "lg:ml-16" : "lg:ml-64",
+          collapsed ? "lg:ml-16" : "lg:ml-56",
         )}
       >
         <div className={isStudio ? "xl:h-full" : "mx-auto max-w-[1440px]"}>

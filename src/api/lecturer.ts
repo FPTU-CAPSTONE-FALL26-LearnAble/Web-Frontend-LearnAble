@@ -120,6 +120,61 @@ export const getQuestionOptionAudio = (optionId: string) =>
 export const deleteQuestionOptionAudio = (optionId: string) =>
   command(`/QuestionOptions/${optionId}/audio`, { method: "DELETE" });
 
+export const questionImageSchema = z.object({
+  imageId: z.string(),
+  originalFileName: z.string().nullable(),
+  contentType: z.string().nullable(),
+  sizeBytes: z.number(),
+  width: z.number(),
+  height: z.number(),
+  description: z.string().nullable(),
+  displayOrder: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  url: z.string().nullable(),
+  expiresAt: z.string(),
+});
+
+export const questionImagesSchema = z.object({
+  questionId: z.string(),
+  revision: z.string(),
+  images: z.array(questionImageSchema).nullable().transform((value) => value ?? []),
+});
+
+export const getQuestionImages = (questionId: string) =>
+  unwrap(`/questions/${questionId}/images`, questionImagesSchema, { method: "GET" });
+
+export function uploadQuestionImage(questionId: string, file: File, description: string, revision?: string) {
+  const body = new FormData();
+  body.set("File", file);
+  body.set("Description", description);
+  return unwrap(`/questions/${questionId}/images`, questionImagesSchema, {
+    method: "POST",
+    headers: revision ? { "If-Match": revision } : undefined,
+    body,
+  });
+}
+
+export const describeQuestionImage = (questionId: string, imageId: string, description: string, revision: string) =>
+  unwrap(`/questions/${questionId}/images/${imageId}`, questionImagesSchema, {
+    method: "PATCH",
+    headers: { "If-Match": revision },
+    json: { description },
+  });
+
+export const deleteQuestionImage = (questionId: string, imageId: string, revision: string) =>
+  unwrap(`/questions/${questionId}/images/${imageId}`, questionImagesSchema, {
+    method: "DELETE",
+    headers: { "If-Match": revision },
+  });
+
+export const orderQuestionImages = (questionId: string, imageIds: string[], revision: string) =>
+  unwrap(`/questions/${questionId}/images/order`, questionImagesSchema, {
+    method: "PUT",
+    headers: { "If-Match": revision },
+    json: { imageIds },
+  });
+
 const audioGenerationRetrySchema = z.object({
   requeued: z.number(),
   queued: z.number(),
