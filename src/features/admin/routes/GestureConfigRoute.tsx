@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, CircleOff, Hand, History, Lock, TriangleAlert } from "lucide-react";
+import { CircleCheck, CircleOff, History, Lock, TriangleAlert } from "lucide-react";
 import {
   gestureSaveError,
   getGestureCatalog,
@@ -15,10 +15,20 @@ import {
   type PreferredHand,
 } from "@/api/gestureConfig";
 import { Button } from "@/shared/ui/primitives/button";
-import { Checkbox } from "@/shared/ui/primitives/checkbox";
+import { Card, CardContent } from "@/shared/ui/primitives/card";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Separator } from "@/shared/ui/primitives/separator";
+import { Switch } from "@/shared/ui/primitives/switch";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/primitives/select";
 import {
   Table,
   TableBody,
@@ -55,9 +65,8 @@ const EDIT_STATUS_POLL_MS = 30_000;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** Native select styled like the Input primitive; screen readers announce native options reliably. */
-const selectClass =
-  "h-11 w-full min-w-48 rounded-md border border-input bg-background px-2.5 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20";
+/** Radix Select can't hold an empty value, so "no gesture" gets its own token. */
+const NO_GESTURE = "__none__";
 
 function lockLines(status: GestureEditStatus): string[] {
   return status.blockingReasons.map((reason) => {
@@ -140,19 +149,19 @@ function RecognitionSettings({
   const enabledId = useId();
   const releaseId = useId();
   return (
-    <details className="group rounded-2xl border border-border">
-      <summary className="flex min-h-11 cursor-pointer items-center gap-2 p-5 text-lg font-bold">
+    <section aria-labelledby={`${enabledId}-title`} className="space-y-4">
+      <h2 id={`${enabledId}-title`} className="text-lg font-bold">
         Recognition settings
-      </summary>
-      <div className="space-y-6 border-t border-border p-5">
+      </h2>
+      <div className="space-y-6">
         <div className="space-y-1">
           <div className="flex min-h-11 items-center gap-3">
-            <Checkbox
+            <Switch
               id={enabledId}
               checked={settings.isEnabled}
               disabled={disabled}
               aria-describedby={`${enabledId}-help`}
-              onCheckedChange={(checked) => onChange({ isEnabled: checked === true })}
+              onCheckedChange={(checked) => onChange({ isEnabled: checked })}
             />
             <Label htmlFor={enabledId}>Gesture input for exams</Label>
           </div>
@@ -218,16 +227,16 @@ function RecognitionSettings({
         </div>
 
         <div className="flex min-h-11 items-center gap-3">
-          <Checkbox
+          <Switch
             id={releaseId}
             checked={settings.requireRelease}
             disabled={disabled}
-            onCheckedChange={(checked) => onChange({ requireRelease: checked === true })}
+            onCheckedChange={(checked) => onChange({ requireRelease: checked })}
           />
           <Label htmlFor={releaseId}>Require the hand to relax between gestures</Label>
         </div>
       </div>
-    </details>
+    </section>
   );
 }
 
@@ -238,7 +247,7 @@ function VersionLine({
   onHistory,
 }: {
   config: GestureConfig;
-  focusRef: RefObject<HTMLParagraphElement | null>;
+  focusRef: RefObject<HTMLDivElement | null>;
   onHistory: () => void;
 }) {
   // The single-version response has no editor; the newest history entry does.
@@ -249,31 +258,38 @@ function VersionLine({
   });
   const entry = latest.data?.items.find((item) => item.version === config.version);
   const name = useAdminName(entry?.updatedBy);
-  const saved = config.updatedAt ? ` · saved ${formatDateTime(config.updatedAt)}` : "";
   const by = name ? ` by ${name}` : "";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <p ref={focusRef} tabIndex={-1} className="font-bold tabular-nums outline-none">
-          Version {config.version}
-          {saved}
-          {by}
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div ref={focusRef} tabIndex={-1} className="space-y-1 outline-none">
+        <p className="text-sm font-medium text-muted-foreground">Current version</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-2xl font-bold tabular-nums">Version {config.version}</p>
+          <VersionBadge isEnabled={config.isEnabled} />
+        </div>
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {config.updatedAt ? `Saved ${formatDateTime(config.updatedAt)}${by}` : "Not saved yet"}
         </p>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold",
-            config.isEnabled ? "border-primary" : "border-border text-muted-foreground",
-          )}
-        >
-          {config.isEnabled ? <CircleCheck aria-hidden className="size-4" /> : <CircleOff aria-hidden className="size-4" />}
-          Gesture input {config.isEnabled ? "on" : "off"}
-        </span>
       </div>
       <Button variant="outline" onClick={onHistory}>
         <History aria-hidden />
         Version history
       </Button>
     </div>
+  );
+}
+
+function VersionBadge({ isEnabled }: { isEnabled: boolean }) {
+  return (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold",
+            isEnabled ? "border-primary" : "border-border text-muted-foreground",
+          )}
+        >
+          {isEnabled ? <CircleCheck aria-hidden className="size-4" /> : <CircleOff aria-hidden className="size-4" />}
+          Gesture input {isEnabled ? "on" : "off"}
+        </span>
   );
 }
 
@@ -304,7 +320,7 @@ export function GestureConfigRoute() {
   const [confirming, setConfirming] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saveProblem, setSaveProblem] = useState<string | null>(null);
-  const versionRef = useRef<HTMLParagraphElement>(null);
+  const versionRef = useRef<HTMLDivElement>(null);
 
   // Start editing from the loaded version; follow a newer version only while
   // the admin has no unsaved changes, so their work is never thrown away.
@@ -436,7 +452,11 @@ export function GestureConfigRoute() {
         </div>
       )}
 
-      <VersionLine config={current} focusRef={versionRef} onHistory={() => setHistoryOpen(true)} />
+      <Card>
+        <CardContent>
+          <VersionLine config={current} focusRef={versionRef} onHistory={() => setHistoryOpen(true)} />
+        </CardContent>
+      </Card>
 
       <p role="status" className="min-h-6 font-bold">
         {changes > 0 ? `${plural(changes, "unsaved change", "unsaved changes")}.` : ""}
@@ -460,9 +480,16 @@ export function GestureConfigRoute() {
         </p>
       )}
 
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
-        <div className="flex items-center gap-2 border-b border-border p-5">
-          <Hand aria-hidden className="size-5" />
+      <RecognitionSettings
+        settings={draft.settings}
+        disabled={disabled}
+        onChange={(patch) => update(setSettings(draft, patch))}
+      />
+
+      <Separator />
+
+      <section className="min-w-0">
+        <div className="pb-3">
           <h2 className="text-lg font-bold">Exam actions</h2>
         </div>
         <Table containerLabel="Exam gesture assignments">
@@ -495,28 +522,38 @@ export function GestureConfigRoute() {
                     <span className="text-muted-foreground">{row.action.description ?? "No description"}</span>
                   </TableCell>
                   <TableCell className="whitespace-normal">
-                    <div className="space-y-1">
-                      <select
-                        id={selectId}
-                        aria-label={`Gesture for ${row.action.name}`}
-                        aria-invalid={!!conflict}
-                        aria-describedby={describedBy || undefined}
-                        className={selectClass}
-                        value={row.gestureCode ?? ""}
+                    <div className="max-w-80 space-y-1">
+                      <Select
+                        value={row.gestureCode ?? NO_GESTURE}
                         disabled={disabled}
-                        onChange={(event) => update(setRowGesture(draft, code, event.target.value || null))}
+                        onValueChange={(value) =>
+                          update(setRowGesture(draft, code, value === NO_GESTURE ? null : value))
+                        }
                       >
-                        <option value="">No gesture</option>
-                        {catalog.data.gestures.map((gesture) => {
-                          const user = usage.get(gesture.code);
-                          const usedElsewhere = user && user !== code;
-                          return (
-                            <option key={gesture.code} value={gesture.code}>
-                              {usedElsewhere ? `${gesture.name} — used by ${actionName(user)}` : gesture.name}
-                            </option>
-                          );
-                        })}
-                      </select>
+                        <SelectTrigger
+                          id={selectId}
+                          aria-label={`Gesture for ${row.action.name}`}
+                          aria-invalid={!!conflict}
+                          aria-describedby={describedBy || undefined}
+                          className="w-full min-w-48"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value={NO_GESTURE}>No gesture</SelectItem>
+                            {catalog.data.gestures.map((gesture) => {
+                              const user = usage.get(gesture.code);
+                              const usedElsewhere = user && user !== code;
+                              return (
+                                <SelectItem key={gesture.code} value={gesture.code}>
+                                  {usedElsewhere ? `${gesture.name} — used by ${actionName(user)}` : gesture.name}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                       {selected?.description && (
                         <p id={`${selectId}-how`} className="text-sm text-muted-foreground">
                           {selected.description}
@@ -537,11 +574,11 @@ export function GestureConfigRoute() {
                   </TableCell>
                   <TableCell>
                     <div className="flex min-h-11 min-w-11 items-center justify-center">
-                      <Checkbox
+                      <Switch
                         checked={row.gestureCode !== null && row.isEnabled}
                         disabled={disabled || row.gestureCode === null}
                         aria-label={`Use the gesture for ${row.action.name}`}
-                        onCheckedChange={(checked) => update(setRowEnabled(draft, code, checked === true))}
+                        onCheckedChange={(checked) => update(setRowEnabled(draft, code, checked))}
                       />
                     </div>
                   </TableCell>
@@ -551,12 +588,6 @@ export function GestureConfigRoute() {
           </TableBody>
         </Table>
       </section>
-
-      <RecognitionSettings
-        settings={draft.settings}
-        disabled={disabled}
-        onChange={(patch) => update(setSettings(draft, patch))}
-      />
 
       <ConfirmAction
         open={confirming}

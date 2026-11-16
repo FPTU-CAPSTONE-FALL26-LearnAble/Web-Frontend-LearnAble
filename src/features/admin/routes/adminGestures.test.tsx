@@ -17,6 +17,7 @@ import {
   type GestureEditStatus,
 } from "@/api/gestureConfig";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import { GestureConfigRoute } from "./GestureConfigRoute";
 
 const SETTING_ID = "9a000000-0000-0000-0000-000000000001";
@@ -106,6 +107,19 @@ function view() {
 
 const select = (action: string) => screen.findByRole("combobox", { name: `Gesture for ${action}` });
 const saveButton = () => screen.getByRole("button", { name: /^Save as version/ });
+/** Opens an action's gesture list and picks the gesture whose name starts with `gesture`. */
+async function choose(user: ReturnType<typeof userEvent.setup>, action: string, gesture: string) {
+  await user.click(await select(action));
+  await user.click(await screen.findByRole("option", { name: new RegExp(`^${gesture}`) }));
+}
+
+beforeAll(() => {
+  // Radix Select needs these pointer APIs, which jsdom does not implement.
+  HTMLElement.prototype.hasPointerCapture = () => false;
+  HTMLElement.prototype.setPointerCapture = () => {};
+  HTMLElement.prototype.releasePointerCapture = () => {};
+  HTMLElement.prototype.scrollIntoView = () => {};
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -121,42 +135,43 @@ beforeEach(() => {
 describe("Hand gestures", { timeout: 30000 }, () => {
   it("lists every action with its gesture and the current version with its editor (AC1, AC5)", async () => {
     const result = view();
-    expect(await select("Toggle option A")).toHaveValue("ONE_FINGER");
-    expect(await select("Toggle option B")).toHaveValue("");
-    expect(await select("Read focused content")).toHaveValue("OPEN_PALM");
-    expect(await screen.findByText(/Version 2 · saved .* by Lan Nguyen/)).toBeInTheDocument();
+    expect(await select("Toggle option A")).toHaveTextContent("One finger");
+    expect(await select("Toggle option B")).toHaveTextContent("No gesture");
+    expect(await select("Read focused content")).toHaveTextContent("Open palm");
+    expect(await screen.findByText("Version 2")).toBeInTheDocument();
+    expect(await screen.findByText(/^Saved .* by Lan Nguyen$/)).toBeInTheDocument();
     expect(screen.getByText("Gesture input on")).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();
     await expectNoAxeViolations(result.container);
   });
 
   it("tells screen-reader users which gestures are already used before they choose", async () => {
+    const user = userEvent.setup();
     view();
-    const optionB = await select("Toggle option B");
-    expect(within(optionB).getByRole("option", { name: "One finger — used by Toggle option A" })).toBeInTheDocument();
-    expect(within(optionB).getByRole("option", { name: "Two fingers" })).toBeInTheDocument();
+    await user.click(await select("Toggle option B"));
+    expect(await screen.findByRole("option", { name: "One finger — used by Toggle option A" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Two fingers" })).toBeInTheDocument();
   });
 
   it("counts unsaved changes and discards them", async () => {
     const user = userEvent.setup();
     view();
-    await user.selectOptions(await select("Toggle option B"), "TWO_FINGERS");
+    await choose(user, "Toggle option B", "Two fingers");
     expect(screen.getByText("1 unsaved change.")).toBeInTheDocument();
     expect(saveButton()).toHaveTextContent("Save as version 3");
     expect(saveButton()).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: "Discard changes" }));
-    expect(await select("Toggle option B")).toHaveValue("");
+    expect(await select("Toggle option B")).toHaveTextContent("No gesture");
     expect(screen.queryByText(/unsaved change/)).not.toBeInTheDocument();
   });
 
   it("blocks saving when two actions share a gesture (AC3)", async () => {
     const user = userEvent.setup();
     view();
-    const optionB = await select("Toggle option B");
-    await user.selectOptions(optionB, "ONE_FINGER");
+    await choose(user, "Toggle option B", "One finger");
 
-    expect(optionB).toHaveAttribute("aria-invalid", "true");
+    expect(await select("Toggle option B")).toHaveAttribute("aria-invalid", "true");
     expect(await select("Toggle option A")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("One finger is also assigned to Toggle option A. Each gesture can trigger only one action.")).toBeInTheDocument();
     expect(screen.getByText("One finger is also assigned to Toggle option B. Each gesture can trigger only one action.")).toBeInTheDocument();
@@ -170,7 +185,7 @@ describe("Hand gestures", { timeout: 30000 }, () => {
     expect(screen.getByText("2 exam schedules are open.")).toBeInTheDocument();
     expect(screen.getByText("1 student is taking an exam.")).toBeInTheDocument();
     expect(await select("Toggle option A")).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Use the gesture for Toggle option A" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Use the gesture for Toggle option A" })).toBeDisabled();
     expect(saveButton()).toBeDisabled();
     await expectNoAxeViolations(result.container);
   });
@@ -178,7 +193,7 @@ describe("Hand gestures", { timeout: 30000 }, () => {
   it("saves the full body with the ETag after confirmation and moves to the new version (AC5)", async () => {
     const user = userEvent.setup();
     view();
-    await user.selectOptions(await select("Toggle option B"), "TWO_FINGERS");
+    await choose(user, "Toggle option B", "Two fingers");
     vi.mocked(getGestureConfig).mockResolvedValue(config(3));
     await user.click(saveButton());
 
@@ -204,14 +219,14 @@ describe("Hand gestures", { timeout: 30000 }, () => {
         gestureETag(SETTING_ID, 2),
       ),
     );
-    expect(await screen.findByText(/^Version 3/)).toBeInTheDocument();
+    expect(await screen.findByText("Version 3")).toBeInTheDocument();
     expect(screen.queryByText(/unsaved change/)).not.toBeInTheDocument();
   });
 
   it("keeps the draft and shows the lock when an exam starts before saving (409)", async () => {
     const user = userEvent.setup();
     view();
-    await user.selectOptions(await select("Toggle option B"), "TWO_FINGERS");
+    await choose(user, "Toggle option B", "Two fingers");
     vi.mocked(saveGestureConfig).mockRejectedValue(new ApiFailure({ kind: "server", status: 409 }, "Locked."));
     vi.mocked(getGestureEditStatus).mockResolvedValue(locked);
     await user.click(saveButton());
@@ -219,20 +234,20 @@ describe("Hand gestures", { timeout: 30000 }, () => {
 
     expect(await screen.findByText("Editing is locked while exams are in progress.")).toBeInTheDocument();
     expect(screen.getByText(/Saving was refused because an exam started/)).toBeInTheDocument();
-    expect(await select("Toggle option B")).toHaveValue("TWO_FINGERS");
+    expect(await select("Toggle option B")).toHaveTextContent("Two fingers");
   });
 
   it("reloads the current version and keeps the draft when someone else saved first (412)", async () => {
     const user = userEvent.setup();
     view();
-    await user.selectOptions(await select("Toggle option B"), "TWO_FINGERS");
+    await choose(user, "Toggle option B", "Two fingers");
     vi.mocked(saveGestureConfig).mockRejectedValueOnce(new ApiFailure({ kind: "server", status: 412 }, "Changed."));
     vi.mocked(getGestureConfig).mockResolvedValue(config(5));
     await user.click(saveButton());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Save version 3" }));
 
     expect(await screen.findByText("Another administrator saved version 5. Review your changes and save again.")).toBeInTheDocument();
-    expect(await select("Toggle option B")).toHaveValue("TWO_FINGERS");
+    expect(await select("Toggle option B")).toHaveTextContent("Two fingers");
     expect(saveButton()).toHaveTextContent("Save as version 6");
 
     await user.click(saveButton());
@@ -244,16 +259,26 @@ describe("Hand gestures", { timeout: 30000 }, () => {
     const user = userEvent.setup();
     vi.mocked(getGestureConfig).mockResolvedValue(config(1, { isEnabled: false, bindings: [], updatedAt: null }));
     view();
-    await screen.findByText(/^Version 1/);
-    await user.click(screen.getByText("Recognition settings"));
-    await user.click(screen.getByRole("checkbox", { name: "Gesture input for exams" }));
+    await screen.findByText("Version 1");
+    await user.click(screen.getByRole("switch", { name: "Gesture input for exams" }));
 
     expect(screen.getByText("Turn on at least one gesture before enabling gesture input.")).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();
 
-    await user.selectOptions(await select("Toggle option A"), "ONE_FINGER");
+    await choose(user, "Toggle option A", "One finger");
     expect(screen.queryByText("Turn on at least one gesture before enabling gesture input.")).not.toBeInTheDocument();
     expect(saveButton()).toBeEnabled();
+  });
+
+  it("names the signed-in admin without looking them up", async () => {
+    useAuthStore.setState({ user: { id: ADMIN_ID, fullName: "Admin System", email: "admin@example.edu", role: "Admin" } });
+    try {
+      view();
+      expect(await screen.findByText(/^Saved .* by Admin System$/)).toBeInTheDocument();
+      expect(getAdminUser).not.toHaveBeenCalledWith(ADMIN_ID);
+    } finally {
+      useAuthStore.setState({ user: null });
+    }
   });
 
   it("opens the version history and shows a saved version", async () => {
