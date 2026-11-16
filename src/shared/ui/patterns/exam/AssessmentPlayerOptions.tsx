@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   Contrast,
   EyeOff,
   Send,
@@ -25,11 +24,7 @@ import {
   type TextScaleOption,
 } from "./AssessmentPlayerTextSizeOptions";
 
-export type PlayerSetting =
-  | "language"
-  | "contrast"
-  | "textSize"
-  | "remainingTime";
+export type PlayerSetting = "contrast" | "textSize" | "remainingTime";
 export type { ContrastOption, TextScaleOption };
 
 export interface AssessmentPlayerOptionsProps {
@@ -67,9 +62,6 @@ export function AssessmentPlayerOptions({
   const [view, setView] = useState<"menu" | "contrast" | "textSize">("menu");
   const handoff = useRef(false);
   const displaySettings = [
-    ...(enabledSettings?.includes("language") || onSelectSetting
-      ? ([{ id: "language", label: strings.language, icon: CircleHelp }] as const)
-      : []),
     { id: "contrast", label: strings.contrast, icon: Contrast },
     { id: "textSize", label: strings.textSize, icon: ZoomIn },
   ] as const;
