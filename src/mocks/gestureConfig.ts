@@ -114,7 +114,24 @@ const comparable = (v: Omit<GestureConfigBody, "bindings"> & { bindings: Omit<Bi
 const gestureCodes = new Set(catalog.gestures.map((g) => g.code));
 const actionCodes = new Set(catalog.actions.map((a) => a.code));
 
+/** The editor named in the history, so the name lookup works offline. */
+const mockAdmin = {
+  userId: MOCK_ADMIN_ID,
+  universityId: "00000000-0000-0000-0000-0000000000u1",
+  userCode: "ADMIN01",
+  email: "admin@learnable.local",
+  fullName: "Mock Admin",
+  phone: null,
+  dateOfBirth: null,
+  gender: null,
+  role: "Admin",
+  status: "Active",
+  createdAt: "2026-11-01T00:00:00Z",
+  updatedAt: "2026-11-01T00:00:00Z",
+};
+
 export const gestureConfigHandlers = [
+  http.get(`*/Users/${MOCK_ADMIN_ID}`, () => ok(mockAdmin)),
   http.get("*/gesture-configurations/catalog", async () => {
     await delay(200);
     return ok(catalog);
