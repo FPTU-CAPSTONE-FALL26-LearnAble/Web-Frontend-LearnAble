@@ -71,10 +71,14 @@ export function SealPaperRoute() {
     <main className="space-y-6">
       <header className="border-b border-border pb-5">
         <h1 className="text-3xl font-semibold tracking-tight text-primary">Seal the paper</h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          {paper.data.name ?? paper.data.paperCode ?? "Exam paper"} · {questions.length} questions · {paper.data.totalScore} points.
-          Every question needs audio. Sealing locks the paper into a package that neither you nor the examiners can change.
-        </p>
+        <section aria-label="Paper summary" className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+          <dl className="grid sm:grid-cols-3">
+            <div className="p-4 sm:border-r sm:border-border"><dt className="text-xs font-semibold text-muted-foreground">Exam paper</dt><dd className="mt-1 font-bold">{paper.data.name ?? paper.data.paperCode ?? "Exam paper"}</dd></div>
+            <div className="border-t border-border p-4 sm:border-r sm:border-t-0"><dt className="text-xs font-semibold text-muted-foreground">Questions</dt><dd className="mt-1 text-lg font-bold tabular-nums">{questions.length}</dd></div>
+            <div className="border-t border-border p-4 sm:border-t-0"><dt className="text-xs font-semibold text-muted-foreground">Total score</dt><dd className="mt-1 text-lg font-bold tabular-nums">{paper.data.totalScore} points</dd></div>
+          </dl>
+          <p className="flex items-start gap-3 border-t border-border bg-muted/40 p-4 text-sm leading-6 text-muted-foreground"><Lock className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden /><span><strong className="text-foreground">What sealing does.</strong> Every question must have audio. Once sealed, the paper becomes a locked package that neither lecturers nor examiners can change.</span></p>
+        </section>
       </header>
       {notDraft ? (
         <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm font-semibold text-destructive">

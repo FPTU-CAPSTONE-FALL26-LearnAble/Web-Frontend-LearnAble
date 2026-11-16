@@ -1,29 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getQuestion, getQuestionAudio, getQuestionOptionAudio } from "@/api/lecturer";
+import { getQuestion } from "@/api/lecturer";
 import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
 import { QuestionPreview } from "@/features/lecturer/questions/components/QuestionPreview";
+import { QuestionSequenceAudio } from "@/features/lecturer/questions/components/QuestionSequenceAudio";
 import { createDraft, type QuestionDraft, type QuestionType } from "@/features/lecturer/questions/model";
 import { formatQuestionId } from "@/shared/strings/questionId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/ui/primitives/dialog";
-
-// The playback link lives ten minutes; refetch a little before it lapses.
-const LINK_STALE_MS = 8 * 60 * 1000;
-
-function AudioPlayer({ kind, id, label }: { kind: "question" | "option"; id: string; label: string }) {
-  const link = useQuery({
-    queryKey: ["question-audio-link", kind, id],
-    queryFn: () => (kind === "question" ? getQuestionAudio(id) : getQuestionOptionAudio(id)),
-    staleTime: LINK_STALE_MS,
-    retry: false,
-    // Audio that is not created yet answers with an error; this player explains it inline.
-    meta: { silent: true },
-  });
-  if (link.isPending) return <p className="mt-2 text-xs text-muted-foreground">Loading audio…</p>;
-  if (link.isError || !link.data.url) return <p className="mt-2 text-xs text-muted-foreground">No audio file yet.</p>;
-  // The words being spoken are the question and answer text printed right above the player.
-  return <audio controls preload="metadata" aria-label={label} src={link.data.url} className="mt-2 w-full"><track kind="captions" /></audio>;
-}
 
 /** The words a screen reader says, in order, so a lecturer can hear the question the way a blind student does. */
 export function readingOrder(draft: QuestionDraft): string[] {
@@ -87,10 +70,7 @@ export function QuestionPreviewDialog({ questionId, course, topic, onClose }: {
               image=""
               compact
               audio={{
-                question: <AudioPlayer kind="question" id={questionId} label="Question audio" />,
-                option: (index) => options[index]
-                  ? <div className="px-4 pb-2"><AudioPlayer kind="option" id={options[index].optionId} label={`Audio for answer ${String.fromCharCode(65 + index)}`} /></div>
-                  : null,
+                question: <QuestionSequenceAudio questionId={questionId} optionIds={options.map((option) => option.optionId)} />,
               }}
             />
             <section aria-label="Screen reader reading order" className="space-y-2 rounded-xl border border-border p-4">

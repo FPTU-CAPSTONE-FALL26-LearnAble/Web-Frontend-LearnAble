@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control -- Radix checkbox rows and score controls are explicitly named. */
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, CheckCheck, CircleAlert, Eye, FileQuestion, RotateCcw, Search, Sigma } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCheck, CircleAlert, ClipboardList, Eye, FileQuestion, RotateCcw, Search, Sigma } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { getQuestions, getSubjects, getTopics } from "@/api/catalog";
@@ -8,6 +8,7 @@ import { fetchAllPages } from "@/api/pagination";
 import { getAvailableExamQuestions, setExamPaperQuestions } from "@/api/exams";
 import { QuestionPreviewDialog } from "@/features/lecturer/questions/components/QuestionPreviewDialog";
 import { PaperBalance } from "@/features/examiner/components/PaperBalance";
+import { QuestionImportDialog } from "@/features/examiner/components/QuestionImportDialog";
 import { computePaperBalance } from "@/features/examiner/workflow/paperBalance";
 import { autoPick } from "@/features/examiner/workflow/autoPick";
 import { operation } from "@/features/examiner/workflow/operationProgress";
@@ -224,6 +225,13 @@ export function QuestionSelectionRoute() {
               <CheckCheck className="size-4" aria-hidden />
               {allVisibleEligibleSelected ? "Clear visible selection" : "Select all eligible"}
             </Button>
+            <QuestionImportDialog
+              subjectId={draft.subjectId}
+              subjectCode={subjectCode}
+              onImported={async () => {
+                await Promise.all([available.refetch(), activeQuestions.refetch()]);
+              }}
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto_auto] xl:items-center">
             <Select value={readinessFilter} onValueChange={setReadinessFilter}>
@@ -251,12 +259,12 @@ export function QuestionSelectionRoute() {
             <p className="mt-2 text-sm text-muted-foreground">Check that questions belong to this subject and exam type.</p>
           </div>
         ) : null}
-        <div className="divide-y divide-border">{rows.map((question) => {
+        <div className="space-y-3 bg-muted/30 p-3">{rows.map((question) => {
           const checked = selected.has(question.questionId);
           const reasons = eligibilityReasons(question, draft.examTypeId);
           const eligible = question.eligible && reasons.length === 0;
           const topicName = topicNames.get(topicOfQuestion.get(question.questionId) ?? "");
-          return <article key={question.questionId} data-selected={eligible && checked ? "true" : undefined} className={`grid gap-4 p-5 transition-colors md:grid-cols-[auto_1fr_120px] md:items-start ${eligible && checked ? "bg-success/35 shadow-[inset_4px_0_0_0_var(--success-border)]" : ""}`}>
+          return <article key={question.questionId} data-selected={eligible && checked ? "true" : undefined} className={`grid gap-4 rounded-xl border border-border bg-card p-5 transition-colors md:grid-cols-[auto_1fr_120px] md:items-start ${eligible && checked ? "border-success-border bg-success/35" : ""}`}>
             <Checkbox aria-label={`Select question ${question.questionId}`} disabled={!eligible} checked={eligible && checked} onCheckedChange={() => setDraft((current) => ({ ...current, selectedQuestions: checked ? current.selectedQuestions.filter((item) => item.questionId !== question.questionId) : [...current.selectedQuestions, { questionId: question.questionId, maxScore: scoreFor(question) }] }))} />
             <div className="min-w-0"><div className="flex flex-wrap gap-2"><Badge variant="outline">{question.questionType}</Badge><Badge variant="outline">{question.difficulty}</Badge>{eligible ? <Badge variant={checked ? "outline" : "secondary"}>Eligible</Badge> : <Badge variant="destructive">Needs attention</Badge>}</div><h2 className="mt-3 font-semibold leading-relaxed">{question.content ?? "Question content unavailable"}</h2>{reasons.length ? <ul className="mt-3 space-y-1" aria-label="Question eligibility issues">{reasons.map((reason) => <li key={reason} className="flex items-start gap-2 text-sm text-destructive"><CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden /><span>{reason}</span></li>)}</ul> : null}{subjectCode || topicName ? <p className="mt-2 text-sm"><span className="font-semibold text-primary">{subjectCode}</span>{subjectCode && topicName ? " · " : ""}{topicName ? <span className="text-muted-foreground">{topicName}</span> : null}</p> : null}<p className="mt-2 text-xs text-muted-foreground" title={question.questionId} aria-label={`Question ID ${question.questionId}`}>{formatQuestionId(question.questionId)}</p><Button type="button" variant="outline" className="mt-3" onClick={() => setPreviewId(question.questionId)}><Eye aria-hidden />Preview<span className="sr-only"> question {formatQuestionId(question.questionId)}</span></Button></div>
             <label className="grid gap-2 text-sm font-semibold">Max score<Input type="number" min={0.01} step="any" disabled={!eligible || !checked} value={checked ? selected.get(question.questionId) : scoreFor(question)} onChange={(event) => setDraft((current) => ({ ...current, selectedQuestions: current.selectedQuestions.map((item) => item.questionId === question.questionId ? { ...item, maxScore: Number(event.target.value) } : item) }))} /></label>
@@ -265,7 +273,10 @@ export function QuestionSelectionRoute() {
       </section>
       <aside className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start" aria-label="Paper summary">
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <header className="border-b border-border px-5 py-4">
+          <header className="flex items-center gap-3 border-b border-border px-5 py-4">
+            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <ClipboardList className="size-5" />
+            </span>
             <h2 className="text-lg font-bold text-foreground">Paper summary</h2>
           </header>
           <dl className="divide-y divide-border px-5">

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FilePlus2, Upload } from "lucide-react";
+import { BookOpenText, CalendarDays, CircleAlert, Clock3, FilePlus2, Keyboard, Library, Upload } from "lucide-react";
 import { Link } from "react-router";
 import { getMyExamSchedules, type MyExamSchedule } from "@/api/exams";
 import { getMaterials, getQuestions } from "@/api/lecturer";
@@ -92,7 +92,7 @@ export function LecturerDashboardRoute() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">
             {greetingFor(now)}, {user.fullName}.
           </h1>
           <p className="mt-2 text-muted-foreground">{formatLongDate(now)}</p>
@@ -118,7 +118,7 @@ export function LecturerDashboardRoute() {
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
-          <DashboardPanel title="Next invigilation shift">
+          <DashboardPanel title="Next invigilation shift" icon={<Clock3 className="size-5" />}>
             <PanelState pending={shifts.isPending} error={shifts.error} errorText="Exam schedules are temporarily unavailable." onRetry={() => void shifts.refetch()}>
               {featured && featuredTiming ? (
                 <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
@@ -149,7 +149,7 @@ export function LecturerDashboardRoute() {
             </PanelState>
           </DashboardPanel>
 
-          <DashboardPanel title="Your schedule" action={{ label: "All exams", to: "/lecturer/exams" }}>
+          <DashboardPanel title="Your schedule" icon={<CalendarDays className="size-5" />} action={{ label: "All exams", to: "/lecturer/exams" }}>
             <PanelState pending={shifts.isPending} error={shifts.error} errorText="Exam schedules are temporarily unavailable." onRetry={() => void shifts.refetch()}>
               {shownGroups.length ? (
                 <div className="space-y-5">
@@ -184,7 +184,7 @@ export function LecturerDashboardRoute() {
             </PanelState>
           </DashboardPanel>
 
-          <DashboardPanel title="Question bank" action={{ label: "Open bank", to: "/lecturer/questions" }}>
+          <DashboardPanel title="Question bank" icon={<BookOpenText className="size-5" />} action={{ label: "Open bank", to: "/lecturer/questions" }}>
             <PanelState
               pending={questions.isPending || recentQuestions.isPending}
               error={questions.error || recentQuestions.error}
@@ -230,7 +230,7 @@ export function LecturerDashboardRoute() {
         </div>
 
         <div className="min-w-0 space-y-6">
-          <DashboardPanel title="Needs your attention" id="needs-attention">
+          <DashboardPanel title="Needs your attention" icon={<CircleAlert className="size-5" />} id="needs-attention">
             <PanelState
               pending={attentionPending}
               error={attentionError}
@@ -244,7 +244,7 @@ export function LecturerDashboardRoute() {
             </PanelState>
           </DashboardPanel>
 
-          <DashboardPanel title="Learning materials" action={{ label: "Open library", to: "/lecturer/materials" }}>
+          <DashboardPanel title="Learning materials" icon={<Library className="size-5" />} action={{ label: "Open library", to: "/lecturer/materials" }}>
             <PanelState
               pending={materials.isPending || recentMaterials.isPending}
               error={materials.error || recentMaterials.error}
@@ -281,7 +281,7 @@ export function LecturerDashboardRoute() {
             </PanelState>
           </DashboardPanel>
 
-          <DashboardPanel title="Shortcuts">
+          <DashboardPanel title="Shortcuts" icon={<Keyboard className="size-5" />}>
             <ShortcutList shortcuts={SHORTCUTS} />
           </DashboardPanel>
         </div>

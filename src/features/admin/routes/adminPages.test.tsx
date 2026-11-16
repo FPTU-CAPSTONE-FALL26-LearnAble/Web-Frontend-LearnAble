@@ -106,13 +106,13 @@ vi.mock("@/api/admin", async (importOriginal) => {
   };
 });
 
-function view(element: ReactNode) {
+function view(element: ReactNode, role: "Admin" | "Staff" = "Admin") {
   useAuthStore.setState({
     user: {
       id: "admin-test",
       fullName: "Admin One",
       email: "admin@fpt.edu.vn",
-      role: "Admin",
+      role,
       universityId: "uni-fpt",
     },
   });
@@ -284,6 +284,55 @@ describe("Admin workspaces", { timeout: 30000 }, () => {
           email: "mai@hust.edu.vn",
         }),
       ),
+    );
+  });
+
+  it("locks Staff account creation to the Staff member's university", async () => {
+    vi.mocked(createUser).mockResolvedValueOnce({
+      userId: "examiner-1",
+      universityId: "uni-fpt",
+      userCode: "EXM001",
+      email: "examiner@fpt.edu.vn",
+      fullName: "Examiner One",
+      phone: null,
+      dateOfBirth: null,
+      gender: null,
+      role: "Examiner",
+      status: "Active",
+      createdAt: "2026-11-16T00:00:00Z",
+      updatedAt: "2026-11-16T00:00:00Z",
+      revision: "rev-1",
+    });
+    const user = userEvent.setup();
+    view(<UsersRoute />, "Staff");
+    await screen.findByText("Nguyen Minh Long");
+
+    await user.click(screen.getByRole("button", { name: "New account" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("University")).toBeDisabled();
+    expect(within(dialog).getByLabelText("University")).toHaveTextContent(
+      "FPTU · FPT University",
+    );
+    await user.click(within(dialog).getByLabelText("Role"));
+    expect(screen.queryByRole("option", { name: "Staff" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Admin" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "Examiner" }));
+    await user.type(within(dialog).getByLabelText("Full name"), "Examiner One");
+    await user.type(within(dialog).getByLabelText("User code"), "EXM001");
+    await user.type(within(dialog).getByLabelText("Email address"), "examiner@fpt.edu.vn");
+    await user.type(within(dialog).getByLabelText("Initial password"), "Examiner123");
+    await user.click(within(dialog).getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          universityId: "uni-fpt",
+          role: "Examiner",
+        }),
+      ),
+    );
+    expect(getAdminUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ UniversityId: "uni-fpt" }),
     );
   });
 
