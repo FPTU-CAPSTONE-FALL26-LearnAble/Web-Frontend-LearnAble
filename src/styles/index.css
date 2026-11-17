@@ -4,17 +4,22 @@
 
 @import "../shared/tokens/tokens.css";
 
-/* Inter font loaded via rsms.me CDN in index.html */
-:root {
-  font-family: Inter, sans-serif;
-  font-feature-settings:
-    "liga" 1,
-    "calt" 1; /* fix for Chrome */
+/* Text scale (--text-scale) multiplies Tailwind text-* tokens without changing root rem. */
+@theme {
+  --text-xs: calc(0.75rem * var(--text-scale));
+  --text-sm: calc(0.875rem * var(--text-scale));
+  --text-base: calc(1rem * var(--text-scale));
+  --text-lg: calc(1.125rem * var(--text-scale));
+  --text-xl: calc(1.25rem * var(--text-scale));
+  --text-2xl: calc(1.5rem * var(--text-scale));
+  --text-3xl: calc(1.875rem * var(--text-scale));
+  --text-4xl: calc(2.25rem * var(--text-scale));
+  --text-5xl: calc(3rem * var(--text-scale));
+  --container-player: calc(48rem * (1 + (var(--text-scale) - 1) * 0.5));
 }
-@supports (font-variation-settings: normal) {
-  :root {
-    font-family: InterVariable, sans-serif;
-  }
+
+:root {
+  --text-scale: 1;
 }
 
 code,
@@ -105,15 +110,24 @@ pre {
   }
 }
 
+:root[data-reduce-motion="true"],
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Theme variables for the application from shadcn/ui */
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans:
-    InterVariable, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono:
     "IBM Plex Mono", ui-monospace, monospace, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -135,6 +149,7 @@ pre {
   --focus-ring-offset: var(--focus-ring-offset);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-checkbox: var(--checkbox);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -144,6 +159,8 @@ pre {
   --color-success-border: var(--success-border);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);

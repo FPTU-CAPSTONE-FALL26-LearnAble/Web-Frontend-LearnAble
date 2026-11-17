@@ -87,8 +87,7 @@ import {
   IntegrityReviewRoute,
 } from "@/features/examiner/routes/ExaminerWorkflowRoutes";
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
-import { ResultReceiptDemoRoute } from "@/features/demo/routes/ResultReceiptDemoRoute";
-import { ExamDemoRoute } from "@/features/demo/routes/ExamDemoRoute";
+import { AssessmentPlayerDemoRoute } from "@/features/demo/routes/AssessmentPlayerDemoRoute";
 import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
@@ -116,8 +115,7 @@ function LegacyParameterizedRedirect({
 export const router = createBrowserRouter([
   { path: "/", element: <LandingRoute /> },
   { path: "/demo/components", element: <ComponentDemoRoute /> },
-  { path: "/demo/result", element: <ResultReceiptDemoRoute /> },
-  { path: "/demo/exam", element: <ExamDemoRoute /> },
+  { path: "/demo/assessment-player", element: <AssessmentPlayerDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   { path: "/login", element: <LoginRoute /> },
   { path: "/student/login", element: <StudentLoginRoute /> },

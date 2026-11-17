@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import {
   Button,
   Input,
@@ -64,7 +63,6 @@ import {
   TableRow,
   TableCell,
   TableCaption,
-  Toaster,
   toast,
 } from "@/shared/ui/primitives";
 import {
@@ -77,6 +75,7 @@ import {
   Trash2Icon,
   ExternalLinkIcon,
   SlidersHorizontalIcon,
+  Undo2Icon,
 } from "lucide-react";
 
 export function ComponentDemoRoute() {
@@ -87,9 +86,6 @@ export function ComponentDemoRoute() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Toast Notification Container */}
-      <Toaster />
-
       {/* Main Header */}
       <header className="border-b border-border bg-card py-4 px-6 sm:px-12">
         <div className="mx-auto max-w-7xl">
@@ -107,12 +103,6 @@ export function ComponentDemoRoute() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button asChild variant="default">
-                <Link to="/demo/exam">Exam Client Demo (/demo/exam)</Link>
-              </Button>
-              <Button asChild variant="secondary">
-                <Link to="/demo/result">Result Demo (/demo/result)</Link>
-              </Button>
               <Button
                 variant="outline"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -180,8 +170,75 @@ export function ComponentDemoRoute() {
                 <Button size="sm">Small (sm)</Button>
                 <Button size="default">Default</Button>
                 <Button size="lg">Large (lg)</Button>
+                <Button size="xl">Extra large (xl)</Button>
+                <Button size="xl">
+                  <span
+                    data-icon="inline-start"
+                    className="material-symbols-outlined text-[20px] leading-none"
+                  >
+                    play_arrow
+                  </span>
+                  Start assessment
+                </Button>
+                <Button size="xl" variant="outline">
+                  Continue
+                  <span
+                    data-icon="inline-end"
+                    className="material-symbols-outlined text-[24px] leading-none"
+                  >
+                    arrow_forward
+                  </span>
+                </Button>
                 <Button size="icon" aria-label="Download attachment">
                   <DownloadIcon className="size-4" />
+                </Button>
+                <Button
+                  size="icon-xl"
+                  aria-label="Download attachment (extra large)"
+                >
+                  <DownloadIcon />
+                </Button>
+                <Button size="icon" variant="outline" aria-label="View details">
+                  <span className="material-symbols-outlined text-[20px] leading-none font-[500]">
+                    visibility
+                  </span>
+                </Button>
+                <Button size="icon" variant="secondary" aria-label="Edit item">
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    edit
+                  </span>
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Add item">
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    add
+                  </span>
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Favorite item">
+                  <span
+                    className="material-symbols-outlined text-[20px] leading-none"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    favorite
+                  </span>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  aria-label="Delete item"
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    delete
+                  </span>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label="More actions"
+                  disabled
+                >
+                  <span className="material-symbols-outlined text-[20px] leading-none">
+                    more_vert
+                  </span>
                 </Button>
                 <Button disabled>Disabled Action</Button>
                 <Button variant="outline" disabled>
@@ -557,6 +614,26 @@ export function ComponentDemoRoute() {
                 >
                   <XCircleIcon className="mr-1.5 size-4 text-red-600" />
                   Error Toast
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    toast.success("Question draft deleted", {
+                      description:
+                        "The draft was removed from this demo session.",
+                      action: {
+                        label: "Undo",
+                        onClick: () =>
+                          toast.info("Question draft restored", {
+                            description:
+                              "The draft is available again in this demo session.",
+                          }),
+                      },
+                    })
+                  }
+                >
+                  <Undo2Icon className="mr-1.5 size-4" />
+                  Action Toast
                 </Button>
               </CardContent>
             </Card>

@@ -1,6 +1,5 @@
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
 import { Label } from "@/shared/ui/primitives/label";
-import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 
 export interface AnswerOption {
@@ -19,8 +18,7 @@ export interface AnswerOptionListProps {
 
 /**
  * Danh sách phương án của một câu hỏi — SCR-03 và SCR-04 dùng chung (FR-07).
- * Chọn đáp án announce NGAY trong handler (NFR-12 ≤ 1s), lạc quan —
- * lưu thất bại thì save queue announce đính chính sau.
+ * Native radio state supplies selection feedback.
  */
 export function AnswerOptionList({ options, value, onChange, disabled }: AnswerOptionListProps) {
   return (
@@ -28,11 +26,7 @@ export function AnswerOptionList({ options, value, onChange, disabled }: AnswerO
       aria-label={vi.exam.answerOptionsLabel}
       value={value ?? ""}
       disabled={disabled}
-      onValueChange={(id) => {
-        const opt = options.find((o) => o.id === id);
-        if (opt) announce(vi.announce.answerSelected(opt.letter));
-        onChange(id);
-      }}
+      onValueChange={onChange}
     >
       {options.map((opt) => (
         <div key={opt.id} className="flex min-h-[44px] items-center gap-3">
