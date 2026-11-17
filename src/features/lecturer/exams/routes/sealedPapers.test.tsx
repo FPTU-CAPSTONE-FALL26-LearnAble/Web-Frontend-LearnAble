@@ -17,6 +17,7 @@ const exams = vi.hoisted(() => ({
   handoverSealedPaper: vi.fn(async () => ({})),
   withdrawSealedPaper: vi.fn(async () => ({})),
   getSharedExamShift: vi.fn(),
+  getScheduleValidation: vi.fn(),
   getShiftPaperSelection: vi.fn(),
   selectShiftPaper: vi.fn(async () => ({})),
   releaseShiftPaper: vi.fn(async () => ({})),
@@ -45,6 +46,7 @@ beforeAll(() => {
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  exams.getScheduleValidation.mockResolvedValue({ isValid: true, errors: [] });
   useOperationProgress.setState({ open: false, steps: [], title: "", message: "", phase: "running", minimized: false });
 });
 
@@ -156,7 +158,8 @@ describe("ShiftPackagePanel", () => {
     exams.getShiftPaperSelection.mockResolvedValue({ selectionId: "a", shiftId: "sh", versionId: "v1", operationId: "o", selectedAt: "2026-11-13T02:00:00Z", releasedAt: null, consumedAt: null });
     exams.getSealedExamPapers.mockResolvedValue([sealed()]);
     show(<ShiftPackagePanel shiftId="sh" scheduleStatus="Published" />, "/examiner/schedule/x");
-    expect(await screen.findByText(/CSD201 FE · version 2/)).toBeInTheDocument();
+    expect(await screen.findByText("CSD201 FE")).toBeInTheDocument();
+    expect(screen.getByText("Version 2")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Release package" }));
     await waitFor(() => expect(exams.releaseShiftPaper).toHaveBeenCalledWith("sh", '"s-1"'));
   });
@@ -166,7 +169,7 @@ describe("ShiftPackagePanel", () => {
     const attached = { selectionId: "a", shiftId: "sh", versionId: "v1", operationId: "o", selectedAt: "2026-11-13T02:00:00Z", releasedAt: null, consumedAt: null };
     exams.getShiftPaperSelection.mockResolvedValue(attached);
     exams.getSealedExamPapers.mockResolvedValue([sealed()]);
-    exams.getSharedExamShift.mockResolvedValue({ shiftId: "sh", eTag: '"s-1"', status: "Draft" });
+    exams.getSharedExamShift.mockResolvedValue({ shiftId: "sh", eTag: '"s-1"', status: "Draft", scheduleIds: ["room-1"] });
     show(<ShiftPackagePanel shiftId="sh" scheduleStatus="Draft" />, "/examiner/schedule/x");
     await user.click(await screen.findByRole("button", { name: "Publish shift" }));
     await waitFor(() => expect(exams.publishSharedExamShift).toHaveBeenCalledWith("sh", '"s-1"'));

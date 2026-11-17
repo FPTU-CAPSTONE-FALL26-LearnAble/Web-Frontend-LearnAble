@@ -145,7 +145,9 @@ export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string
           </div>
         ) : (
           <p className="p-5 text-sm text-muted-foreground">
-            Attach a package that a lecturer handed over. The Backend checks that it is intact before it accepts it.
+            {locked
+              ? "This exam has started or ended, so you can no longer change its package."
+              : "Attach a package that a lecturer handed over. The Backend checks that it is intact before it accepts it."}
           </p>
         )
       ) : null}
