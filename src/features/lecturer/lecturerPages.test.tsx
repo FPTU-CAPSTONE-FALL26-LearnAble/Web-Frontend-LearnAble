@@ -9,6 +9,9 @@ import { LecturerLayout } from "./shell/LecturerLayout";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { getMaterials } from "@/api/lecturer";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
+import { toast } from "@/shared/ui/primitives/toast";
+
+vi.mock("@/shared/ui/primitives/toast", () => ({ toast: vi.fn() }));
 
 vi.mock("@/api/lecturer", () => ({
   getSubjects: vi.fn(async () => ({ items: [{ subjectId: "s1", subjectCode: "SWE201", subjectNameEn: "Software Engineering" }] })),
@@ -79,7 +82,12 @@ describe("Lecturer workspaces", { timeout: 30000 }, () => {
     const user = userEvent.setup(); const result = view(<UploadMaterialRoute />);
     await user.upload(screen.getByLabelText("Material file"), new File(["sample"], "lecture.pdf", { type: "application/pdf" }));
     expect(screen.getByText("Selected locally · Not uploaded")).toBeInTheDocument(); expect(screen.getByLabelText("Material title (required)")).toHaveValue("lecture");
-    await user.click(screen.getByRole("button", { name: "Upload material" })); expect(screen.getByText(/Select a file, enter a title/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Upload material" }));
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Material information is incomplete",
+      description: expect.stringContaining("Select a file, enter a title"),
+      variant: "error",
+    }));
     await user.click(screen.getByRole("link", { name: "Back to list" })); expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Keep editing" })); await expectNoAxeViolations(result.container);
   });

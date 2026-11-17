@@ -74,7 +74,7 @@ function PageHeading({
     <header className="mb-6 flex flex-col gap-4 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow ? <span className="sr-only">{eyebrow}</span> : null}
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-extrabold tracking-tight text-primary sm:text-3xl">
           {title}
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
@@ -104,6 +104,29 @@ const statusToneClasses: Record<string, { badge: string; dot: string }> = {
     dot: "bg-secondary-foreground",
   },
 };
+
+const scheduleStatusPriority: Record<string, number> = {
+  Published: 0,
+  Open: 1,
+  Draft: 2,
+  Closed: 3,
+  Cancelled: 4,
+};
+
+export function prioritizePublishedSchedules(items: ExamSchedule[]) {
+  return [...items].sort((left, right) =>
+    (scheduleStatusPriority[left.status ?? ""] ?? 5) - (scheduleStatusPriority[right.status ?? ""] ?? 5));
+}
+
+export function getPublishedAndOperationalSchedules(items: ExamSchedule[]) {
+  return prioritizePublishedSchedules(items).filter((schedule) =>
+    schedule.status === "Published" || schedule.status === "Open");
+}
+
+export function getDraftAndHistoricalSchedules(items: ExamSchedule[]) {
+  return prioritizePublishedSchedules(items).filter((schedule) =>
+    schedule.status === "Draft" || schedule.status === "Closed" || schedule.status === "Cancelled");
+}
 
 function Status({
   children,
@@ -140,8 +163,10 @@ export function ExamScheduleDashboardRoute() {
     queryFn: () => getExamRooms(),
   });
   useExpiredSession(schedules.error || roomData.error);
-  const scheduleRows = schedules.data?.items ?? [];
   const now = new Date();
+  const allScheduleRows = schedules.data?.items ?? [];
+  const scheduleRows = getPublishedAndOperationalSchedules(allScheduleRows);
+  const secondaryScheduleRows = getDraftAndHistoricalSchedules(allScheduleRows);
   const rangeEnd = new Date(now);
   if (range === "day") rangeEnd.setHours(23, 59, 59, 999);
   if (range === "week") rangeEnd.setDate(rangeEnd.getDate() + 7);
@@ -190,13 +215,13 @@ export function ExamScheduleDashboardRoute() {
       <ApiState
         pending={schedules.isPending || roomData.isPending}
         error={schedules.error || roomData.error}
-        empty={!schedules.isPending && scheduleRows.length === 0}
+        empty={!schedules.isPending && allScheduleRows.length === 0}
         onRetry={() => {
           void schedules.refetch();
           void roomData.refetch();
         }}
       />
-      <section className="examiner-command rounded-2xl p-5">
+      <section className="examiner-command rounded-2xl border border-border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase text-white/60">
@@ -246,7 +271,7 @@ export function ExamScheduleDashboardRoute() {
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
         <div className="examiner-major overflow-hidden">
           <div className="border-b border-border p-5">
-            <h2 className="text-lg font-extrabold">Scheduled shifts</h2>
+            <h2 className="text-lg font-extrabold">Published and operational shifts</h2>
           </div>
           {scheduleRows.map((schedule) => (
             <article
@@ -268,7 +293,7 @@ export function ExamScheduleDashboardRoute() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <Status tone={schedule.status === "Open" || schedule.status === "Closed" ? "success" : schedule.status === "Cancelled" ? "danger" : "info"}>
+                <Status tone={schedule.status === "Published" || schedule.status === "Open" || schedule.status === "Closed" ? "success" : schedule.status === "Cancelled" ? "danger" : "info"}>
                   {schedule.status}
                 </Status>
                 <Button variant="outline" size="sm" asChild>
@@ -283,6 +308,46 @@ export function ExamScheduleDashboardRoute() {
                   <Button variant="outline" size="sm" onClick={() => setPendingAction({ kind: "cancel", schedule })}>
                     <XCircle /> Cancel
                   </Button>
+                ) : null}
+              </div>
+            </article>
+          ))}
+          {!scheduleRows.length ? (
+            <p className="p-6 text-sm text-muted-foreground">No published or open shifts.</p>
+          ) : null}
+          {secondaryScheduleRows.length ? (
+            <div className="border-y border-border bg-muted/40 px-5 py-3">
+              <h3 className="font-bold">Draft and history</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Draft, closed and cancelled shifts are kept below active schedules.</p>
+            </div>
+          ) : null}
+          {secondaryScheduleRows.map((schedule) => (
+            <article
+              key={schedule.examScheduleId}
+              className="grid gap-4 border-b border-border p-5 last:border-0 lg:grid-cols-[100px_1fr_auto] lg:items-center"
+            >
+              <div>
+                <p className="text-xl font-extrabold text-primary">
+                  {new Date(schedule.startsAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {Math.round((new Date(schedule.endsAt).getTime() - new Date(schedule.startsAt).getTime()) / 60_000)} minutes
+                </p>
+              </div>
+              <div>
+                <strong>{schedule.examName ?? "Scheduled exam"}</strong>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {schedule.roomName ?? "Room pending"} · {new Date(schedule.startsAt).toLocaleDateString("en-GB")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Status tone={schedule.status === "Cancelled" ? "danger" : schedule.status === "Draft" ? "info" : "success"}>{schedule.status}</Status>
+                <Button variant="outline" size="sm" asChild><Link to={`/examiner/schedule/${schedule.examScheduleId}`}>View details</Link></Button>
+                {schedule.status === "Draft" ? (
+                  <Button variant="outline" size="sm" onClick={() => setPendingAction({ kind: "delete", schedule })}><Trash2 /> Delete draft</Button>
+                ) : null}
+                {schedule.status === "Draft" && new Date(schedule.startsAt) > now ? (
+                  <Button variant="outline" size="sm" onClick={() => setPendingAction({ kind: "cancel", schedule })}><XCircle /> Cancel</Button>
                 ) : null}
               </div>
             </article>

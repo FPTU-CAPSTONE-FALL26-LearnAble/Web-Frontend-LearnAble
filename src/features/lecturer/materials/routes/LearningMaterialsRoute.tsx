@@ -1,4 +1,4 @@
-/* eslint-disable jsx-a11y/label-has-associated-control, shadcn/no-restyle -- Wrapped labels stay associated; this established route retains its existing composed workbench surface classes. */
+/* eslint-disable jsx-a11y/label-has-associated-control -- Wrapped labels stay associated. */
 import { useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
@@ -407,6 +408,12 @@ export function LearningMaterialsRoute() {
                     <TableCell>{unavailable}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button variant="outline" asChild>
+                          <Link to={`/lecturer/materials/${m.materialId}/audio`}>
+                            <Headphones aria-hidden />
+                            Audio
+                          </Link>
+                        </Button>
                         <Button
                           variant="outline"
                           disabled={!m.fileUrl}

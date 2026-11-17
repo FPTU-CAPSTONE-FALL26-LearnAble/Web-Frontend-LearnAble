@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router";
 import { getQuestions, getSubjects, getTopics } from "@/api/catalog";
 import { fetchAllPages } from "@/api/pagination";
 import { getAvailableExamQuestions, setExamPaperQuestions } from "@/api/exams";
+import { describeError } from "@/app/providers";
 import { QuestionPreviewDialog } from "@/features/lecturer/questions/components/QuestionPreviewDialog";
 import { PaperBalance } from "@/features/examiner/components/PaperBalance";
 import { QuestionImportDialog } from "@/features/examiner/components/QuestionImportDialog";
@@ -197,13 +198,17 @@ export function QuestionSelectionRoute() {
   const save = useMutation({
     mutationFn: () => {
       const count = draft.selectedQuestions.length;
-      operation.start("Saving the paper", [`Saving ${count} question${count === 1 ? "" : "s"} to the paper`]);
+      operation.start("Saving the paper", [
+        `Saving ${count} question${count === 1 ? "" : "s"} and their scores`,
+        "Confirming the saved paper revision",
+      ]);
       return setExamPaperQuestions(draft.examPaperId, draft.selectedQuestions, draft.paperETag);
     },
-    onError: () => operation.fail("The question set could not be saved. Check the selection and try again."),
+    onError: (error) => operation.fail(describeError(error)),
     onSuccess: (paper) => {
-      operation.finish(`${paper.questions.length} questions · ${paper.totalScore} total points.`);
+      operation.step(1);
       setDraft((current) => ({ ...current, paperETag: paper.eTag ?? current.paperETag }));
+      operation.finish(`${paper.questions.length} questions · ${paper.totalScore} total points saved.`);
       toast({ title: "Question set saved", description: `${paper.questions.length} questions · ${paper.totalScore} total points.` });
       navigate(paths.operations);
     },

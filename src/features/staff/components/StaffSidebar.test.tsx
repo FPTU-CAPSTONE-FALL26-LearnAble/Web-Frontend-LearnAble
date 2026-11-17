@@ -10,7 +10,7 @@ const destinations = [
   "Dashboard",
   "User Accounts", "Student Records", "Lecturer Records", "Examiner Records",
   "Departments", "Majors",
-  "Subjects", "Curriculums", "Default Exam Policy",
+  "Subjects", "Topics", "Curriculums", "Default Exam Policy",
   "Exam Rooms & Seats",
 ];
 
@@ -42,6 +42,17 @@ describe("StaffSidebar collapsed", () => {
     renderSidebar("/staff/curriculums", { collapsed: true, onToggleCollapsed: vi.fn() });
     expect(screen.getByRole("link", { name: "Curriculums" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Subjects" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("opens topic management from the academic structure group", async () => {
+    const person = userEvent.setup();
+    renderSidebar("/staff/topics");
+    const academic = screen.getByRole("button", { name: /Academic Structure/ });
+    expect(academic).toHaveAttribute("aria-expanded", "true");
+    const topics = screen.getByRole("link", { name: "Topics" });
+    expect(topics).toHaveAttribute("href", "/staff/topics");
+    expect(topics).toHaveAttribute("aria-current", "page");
+    await person.click(topics);
   });
 
   it("opens again from the toggle and can be folded from the full sidebar", async () => {

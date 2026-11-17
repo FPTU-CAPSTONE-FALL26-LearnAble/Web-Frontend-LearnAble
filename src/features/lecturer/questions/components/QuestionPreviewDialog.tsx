@@ -48,7 +48,7 @@ export function QuestionPreviewDialog({ questionId, course, topic, onClose }: {
   }, [course, options, source, topic]);
   return (
     <Dialog open={Boolean(questionId)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+      <DialogContent data-contrast="yellow" className="max-h-[94vh] overflow-y-auto sm:max-w-6xl">
         {/* The title and description stay for screen readers; the live review below says the rest. */}
         <DialogHeader className="sr-only">
           <DialogTitle>Live review · {questionId ? formatQuestionId(questionId) : "question"}</DialogTitle>

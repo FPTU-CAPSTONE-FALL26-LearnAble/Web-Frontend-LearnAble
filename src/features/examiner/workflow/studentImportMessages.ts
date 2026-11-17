@@ -36,13 +36,18 @@ export function describeImportIssue(issue: ImportIssue, studentCode?: string | n
 export function describeImportFailure(error: unknown): string {
   if (error instanceof ApiFailure && error.detail.kind === "network") return "The server could not be reached. Check your connection and choose the file again.";
   if (error instanceof ApiFailure && error.detail.kind === "unauthorized") return "Your session has ended. Sign in again, then choose the file again.";
+  if (error instanceof ApiFailure && error.detail.kind === "not_found") return "This exam configuration no longer exists on the server. Create a new shift from an available exam, then import the list again.";
   const detail = error instanceof ApiFailure
     ? `${error.serverMessage ?? ""} ${error.detail.kind === "server" ? error.detail.message ?? "" : ""}`.toLowerCase()
     : "";
   if (detail.includes(".xlsx")) return "Only Excel files (.xlsx) can be used. Save the list as .xlsx and choose it again.";
+  if (detail.includes("macro") || detail.includes("embedded object") || detail.includes("external connection")) {
+    return "This Excel file contains features that cannot be imported, such as macros, linked data or embedded objects. Open a fresh LearnAble template, paste only the student values, then save it as an Excel Workbook (.xlsx) and try again.";
+  }
   if (detail.includes("more than")) return "The file has too many students. Split it into smaller files of up to 10,000 students.";
   if (detail.includes("is empty")) return "The file is empty. Add the students to the template and choose it again.";
   if (detail.includes("unsupported") || detail.includes("invalid")) return "This file cannot be read. Download the template again and copy the students into it.";
   if (detail.includes("archived")) return "This exam is archived, so students cannot be added to it. Choose another exam.";
+  if (error instanceof ApiFailure && error.serverMessage?.trim()) return error.serverMessage.trim();
   return "The file was not accepted. Use the exam student template (.xlsx) and choose it again.";
 }

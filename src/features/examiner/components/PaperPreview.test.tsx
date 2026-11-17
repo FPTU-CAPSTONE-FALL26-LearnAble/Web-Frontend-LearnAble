@@ -43,19 +43,20 @@ const preview = examPaperPreviewSchema.parse({
 describe("PaperPreview", () => {
   it("shows the paper facts, one question at a time, and a map to move between them", async () => {
     renderPreview(preview, "CSD201-FINAL-01");
+    expect(screen.getByRole("region", { name: "Paper preview" })).toHaveAttribute("data-contrast", "yellow");
     expect(screen.getByRole("heading", { name: "CSD201 Final" })).toBeInTheDocument();
     expect(screen.getByText("90 minutes")).toBeInTheDocument();
     expect(screen.getByText("No materials are allowed.")).toBeInTheDocument();
-    expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("QUESTION 01 / 02")).toBeInTheDocument();
     expect(screen.getByText("Which structure is last in, first out?")).toBeInTheDocument();
     expect(await screen.findByLabelText("Question and all answer options")).toHaveAttribute("src", "https://audio.test/q-1.mp3");
     expect(screen.getAllByLabelText("Question and all answer options")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous (P)" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next (N)" }));
+    expect(screen.getByText("QUESTION 02 / 02")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next (N)" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /^Question 1 of 2/ }));
-    expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("QUESTION 01 / 02")).toBeInTheDocument();
   });
 
   it("marks the correct answers, and hides them when asked", () => {
@@ -69,9 +70,9 @@ describe("PaperPreview", () => {
     renderPreview();
     fireEvent.click(screen.getByRole("radio", { name: /Queue/ }));
     expect(screen.getByRole("button", { name: /^Question 1 of 2.*answered/ })).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 answered in this preview")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    expect(screen.getByText("1 / 2 questions")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next (N)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous (P)" }));
     expect(screen.getByRole("radio", { name: /Queue/ })).toBeChecked();
   });
 

@@ -77,12 +77,12 @@ describe("ExaminerDashboardRoute", () => {
 
   it("walks through the preparation stages with how far each has got", async () => {
     renderDashboard();
-    const flow = await screen.findByRole("region", { name: "Exam preparation" });
+    const flow = await screen.findByRole("region", { name: "Exam readiness" });
     const steps = await within(flow).findAllByRole("listitem");
     expect(steps).toHaveLength(3);
-    expect(within(steps[0]).getByRole("heading", { name: "Build exam papers" })).toBeInTheDocument();
-    expect(within(steps[0]).getByText("In progress")).toBeInTheDocument();
-    expect(within(steps[0]).getByText("1 paper in draft · 2 published")).toBeInTheDocument();
+    expect(within(steps[0]).getByRole("heading", { name: "Review received papers" })).toBeInTheDocument();
+    expect(within(steps[0]).getByText("Available")).toBeInTheDocument();
+    expect(within(steps[0]).getByText("2 available to schedule · 1 paper still with lecturers")).toBeInTheDocument();
     expect(within(steps[1]).getByText("4 shifts in the next 30 days · 1 not published")).toBeInTheDocument();
     expect(within(steps[2]).getByText("Live")).toBeInTheDocument();
     expect(within(steps[2]).getByRole("link", { name: "Live monitoring" })).toHaveAttribute("href", "/examiner/monitoring");
@@ -94,7 +94,7 @@ describe("ExaminerDashboardRoute", () => {
     renderDashboard();
     const overview = await screen.findByRole("region", { name: "Overview" });
     await waitFor(() => expect(within(overview).getByRole("link", { name: /Exam shifts, next 30 days/ })).toHaveTextContent("0None scheduled"));
-    const flow = panel("Exam preparation");
+    const flow = panel("Exam readiness");
     expect(await within(flow).findByText("No exam shifts planned in the next 30 days. Pick a published paper, rooms and candidates.")).toBeInTheDocument();
     expect(within(flow).getAllByText("Not started")).toHaveLength(1);
     const shifts = panel("Exam shifts");
@@ -146,14 +146,14 @@ describe("ExaminerDashboardRoute", () => {
   it("shows what needs attention and where to fix it", async () => {
     renderDashboard();
     const attention = await screen.findByRole("region", { name: "Needs attention" });
-    await waitFor(() => expect(within(attention).getByRole("link", { name: /Exam papers in draft/ })).toHaveAttribute("href", "/examiner/exams"));
-    expect(within(attention).getByRole("link", { name: /Schedules not published/ })).toHaveAttribute("href", "/examiner/schedule");
+    await waitFor(() => expect(within(attention).getByRole("link", { name: /Schedules not published/ })).toHaveAttribute("href", "/examiner/schedule"));
+    expect(within(attention).queryByRole("link", { name: /Exam papers in draft/ })).not.toBeInTheDocument();
     expect(within(attention).queryByText(/registration/i)).not.toBeInTheDocument();
   });
 
   it("offers a quick jump to what needs attention", async () => {
     renderDashboard();
-    expect(await screen.findByRole("link", { name: "2 items need attention" })).toHaveAttribute("href", "#needs-attention");
+    expect(await screen.findByRole("link", { name: "1 item needs attention" })).toHaveAttribute("href", "#needs-attention");
     expect(screen.getByRole("region", { name: "Needs attention" })).toHaveAttribute("id", "needs-attention");
   });
 
@@ -190,7 +190,7 @@ describe("ExaminerDashboardRoute", () => {
     const shifts = await screen.findByRole("region", { name: "Exam shifts" });
     expect(await within(shifts).findByText("Exam schedules are temporarily unavailable.")).toBeInTheDocument();
     expect(await screen.findByRole("img", { name: "Draft 1, Published 2, Archived 0" })).toBeInTheDocument();
-    expect(await within(panel("Exam preparation")).findByText("Exam schedules could not be loaded.")).toBeInTheDocument();
+    expect(await within(panel("Exam readiness")).findByText("Exam schedules could not be loaded.")).toBeInTheDocument();
     expect(screen.queryByText(/exam shifts? today/)).not.toBeInTheDocument();
     await user.click(within(shifts).getByRole("button", { name: "Try again" }));
     expect(await within(shifts).findByText("SWE201 Final")).toBeInTheDocument();
@@ -211,9 +211,9 @@ describe("ExaminerDashboardRoute", () => {
     expect(within(panel("Overview")).getAllByText("Loading…").length).toBeGreaterThan(0);
   });
 
-  it("offers the two ways to start new work", async () => {
+  it("lets examiners create schedules without offering paper authoring", async () => {
     renderDashboard();
     expect(await screen.findByRole("link", { name: "Create schedule" })).toHaveAttribute("href", "/examiner/schedule/new/details");
-    expect(screen.getByRole("link", { name: "Create exam paper" })).toHaveAttribute("href", "/examiner/exams/new/setup");
+    expect(screen.queryByRole("link", { name: "Create exam paper" })).not.toBeInTheDocument();
   });
 });

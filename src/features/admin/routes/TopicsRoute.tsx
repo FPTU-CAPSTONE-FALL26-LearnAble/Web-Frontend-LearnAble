@@ -45,14 +45,12 @@ type Draft = {
   topicCode: string;
   topicName: string;
   description: string;
-  displayOrder: string;
 };
 const emptyDraft: Draft = {
   subjectId: "",
   topicCode: "",
   topicName: "",
   description: "",
-  displayOrder: "1",
 };
 
 export function TopicsRoute() {
@@ -107,7 +105,6 @@ export function TopicsRoute() {
         topicCode: draft.topicCode.trim(),
         topicName: draft.topicName.trim(),
         description: draft.description.trim() || null,
-        displayOrder: Number(draft.displayOrder),
       }),
     onSuccess: closeForm,
   });
@@ -118,7 +115,6 @@ export function TopicsRoute() {
       updateTopic(editing!.topicId, {
         topicName: draft.topicName.trim(),
         description: draft.description.trim() || null,
-        displayOrder: Number(draft.displayOrder),
       }),
     onSuccess: closeForm,
   });
@@ -135,9 +131,6 @@ export function TopicsRoute() {
     if (creating && !draft.topicCode.trim())
       found.push("Topic code is required.");
     if (!draft.topicName.trim()) found.push("Topic name is required.");
-    const order = Number(draft.displayOrder);
-    if (!Number.isInteger(order) || order < 0)
-      found.push("Display order must be a whole number, 0 or higher.");
     setErrors(found);
     if (found.length) return;
     if (creating) create.mutate();
@@ -267,7 +260,6 @@ export function TopicsRoute() {
       >
         <TableHeader>
           <TableRow>
-            <TableHead>Order</TableHead>
             <TableHead>Code</TableHead>
             <TableHead>Topic</TableHead>
             <TableHead>Subject</TableHead>
@@ -279,10 +271,7 @@ export function TopicsRoute() {
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.topicId}>
-              <TableCell className="tabular-nums font-bold">
-                {row.displayOrder}
-              </TableCell>
-              <TableCell className="font-bold">{row.topicCode}</TableCell>
+              <TableCell><span className="font-bold">{row.topicCode}</span></TableCell>
               <TableCell className="min-w-72 max-w-md whitespace-normal">
                 <p className="font-bold leading-relaxed">{row.topicName}</p>
                 {row.description && (
@@ -300,9 +289,7 @@ export function TopicsRoute() {
                   tone={row.isActive ? "success" : "neutral"}
                 />
               </TableCell>
-              <TableCell className="tabular-nums">
-                {formatDate(row.updatedAt)}
-              </TableCell>
+              <TableCell><span className="tabular-nums">{formatDate(row.updatedAt)}</span></TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   <Button
@@ -315,7 +302,6 @@ export function TopicsRoute() {
                         topicCode: row.topicCode,
                         topicName: row.topicName,
                         description: row.description ?? "",
-                        displayOrder: String(row.displayOrder),
                       });
                     }}
                   >
@@ -330,7 +316,7 @@ export function TopicsRoute() {
           ))}
           {!rows.length && (
             <EmptyRow
-              columns={7}
+              columns={6}
               title="No topics match your filters."
               hint="Try another search, or add a topic to a subject."
             />
@@ -367,35 +353,19 @@ export function TopicsRoute() {
             setDraft((old) => ({ ...old, subjectId: value }))
           }
         />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            label="Topic code"
-            value={draft.topicCode}
-            disabled={!creating}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, topicCode: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Topic code"))
-                ? "Topic code is required."
-                : undefined
-            }
-          />
-          <TextField
-            label="Display order"
-            type="number"
-            min="0"
-            value={draft.displayOrder}
-            onChange={(value) =>
-              setDraft((old) => ({ ...old, displayOrder: value }))
-            }
-            error={
-              errors.some((e) => e.startsWith("Display order"))
-                ? "Display order must be a whole number, 0 or higher."
-                : undefined
-            }
-          />
-        </div>
+        <TextField
+          label="Topic code"
+          value={draft.topicCode}
+          disabled={!creating}
+          onChange={(value) =>
+            setDraft((old) => ({ ...old, topicCode: value }))
+          }
+          error={
+            errors.some((e) => e.startsWith("Topic code"))
+              ? "Topic code is required."
+              : undefined
+          }
+        />
         <TextField
           label="Topic name"
           value={draft.topicName}

@@ -42,10 +42,8 @@ export function nextShift(today: ExamSchedule[], later: ExamSchedule[], now: Dat
 export function buildAttention(
   data: { papers: ExamPaper[]; schedules: ExamSchedule[] },
 ): AttentionItem[] {
-  const draftPapers = data.papers.filter((paper) => paper.status === "Draft").length;
   const draftSchedules = data.schedules.filter((schedule) => schedule.status === "Draft").length;
   const items: AttentionItem[] = [
-    { key: "papers", label: "Exam papers in draft", hint: "Finish and publish them so they can be scheduled", count: draftPapers, to: "/examiner/exams" },
     { key: "schedules", label: "Schedules not published", hint: "Check readiness and publish before candidates need them", count: draftSchedules, to: "/examiner/schedule" },
   ];
   return items.filter((item) => item.count > 0);
@@ -114,14 +112,14 @@ export function buildFlow(data: OverviewData, now: Date): FlowStep[] {
   return [
     {
       key: "papers",
-      title: "Build exam papers",
+      title: "Review received papers",
       summary: !papers
         ? "Exam papers could not be loaded."
         : !papers.length
-          ? "No exam papers yet. Create one from an exam configuration and choose its questions."
-          : `${plural(draftPapers, "paper")} in draft · ${published} published`,
-      status: !papers ? unavailable : !papers.length ? { label: "Not started", tone: "neutral" } : draftPapers ? { label: "In progress", tone: "warning" } : { label: "Ready", tone: "success" },
-      actions: [{ label: "Exam papers", to: "/examiner/exams" }],
+          ? "No papers have been received from lecturers yet."
+          : `${published} available to schedule${draftPapers ? ` · ${plural(draftPapers, "paper")} still with lecturers` : ""}`,
+      status: !papers ? unavailable : !papers.length ? { label: "Waiting", tone: "neutral" } : published ? { label: "Available", tone: "success" } : { label: "Waiting", tone: "warning" },
+      actions: [{ label: "Review papers", to: "/examiner/exams" }],
     },
     {
       key: "schedule",

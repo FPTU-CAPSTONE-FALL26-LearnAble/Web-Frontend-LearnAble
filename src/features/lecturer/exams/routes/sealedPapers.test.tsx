@@ -6,15 +6,18 @@ import type { ReactNode } from "react";
 import { ShiftPackagePanel } from "@/features/examiner/components/ShiftPackagePanel";
 import { SealPaperRoute } from "./SealPaperRoute";
 import { SealedPapersRoute } from "./SealedPapersRoute";
+import { Toaster } from "@/shared/ui/primitives/toast";
+import { useOperationProgress } from "@/features/examiner/workflow/operationProgress";
 
 const exams = vi.hoisted(() => ({
   getExamPaper: vi.fn(),
-  sealExamPaper: vi.fn(async () => ({})),
+  sealExamPaper: vi.fn(async () => sealed()),
   getMySealedPapers: vi.fn(),
   getSealedExamPapers: vi.fn(),
   handoverSealedPaper: vi.fn(async () => ({})),
   withdrawSealedPaper: vi.fn(async () => ({})),
   getSharedExamShift: vi.fn(),
+  getScheduleValidation: vi.fn(),
   getShiftPaperSelection: vi.fn(),
   selectShiftPaper: vi.fn(async () => ({})),
   releaseShiftPaper: vi.fn(async () => ({})),
@@ -34,14 +37,18 @@ const audio = (total: number, ready: number) => ({ questionId: "q", totalSegment
 
 function show(element: ReactNode, path: string, route = "*") {
   const router = createMemoryRouter([{ path: route, element }], { initialEntries: [path] });
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /><Toaster /></QueryClientProvider>);
 }
 
 beforeAll(() => {
   HTMLElement.prototype.hasPointerCapture = () => false;
   HTMLElement.prototype.scrollIntoView = () => {};
 });
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  exams.getScheduleValidation.mockResolvedValue({ isValid: true, errors: [] });
+  useOperationProgress.setState({ open: false, steps: [], title: "", message: "", phase: "running", minimized: false });
+});
 
 describe("SealPaperRoute", () => {
   const paper = { examPaperId: "p1", status: "Draft", name: "CSD201 FE", paperCode: "FE-1", totalScore: 10, eTag: '"p-1"', questions: [
@@ -75,8 +82,32 @@ describe("SealPaperRoute", () => {
     await user.click(screen.getByRole("button", { name: "Seal the paper" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(exams.sealExamPaper).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Seal the paper" }));
+    await user.click(within(dialog).getByRole("button", { name: "Seal in background" }));
     await waitFor(() => expect(exams.sealExamPaper).toHaveBeenCalledWith("p1", '"p-1"'));
+    expect(useOperationProgress.getState()).toMatchObject({ open: true, phase: "done", title: "Sealing the paper" });
+    expect(useOperationProgress.getState().steps.map((step) => step.status)).toEqual(["done", "done"]);
+    expect(await screen.findByText("Paper sealed successfully")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Seal the paper" })).not.toBeInTheDocument());
+  });
+
+  it("closes the confirmation while sealing continues in the background", async () => {
+    const user = userEvent.setup();
+    let finishSeal!: (value: ReturnType<typeof sealed>) => void;
+    exams.sealExamPaper.mockImplementationOnce(() => new Promise((resolve) => { finishSeal = resolve; }));
+    exams.getExamPaper.mockResolvedValue(paper);
+    lecturer.getQuestionAudioGeneration.mockResolvedValue(audio(5, 5));
+    show(<SealPaperRoute />, "/lecturer/exam-papers/p1/seal", "/lecturer/exam-papers/:paperId/seal");
+
+    await user.click(await screen.findByRole("button", { name: "Seal the paper" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seal in background" }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sealing…" })).toBeDisabled();
+    expect((await screen.findAllByText("Sealing started in the background")).length).toBeGreaterThan(0);
+    expect(useOperationProgress.getState()).toMatchObject({ open: true, phase: "running", title: "Sealing the paper" });
+
+    finishSeal(sealed());
+    await waitFor(() => expect(useOperationProgress.getState().phase).toBe("done"));
   });
 });
 
@@ -127,7 +158,8 @@ describe("ShiftPackagePanel", () => {
     exams.getShiftPaperSelection.mockResolvedValue({ selectionId: "a", shiftId: "sh", versionId: "v1", operationId: "o", selectedAt: "2026-11-13T02:00:00Z", releasedAt: null, consumedAt: null });
     exams.getSealedExamPapers.mockResolvedValue([sealed()]);
     show(<ShiftPackagePanel shiftId="sh" scheduleStatus="Published" />, "/examiner/schedule/x");
-    expect(await screen.findByText(/CSD201 FE · version 2/)).toBeInTheDocument();
+    expect(await screen.findByText("CSD201 FE")).toBeInTheDocument();
+    expect(screen.getByText("Version 2")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Release package" }));
     await waitFor(() => expect(exams.releaseShiftPaper).toHaveBeenCalledWith("sh", '"s-1"'));
   });
@@ -137,7 +169,7 @@ describe("ShiftPackagePanel", () => {
     const attached = { selectionId: "a", shiftId: "sh", versionId: "v1", operationId: "o", selectedAt: "2026-11-13T02:00:00Z", releasedAt: null, consumedAt: null };
     exams.getShiftPaperSelection.mockResolvedValue(attached);
     exams.getSealedExamPapers.mockResolvedValue([sealed()]);
-    exams.getSharedExamShift.mockResolvedValue({ shiftId: "sh", eTag: '"s-1"', status: "Draft" });
+    exams.getSharedExamShift.mockResolvedValue({ shiftId: "sh", eTag: '"s-1"', status: "Draft", scheduleIds: ["room-1"] });
     show(<ShiftPackagePanel shiftId="sh" scheduleStatus="Draft" />, "/examiner/schedule/x");
     await user.click(await screen.findByRole("button", { name: "Publish shift" }));
     await waitFor(() => expect(exams.publishSharedExamShift).toHaveBeenCalledWith("sh", '"s-1"'));

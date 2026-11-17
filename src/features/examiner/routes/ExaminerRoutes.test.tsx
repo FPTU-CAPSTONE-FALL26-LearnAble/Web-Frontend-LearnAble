@@ -26,12 +26,14 @@ const examApi = vi.hoisted(() => ({
   publishExamPaper: vi.fn(),
   getExamTypes: vi.fn(),
   getExamSubjects: vi.fn(),
+  getSealedExamPapers: vi.fn(),
   getAvailableExamQuestions: vi.fn(),
   setExamPaperQuestions: vi.fn(),
   updateExamSubject: vi.fn(),
   updateExamPaper: vi.fn(),
   createExamShift: vi.fn(),
   createSharedExamShift: vi.fn(),
+  selectShiftPaper: vi.fn(),
   previewSharedExamShift: vi.fn(),
   updateSharedExamShift: vi.fn(),
   getSharedExamShift: vi.fn(),
@@ -168,6 +170,7 @@ describe("Examiner routes", () => {
     examApi.getExamSchedules.mockResolvedValue(page([{ examScheduleId: "schedule-1", examSubjectId: "exam-subject-1", examName: "SWE201 Final", examShiftId: "shift-1", examRoomId: "room-1", roomName: "Lab Alpha 302", startsAt: "2026-10-26T13:30:00Z", endsAt: "2026-10-26T15:30:00Z", entryOpensAt: "2026-10-26T13:00:00Z", entryClosesAt: "2026-10-26T14:00:00Z", status: "Open" }]));
     examApi.getExamTypes.mockResolvedValue([{ examTypeId: "type-1", code: "FINAL", name: "Final Exam", isActive: true }]);
     examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90 }]));
+    examApi.getSealedExamPapers.mockResolvedValue([{ examSubjectId: "exam-subject-1", name: "SWE201 Final Paper 1", durationMinutes: 90, semesterId: "semester-1" }]);
     examApi.getAvailableExamQuestions.mockResolvedValue(page([{ ...question, eligible: true, reasons: [], examTypeId: "type-1" }]));
     examApi.setExamPaperQuestions.mockResolvedValue({ questions: [{ questionId: question.questionId }], totalScore: 0.25, eTag: "etag-2" });
     examApi.createExamShift.mockImplementation(async ({ examRoomId }: { examRoomId: string }) => ({ examShiftId: `shift-${examRoomId}` }));
@@ -214,6 +217,15 @@ describe("Examiner routes", () => {
     expect(
       screen.queryByText("Software Engineering Foundations"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the examiner paper bank read-only", async () => {
+    renderRoute(<ExamBankRoute />, ["/examiner/exams"]);
+    expect(await screen.findByRole("heading", { name: "Received Exam Papers" })).toBeInTheDocument();
+    expect(screen.getByText(/Paper content is read-only for examiners/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Create exam paper" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Use in schedule" }).length).toBeGreaterThan(0);
   });
 
   it("loads eligible questions and stores a scored selection", async () => {
@@ -475,28 +487,62 @@ describe("Examiner routes", () => {
     expect(screen.queryByText(/Capacity not provided|Capacity not/)).not.toBeInTheDocument();
   });
 
-  it("offers only sealed exams that are Ready when scheduling", async () => {
+  it("offers only exams with handed-over packages when scheduling", async () => {
     examApi.getExamSubjects.mockResolvedValue(page([
-      { examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90, requiresSealing: true },
-      { examSubjectId: "exam-subject-2", name: "Unfinished exam", status: "Draft", durationMinutes: 90, requiresSealing: true },
-      { examSubjectId: "exam-subject-3", name: "Old unsealed exam", status: "Ready", durationMinutes: 90, requiresSealing: false },
+      { examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90 },
+      { examSubjectId: "exam-subject-2", name: "Unfinished exam", status: "Draft", durationMinutes: 90 },
+      { examSubjectId: "exam-subject-3", name: "Old unsealed exam", status: "Ready", durationMinutes: 90 },
     ]));
+    examApi.getSealedExamPapers.mockResolvedValue([
+      { versionId: "version-1", examSubjectId: "exam-subject-1", name: "SWE201 Paper 1", durationMinutes: 90 },
+      { versionId: "version-2", examSubjectId: "exam-subject-1", name: "SWE201 Paper 2", durationMinutes: 90 },
+    ]);
     renderRoute(<ScheduleDetailsRoute />);
     fireEvent.click(await screen.findByRole("combobox", { name: /Exam configuration/ }));
-    expect(await screen.findByRole("option", { name: "SWE201 Final" })).toBeInTheDocument();
+    const availableExam = await screen.findByRole("option", { name: "SWE201 Final" });
+    expect(availableExam).toBeInTheDocument();
+    expect(screen.getAllByRole("option")).toHaveLength(1);
     expect(screen.queryByRole("option", { name: /Unfinished exam/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Old unsealed exam/ })).not.toBeInTheDocument();
+    fireEvent.click(availableExam);
+    expect(await screen.findByText("2 sealed exam packages have been submitted")).toBeInTheDocument();
+    expect(screen.getByText(/LearnAble will attach an available package automatically/)).toBeInTheDocument();
+    expect(screen.queryByText(/Backend does not identify/)).not.toBeInTheDocument();
   });
 
-  it("says so when no sealed exam is ready to schedule", async () => {
-    examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-3", name: "Old unsealed exam", status: "Ready", durationMinutes: 90, requiresSealing: false }]));
+  it("says so when no handed-over package is ready to schedule", async () => {
+    examApi.getSealedExamPapers.mockResolvedValue([]);
     renderRoute(<ScheduleDetailsRoute />);
-    expect(await screen.findByText(/No sealed exam is ready to schedule/)).toBeInTheDocument();
+    expect(await screen.findByText(/No handed-over exam package is ready to schedule/)).toBeInTheDocument();
+  });
+
+  it("explains why a schedule cannot be created instead of silently disabling the button", async () => {
+    examApi.createSharedExamShift.mockClear();
+    renderRoute(<ScheduleDetailsRoute />);
+    const create = await screen.findByRole("button", { name: "Create the shift" });
+    expect(create).toBeEnabled();
+    fireEvent.click(create);
+    expect(await screen.findByText("Select a handed-over exam.")).toBeInTheDocument();
+    expect(examApi.createSharedExamShift).not.toHaveBeenCalled();
+  });
+
+  it("shows the selected semester window and blocks a shift outside it", async () => {
+    sessionStorage.setItem("learnable:examiner:schedule-preparation-v3", JSON.stringify({
+      examSubjectId: "exam-subject-1", examRoomIds: ["room-1"], shiftName: "Morning shift",
+      startsAt: "2027-01-20T09:00", endsAt: "2027-01-20T11:00", entryOpensAt: "2027-01-20T09:00", entryClosesAt: "2027-01-20T09:30",
+    }));
+    renderRoute(<ScheduleDetailsRoute />);
+    expect(await screen.findByText("Fall 2026 · 2026")).toBeInTheDocument();
+    expect(screen.getByText("Valid scheduling period: 01/09/2026 – 31/12/2026")).toBeInTheDocument();
+    expect(screen.getByText("Shift must fit the semester (01/09/2026–31/12/2026).")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create the shift" }));
+    expect(examApi.createSharedExamShift).not.toHaveBeenCalled();
   });
 
   it("creates one shared shift for the chosen rooms and moves on to the shift page", async () => {
     examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90, requiresSealing: true }]));
-    examApi.createSharedExamShift.mockResolvedValue({ shiftId: "shift-1" });
+    examApi.createSharedExamShift.mockResolvedValue({ shiftId: "shift-1", eTag: '"shift-etag"' });
+    examApi.selectShiftPaper.mockResolvedValue({ shiftId: "shift-1", versionId: "version-1" });
     sessionStorage.setItem("learnable:examiner:schedule-preparation-v3", JSON.stringify({
       examSubjectId: "exam-subject-1",
       examRoomIds: ["room-1", "room-2"],
@@ -509,9 +555,25 @@ describe("Examiner routes", () => {
     renderRoute(<ScheduleDetailsRoute />);
     fireEvent.click(await screen.findByRole("button", { name: "Create the shift" }));
     await waitFor(() => expect(examApi.createSharedExamShift).toHaveBeenCalledWith(expect.objectContaining({ examSubjectId: "exam-subject-1", name: "Morning shift", roomIds: ["room-1", "room-2"] })));
+    await waitFor(() => expect(examApi.selectShiftPaper).toHaveBeenCalledWith("shift-1", '"shift-etag"', expect.any(String)));
     expect(examApi.createExamShift).not.toHaveBeenCalled();
     expect(examApi.createExamSchedule).not.toHaveBeenCalled();
     await waitFor(() => expect(JSON.parse(sessionStorage.getItem("learnable:examiner:schedule-preparation-v3") ?? "{}").sharedShiftId).toBe("shift-1"));
+  });
+
+  it("keeps the examiner on setup and explains when no unused package can be attached", async () => {
+    examApi.getExamSubjects.mockResolvedValue(page([{ examSubjectId: "exam-subject-1", name: "SWE201 Final", status: "Ready", durationMinutes: 90, requiresSealing: true }]));
+    examApi.createSharedExamShift.mockResolvedValue({ shiftId: "shift-without-package", eTag: '"shift-etag"' });
+    examApi.selectShiftPaper.mockRejectedValueOnce(new ApiFailure({ kind: "server", status: 409 }, "No unused compatible version is available."));
+    sessionStorage.setItem("learnable:examiner:schedule-preparation-v3", JSON.stringify({
+      examSubjectId: "exam-subject-1", examRoomIds: ["room-1"], shiftName: "Morning shift",
+      startsAt: "2026-11-20T09:00", endsAt: "2026-11-20T11:00", entryOpensAt: "2026-11-20T09:00", entryClosesAt: "2026-11-20T09:30",
+    }));
+    renderRoute(<ScheduleDetailsRoute />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create the shift" }));
+    expect(await screen.findByText(/No unused package is available for this exam/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open this shift" })).toHaveAttribute("href", "/examiner/schedule/shared/shift-without-package");
+    expect(screen.getByRole("button", { name: "Shift created — resolve package" })).toBeDisabled();
   });
 
   it("checks the chosen rooms with the Backend before the shift is created", async () => {

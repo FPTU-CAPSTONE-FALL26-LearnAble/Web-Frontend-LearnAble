@@ -233,7 +233,6 @@ export const adminTopicSchema = z
     topicCode: z.string().nullable(),
     topicName: z.string().nullable(),
     description: z.string().nullable(),
-    displayOrder: z.number(),
     isActive: z.boolean(),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -523,12 +522,10 @@ export type CreateTopicBody = {
   topicCode: string;
   topicName: string;
   description?: string | null;
-  displayOrder: number;
 };
 export type UpdateTopicBody = {
   topicName: string;
   description?: string | null;
-  displayOrder: number;
 };
 export type CreateUserBody = {
   universityId: string;
@@ -764,7 +761,7 @@ export const getAdminTopics = (filters: ReadFilters = {}) =>
   readPage<AdminTopic>("Topics", adminTopicSchema, {
     PageNumber: 1,
     PageSize: 10,
-    SortBy: "displayOrder",
+    SortBy: "topicCode",
     ...filters,
   });
 export const createTopic = (body: CreateTopicBody) =>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, FilePlus2 } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { Link } from "react-router";
 import { getExamPaperBank, getExamRooms, getExamSchedules, type ExamSchedule } from "@/api/exams";
 import { fetchAllPages } from "@/api/pagination";
@@ -106,12 +106,6 @@ export function ExaminerDashboardRoute() {
               Create schedule
             </Link>
           </Button>
-          <Button asChild>
-            <Link to="/examiner/exams/new/setup">
-              <FilePlus2 />
-              Create exam paper
-            </Link>
-          </Button>
         </div>
       </header>
 
@@ -119,7 +113,7 @@ export function ExaminerDashboardRoute() {
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
-          <DashboardPanel title="Exam preparation">
+          <DashboardPanel title="Exam readiness">
             <PanelState
               pending={schedules.isPending || papers.isPending}
               error={null}

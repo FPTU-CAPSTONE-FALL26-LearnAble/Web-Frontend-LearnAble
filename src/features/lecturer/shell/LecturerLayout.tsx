@@ -15,6 +15,7 @@ import { SkipLink } from "@/shared/a11y/SkipLink";
 import { toast } from "@/shared/ui/primitives/toast";
 import { LecturerSidebar } from "./LecturerSidebar";
 import { BrandIdentity } from "@/components/BrandIdentity";
+import { OperationProgress } from "@/features/examiner/components/OperationProgress";
 import "./lecturer-theme.css";
 
 export function LecturerLayout() {
@@ -84,6 +85,7 @@ export function LecturerLayout() {
           <Outlet />
         </div>
       </main>
+      <OperationProgress />
     </div>
   );
 }

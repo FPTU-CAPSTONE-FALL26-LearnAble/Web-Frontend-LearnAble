@@ -60,11 +60,41 @@ describe("SharedShiftRoute", () => {
 
   it("holds the people step back until a package is attached", async () => {
     exams.getShiftPaperSelection.mockResolvedValue(null);
+    exams.selectShiftPaper.mockRejectedValue(new Error("No matching package"));
     show();
     const rooms = await screen.findByRole("region", { name: "Rooms and people" });
     await within(rooms).findByText("Lab 1");
     expect(within(rooms).getByRole("button", { name: "Add students and invigilators" })).toBeDisabled();
     expect(within(rooms).getByText(/Attach a package first/)).toBeInTheDocument();
+  });
+
+  it("does not offer Publish until every room has students and invigilators", async () => {
+    exams.getShiftPaperSelection.mockResolvedValue(attached);
+    show();
+    expect(await screen.findByRole("button", { name: "Complete people setup first" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Publish shift" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("No invigilator is assigned.").length).toBeGreaterThan(0);
+  });
+
+  it("offers Publish once every room passes Backend validation", async () => {
+    const user = userEvent.setup();
+    exams.getShiftPaperSelection.mockResolvedValue(attached);
+    exams.getScheduleValidation.mockResolvedValue({ isValid: true, errors: [] });
+    exams.publishSharedExamShift.mockResolvedValue({});
+    show();
+    const publish = await screen.findByRole("button", { name: "Publish shift" });
+    expect(publish).toBeEnabled();
+    await user.click(publish);
+    await waitFor(() => expect(exams.publishSharedExamShift).toHaveBeenCalledWith("sh", '"s-1"'));
+    expect(await screen.findByText("Schedule list")).toBeInTheDocument();
+  });
+
+  it("automatically tries to attach a package to an existing draft shift", async () => {
+    exams.getShiftPaperSelection.mockRejectedValue(new Error("Selection not created yet"));
+    exams.selectShiftPaper.mockResolvedValue(attached);
+    show();
+    await waitFor(() => expect(exams.selectShiftPaper).toHaveBeenCalledWith("sh", '"s-1"', expect.any(String)));
+    expect(await screen.findByText("Status unknown")).toBeInTheDocument();
   });
 
   it("carries the shift into the people step once a package is attached", async () => {
@@ -90,12 +120,14 @@ describe("SharedShiftRoute", () => {
   it("cancels the shift after the examiner confirms", async () => {
     const user = userEvent.setup();
     exams.getShiftPaperSelection.mockResolvedValue(attached);
+    exams.releaseShiftPaper.mockResolvedValue({ eTag: '"s-2"' });
     show();
     await user.click(await screen.findByRole("button", { name: "Cancel the shift" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(exams.cancelSharedExamShift).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Cancel the shift" }));
-    await waitFor(() => expect(exams.cancelSharedExamShift).toHaveBeenCalledWith("sh", '"s-1"'));
+    await waitFor(() => expect(exams.releaseShiftPaper).toHaveBeenCalledWith("sh", '"s-1"'));
+    expect(exams.cancelSharedExamShift).toHaveBeenCalledWith("sh", '"s-2"');
     expect(await screen.findByText("Schedule list")).toBeInTheDocument();
   });
 
@@ -105,7 +137,17 @@ describe("SharedShiftRoute", () => {
     show();
     const progress = await screen.findByRole("list", { name: "Shift progress" });
     await waitFor(() => expect(within(progress).getByText("Attach a package").closest("li")).toHaveClass("bg-success"));
+    expect(within(progress).getByText("Add students and invigilators").closest("li")).toHaveClass("bg-success");
     expect(within(progress).getByText("Publish the shift").closest("li")).toHaveClass("bg-success");
     expect(within(progress).getByText("Open the exam").closest("li")).not.toHaveClass("bg-success");
+  });
+
+  it("marks people as complete in a draft once every room has students and invigilators", async () => {
+    exams.getShiftPaperSelection.mockResolvedValue(attached);
+    exams.getExamEnrollments.mockResolvedValue([{ status: "Registered" }]);
+    exams.getExamInvigilators.mockResolvedValue([{ status: "Active" }]);
+    show();
+    const progress = await screen.findByRole("list", { name: "Shift progress" });
+    await waitFor(() => expect(within(progress).getByText("Add students and invigilators").closest("li")).toHaveClass("bg-success"));
   });
 });

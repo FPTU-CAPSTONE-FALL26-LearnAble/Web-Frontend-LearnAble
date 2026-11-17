@@ -335,6 +335,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     await screen.findByText("Showing 10 of 12 questions from the server");
     await user.click(screen.getAllByRole("button", { name: "Preview" })[0]);
     const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveAttribute("data-contrast", "yellow");
     expect((await within(dialog).findAllByText("Original editable question")).length).toBeGreaterThan(0);
     expect(within(dialog).getAllByText("First answer").length).toBeGreaterThan(0);
     expect(within(dialog).getByText("Live review")).toBeInTheDocument();

@@ -75,6 +75,11 @@ describe("API error messages", () => {
     expect(describeError(empty)).toBe(describeError(new ApiFailure({ kind: "server", status: 500 })));
   });
 
+  it("accepts a successful response with an empty body when the schema allows it", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    await expect(request("/empty-command", z.null())).resolves.toBeNull();
+  });
+
   it("reads message-only, errors-only and unrelated bodies", () => {
     expect(apiMessage({ message: "Exam in progress." })).toBe("Exam in progress.");
     expect(apiMessage({ errors: ["A", "B"] })).toBe("A; B");

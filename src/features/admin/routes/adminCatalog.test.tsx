@@ -144,7 +144,6 @@ vi.mock("@/api/admin", async (importOriginal) => {
           topicCode: "SWE201-01",
           topicName: "Architecture",
           description: "Layered and hexagonal architecture",
-          displayOrder: 1,
           isActive: true,
           createdAt: "2026-01-06T00:00:00Z",
           updatedAt: "2026-02-01T00:00:00Z",
@@ -205,23 +204,24 @@ describe("Admin catalog workspaces", { timeout: 30000 }, () => {
     );
   });
 
-  it("rejects a negative display order before calling the API", async () => {
+  it("creates a topic with the current backend contract", async () => {
     const user = userEvent.setup();
     view(<TopicsRoute />);
     await screen.findByText("Architecture");
     await user.click(screen.getByRole("button", { name: "New topic" }));
 
+    await user.click(screen.getByLabelText("Subject of topic"));
+    await user.click(screen.getByRole("option", { name: "SWE201 · Software Engineering" }));
     await user.type(screen.getByLabelText("Topic code"), "SWE201-02");
     await user.type(screen.getByLabelText("Topic name"), "Testing");
-    const order = screen.getByLabelText("Display order");
-    await user.clear(order);
-    await user.type(order, "-3");
     await user.click(screen.getByRole("button", { name: "Create topic" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Display order must be a whole number, 0 or higher.",
-    );
-    expect(createTopic).not.toHaveBeenCalled();
+    await waitFor(() => expect(createTopic).toHaveBeenCalledWith({
+      subjectId: "sub1",
+      topicCode: "SWE201-02",
+      topicName: "Testing",
+      description: null,
+    }));
   });
 
   it("keys student profile writes by the account's userId", async () => {

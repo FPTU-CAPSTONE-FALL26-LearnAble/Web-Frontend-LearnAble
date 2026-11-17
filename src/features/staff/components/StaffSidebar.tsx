@@ -10,6 +10,7 @@ import {
   ScrollText,
   Settings2,
   ShieldCheck,
+  Tags,
   UserCog,
   UserRoundCheck,
   Users,
@@ -72,6 +73,7 @@ const groups: Group[] = [
     icon: LibraryBig,
     items: [
       { label: "Subjects", path: "/staff/subjects", icon: LibraryBig },
+      { label: "Topics", path: "/staff/topics", icon: Tags },
       { label: "Curriculums", path: "/staff/curriculums", icon: ScrollText },
       {
         label: "Default Exam Policy",
