@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Armchair, ArrowLeft, CalendarDays, CheckCircle2, Clock, DoorOpen, Trash2, UserRound, Users, XCircle } from "lucide-react";
+import { AlertTriangle, Armchair, ArrowLeft, CalendarDays, CheckCircle2, Clock, DoorOpen, Trash2, Upload, UserRound, Users, XCircle } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { getRoomSeats } from "@/api/admin";
 import {
+  addExamEnrollments,
+  autoAssignSeats,
   cancelExamSchedule,
   deleteExamSchedule,
   getExamEnrollments,
@@ -12,8 +14,13 @@ import {
   getExamShifts,
   getScheduleValidation,
   publishExamSchedule,
+  setExamInvigilators,
   updateExamSchedule,
+  validateInvigilatorImport,
 } from "@/api/exams";
+import { validateStudentImport } from "@/api/invigilation";
+import { ApiFailure } from "@/api/client";
+import { describeError } from "@/app/providers";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { ScheduleTimeline, clock, minutesBetween } from "@/features/examiner/components/ScheduleTimeline";
 import { ShiftPackagePanel } from "@/features/examiner/components/ShiftPackagePanel";
@@ -35,7 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/primitives/alert-dialog";
 import { toast } from "@/shared/ui/primitives/toast";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ConfirmAction = "cancel" | "delete" | null;
 
@@ -54,6 +61,7 @@ const toLocalInput = (value: string) => {
 };
 
 const longDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const importErrorText = (reason: unknown) => reason instanceof ApiFailure ? describeError(reason) : reason instanceof Error ? reason.message : describeError(reason);
 
 /** How each status of a schedule is named and coloured, with what it means for the examiner. */
 const statusLook: Record<string, { label: string; className: string; note: string }> = {
@@ -95,6 +103,8 @@ export function ExamScheduleDetailRoute() {
   const [editShiftId, setEditShiftId] = useState("");
   const [entryOpensAt, setEntryOpensAt] = useState("");
   const [entryClosesAt, setEntryClosesAt] = useState("");
+  const studentFileRef = useRef<HTMLInputElement>(null);
+  const invigilatorFileRef = useRef<HTMLInputElement>(null);
   const schedule = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId], queryFn: () => getExamSchedule(scheduleId), enabled: Boolean(scheduleId) });
   const enrollments = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId, "enrollments"], queryFn: () => getExamEnrollments(scheduleId), enabled: Boolean(scheduleId) });
   const invigilators = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId, "invigilators"], queryFn: () => getExamInvigilators(scheduleId), enabled: Boolean(scheduleId) });
@@ -149,6 +159,55 @@ export function ExamScheduleDetailRoute() {
       navigate("/examiner/schedule");
     },
     onError: (reason) => toast({ title: "Schedule could not be updated", description: reason instanceof Error ? reason.message : "Refresh and try again." }),
+  });
+  const importStudents = useMutation({
+    mutationFn: async (file: File) => {
+      const report = await validateStudentImport(schedule.data!.examSubjectId, file);
+      if (!report.canContinue || report.invalidRows > 0) throw new Error(`${report.invalidRows} student row(s) need correction before importing.`);
+      const existing = new Set((enrollments.data ?? []).map((student) => student.studentId));
+      const students = report.rows.flatMap((row) => row.isValid && row.studentId && !existing.has(row.studentId)
+        ? [{ studentId: row.studentId, extraTimeMinutes: row.extraTimeMinutes, accommodationNotes: row.accommodationNotes }]
+        : []);
+      if (!students.length) return 0;
+      await addExamEnrollments(scheduleId, students);
+      await autoAssignSeats(scheduleId);
+      return students.length;
+    },
+    onSuccess: (count) => {
+      toast(count
+        ? { title: `${count} students imported`, description: "The Backend added the students and assigned their seats automatically." }
+        : { title: "No new students", description: "Every valid student in this file is already assigned to this schedule." });
+    },
+    onError: (reason) => toast({ title: "Student list could not be imported", description: importErrorText(reason), variant: "error" }),
+    onSettled: async () => {
+      if (studentFileRef.current) studentFileRef.current.value = "";
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedule", scheduleId, "enrollments"] }),
+        queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedule", scheduleId, "seating"] }),
+        queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedule", scheduleId, "validation"] }),
+      ]);
+    },
+  });
+  const importInvigilators = useMutation({
+    mutationFn: async (file: File) => {
+      const report = await validateInvigilatorImport(schedule.data!.examShiftId, file);
+      if (!report.canContinue || report.invalidRows > 0) throw new Error(`${report.invalidRows} lecturer row(s) need correction before importing.`);
+      const lecturerIds = [...new Set(report.rows.flatMap((row) => row.isValid && row.lecturerId ? [row.lecturerId] : []))];
+      if (!lecturerIds.length) throw new Error("The file contains no valid lecturer.");
+      await setExamInvigilators(scheduleId, lecturerIds.map((lecturerId, index) => ({ lecturerId, assignmentRole: index === 0 ? "Chief" : "Assistant" })));
+      return lecturerIds.length;
+    },
+    onSuccess: (count) => {
+      toast({ title: `${count} invigilators imported`, description: "The first lecturer is Chief; the remaining lecturers are Assistants." });
+    },
+    onError: (reason) => toast({ title: "Lecturer list could not be imported", description: importErrorText(reason), variant: "error" }),
+    onSettled: async () => {
+      if (invigilatorFileRef.current) invigilatorFileRef.current.value = "";
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedule", scheduleId, "invigilators"] }),
+        queryClient.invalidateQueries({ queryKey: ["examiner", "exam-schedule", scheduleId, "validation"] }),
+      ]);
+    },
   });
 
   if (schedule.isPending) return <p role="status" className="rounded-xl border border-border p-6">Loading exam schedule…</p>;
@@ -235,7 +294,7 @@ export function ExamScheduleDetailRoute() {
 
       <section aria-label="People" className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span></header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={studentFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose student import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importStudents.mutate(file); }} /><Button type="button" variant="outline" disabled={importStudents.isPending} onClick={() => studentFileRef.current?.click()}><Upload aria-hidden />{importStudents.isPending ? "Importing…" : "Import students"}</Button></div> : null}</header>
           {students.length ? (
             <table className="w-full text-sm">
               <caption className="sr-only">Students of this schedule, with their seat and status</caption>
@@ -256,7 +315,7 @@ export function ExamScheduleDetailRoute() {
           ) : <p className="p-5 text-sm text-muted-foreground">{enrollments.isPending ? "Loading students…" : "No students assigned."}</p>}
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span></header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={invigilatorFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose lecturer import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importInvigilators.mutate(file); }} /><Button type="button" variant="outline" disabled={importInvigilators.isPending} onClick={() => invigilatorFileRef.current?.click()}><Upload aria-hidden />{importInvigilators.isPending ? "Importing…" : "Import lecturers"}</Button></div> : null}</header>
           {(invigilators.data ?? []).length ? (
             <ul className="divide-y divide-border">
               {(invigilators.data ?? []).map((lecturer) => (

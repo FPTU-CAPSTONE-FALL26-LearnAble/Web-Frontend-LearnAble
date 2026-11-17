@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { getExamPaper, sealExamPaper } from "@/api/exams";
 import { describeError } from "@/app/providers";
 import { matchesAudioFilter, useQuestionAudio, type QuestionAudio } from "@/features/lecturer/questions/audioStatus";
+import { operation } from "@/features/examiner/workflow/operationProgress";
 import { formatQuestionId } from "@/shared/strings/questionId";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
@@ -41,21 +42,41 @@ export function SealPaperRoute() {
   const checking = questions.some((question) => audioById.get(question.questionId)?.state === "loading");
   const missing = questions.filter((question) => !matchesAudioFilter(audioById.get(question.questionId), "ready"));
   const seal = useMutation({
-    mutationFn: () => sealExamPaper(paperId, paper.data?.eTag),
-    onSuccess: async () => {
+    mutationFn: () => {
+      operation.start("Sealing the paper", ["Checking the paper version and question audio", "Creating the locked package"]);
+      return sealExamPaper(paperId, paper.data?.eTag);
+    },
+    onSuccess: (sealedPaper) => {
       setConfirming(false);
-      toast({ title: "Paper sealed", description: "The paper is now a locked package. Hand it over to the examiners." });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["exam-paper"] }),
-        queryClient.invalidateQueries({ queryKey: ["lecturer", "sealed-papers"] }),
-      ]);
-      void navigate("/lecturer/sealed-papers");
+      operation.step(1);
+      operation.finish(`${sealedPaper.name ?? paper.data?.name ?? "The exam paper"} is sealed and locked.`);
+      toast({
+        title: "Paper sealed successfully",
+        description: `${sealedPaper.name ?? paper.data?.name ?? "The exam paper"} is now locked and available in Sealed Packages.`,
+      });
+      void navigate("/lecturer/sealed-papers", {
+        replace: true,
+        state: { sealedPaperId: sealedPaper.paperId },
+      });
+      // Refresh cached lists in the background. A slow refetch must never hold the lecturer on this page
+      // after the Backend has already sealed the package successfully.
+      void queryClient.invalidateQueries({ queryKey: ["exam-paper"] });
+      void queryClient.invalidateQueries({ queryKey: ["lecturer", "sealed-papers"] });
     },
     onError: (error) => {
       setConfirming(false);
+      operation.fail(describeError(error));
       toast({ title: "The paper could not be sealed", description: describeError(error), variant: "error" });
     },
   });
+  const startSealing = () => {
+    setConfirming(false);
+    seal.mutate();
+    toast({
+      title: "Sealing started in the background",
+      description: "You can continue working. Follow the progress panel for the result.",
+    });
+  };
   if (paper.isPending) return <div role="status" aria-label="Loading the paper" className="h-40 animate-pulse rounded-xl bg-muted" />;
   if (paper.isError || !paper.data) {
     return (
@@ -127,16 +148,16 @@ export function SealPaperRoute() {
           {seal.isPending ? "Sealing…" : "Seal the paper"}
         </Button>
       </div>
-      <AlertDialog open={confirming} onOpenChange={(open) => { if (!open && !seal.isPending) setConfirming(false); }}>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Seal this paper?</AlertDialogTitle>
             <AlertDialogDescription>Once sealed, the questions, scores and audio are locked. Nobody can open or change the package.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={seal.isPending}>Not yet</AlertDialogCancel>
-            <AlertDialogAction disabled={seal.isPending} onClick={(event) => { event.preventDefault(); seal.mutate(); }}>
-              {seal.isPending ? "Sealing…" : "Seal the paper"}
+            <AlertDialogCancel>Not yet</AlertDialogCancel>
+            <AlertDialogAction onClick={startSealing}>
+              Seal in background
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

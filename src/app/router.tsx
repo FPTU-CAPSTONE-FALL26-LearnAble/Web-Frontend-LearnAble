@@ -29,6 +29,7 @@ const CreateQuestionRoute = lazy(() =>
 );
 import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/LearningMaterialsRoute";
 import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
+import { MaterialAudioStudioRoute } from "@/features/lecturer/materials/routes/MaterialAudioStudioRoute";
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
 import { SharedShiftRoute } from "@/features/examiner/routes/SharedShiftRoute";
 import { ProctoringPolicyRoute } from "@/features/examiner/routes/ProctoringPolicyRoute";
@@ -48,6 +49,7 @@ import { GestureConfigRoute } from "@/features/admin/routes/GestureConfigRoute";
 import { DepartmentsRoute } from "@/features/admin/routes/DepartmentsRoute";
 import { MajorsRoute } from "@/features/admin/routes/MajorsRoute";
 import { SubjectsRoute } from "@/features/admin/routes/SubjectsRoute";
+import { TopicsRoute } from "@/features/admin/routes/TopicsRoute";
 import { CurriculumsRoute } from "@/features/admin/routes/CurriculumsRoute";
 import {
   ExaminerRecordsRoute,
@@ -173,6 +175,10 @@ export const router = createBrowserRouter([
                 path: "/lecturer/materials/new",
                 element: <UploadMaterialRoute />,
               },
+              {
+                path: "/lecturer/materials/:materialId/audio",
+                element: <MaterialAudioStudioRoute />,
+              },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
               { path: "/lecturer/exam-papers", element: <ExamBankRoute /> },
               { path: "/lecturer/exam-papers/new/setup", element: <ExamSetupRoute /> },
@@ -261,6 +267,7 @@ export const router = createBrowserRouter([
               { path: "/staff/departments", element: <DepartmentsRoute /> },
               { path: "/staff/majors", element: <MajorsRoute /> },
               { path: "/staff/subjects", element: <SubjectsRoute /> },
+              { path: "/staff/topics", element: <TopicsRoute /> },
               { path: "/staff/curriculums", element: <CurriculumsRoute /> },
               { path: "/staff/exam-rooms", element: <ExamRoomsRoute /> },
               { path: "/staff/default-policy", element: <StaffPolicyRoute /> },

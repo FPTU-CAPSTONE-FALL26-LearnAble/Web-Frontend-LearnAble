@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,10 +10,13 @@ const exams = vi.hoisted(() => ({
   getSharedExamShift: vi.fn(async () => ({ shiftId: "shift-1", eTag: null })), getShiftPaperSelection: vi.fn(async () => null),
   getSealedExamPapers: vi.fn(async () => []), selectShiftPaper: vi.fn(), releaseShiftPaper: vi.fn(),
   deleteExamSchedule: vi.fn(), updateExamSchedule: vi.fn(),
+  addExamEnrollments: vi.fn(), autoAssignSeats: vi.fn(), setExamInvigilators: vi.fn(), validateInvigilatorImport: vi.fn(),
 }));
 const admin = vi.hoisted(() => ({ getRoomSeats: vi.fn() }));
+const invigilation = vi.hoisted(() => ({ validateStudentImport: vi.fn() }));
 vi.mock("@/api/exams", () => exams);
 vi.mock("@/api/admin", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/api/admin")>()), ...admin }));
+vi.mock("@/api/invigilation", () => invigilation);
 
 const iso = (date: string, time: string) => new Date(`${date}T${time}`).toISOString();
 const schedule = (status: string) => ({
@@ -109,5 +112,26 @@ describe("exam schedule page", () => {
     show();
     expect(await screen.findByText("Ready to publish")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish schedule" })).toBeEnabled();
+  });
+
+  it("imports students, assigns seats, and imports invigilators from the draft schedule", async () => {
+    exams.getExamSchedule.mockResolvedValue(schedule("Draft"));
+    exams.getScheduleValidation.mockResolvedValue({ isValid: false, errors: [] });
+    invigilation.validateStudentImport.mockResolvedValue({ canContinue: true, invalidRows: 0, rows: [{ isValid: true, studentId: "s3", extraTimeMinutes: 10, accommodationNotes: null }] });
+    exams.validateInvigilatorImport.mockResolvedValue({ canContinue: true, invalidRows: 0, rows: [{ isValid: true, lecturerId: "l2" }, { isValid: true, lecturerId: "l3" }] });
+    exams.addExamEnrollments.mockResolvedValue([]);
+    exams.autoAssignSeats.mockResolvedValue([]);
+    exams.setExamInvigilators.mockResolvedValue([]);
+    show();
+    const studentInput = await screen.findByLabelText("Choose student import file");
+    fireEvent.change(studentInput, { target: { files: [new File(["students"], "students.xlsx")] } });
+    await waitFor(() => expect(exams.addExamEnrollments).toHaveBeenCalledWith("sch-1", [{ studentId: "s3", extraTimeMinutes: 10, accommodationNotes: null }]));
+    expect(exams.autoAssignSeats).toHaveBeenCalledWith("sch-1");
+    const lecturerInput = screen.getByLabelText("Choose lecturer import file");
+    fireEvent.change(lecturerInput, { target: { files: [new File(["lecturers"], "lecturers.xlsx")] } });
+    await waitFor(() => expect(exams.setExamInvigilators).toHaveBeenCalledWith("sch-1", [
+      { lecturerId: "l2", assignmentRole: "Chief" },
+      { lecturerId: "l3", assignmentRole: "Assistant" },
+    ]));
   });
 });

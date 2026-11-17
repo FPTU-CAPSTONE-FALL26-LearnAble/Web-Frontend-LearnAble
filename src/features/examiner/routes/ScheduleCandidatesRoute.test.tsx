@@ -9,6 +9,7 @@ const admin = vi.hoisted(() => ({ getAllStudentProfiles: vi.fn(), getAllStudentU
 const exams = vi.hoisted(() => ({
   getExamRooms: vi.fn(), previewBulkExamSchedules: vi.fn(), createBulkExamSchedules: vi.fn(),
   getSharedExamShift: vi.fn(), getShiftPaperSelection: vi.fn(), getExamSchedule: vi.fn(), getExamSubject: vi.fn(),
+  getSealedExamPapers: vi.fn(),
   getExamShiftInvigilatorCandidates: vi.fn(), previewExamShiftAllocation: vi.fn(), applyExamShiftAllocation: vi.fn(),
   downloadInvigilatorImportTemplate: vi.fn(), validateInvigilatorImport: vi.fn(),
 }));
@@ -40,6 +41,7 @@ beforeEach(() => {
   exams.getSharedExamShift.mockResolvedValue({ shiftId: "shift-1", scheduleIds: ["sch-1"], status: "Draft", examSubjectId: "exam-subject-1" });
   exams.getExamSchedule.mockResolvedValue({ examScheduleId: "sch-1", examRoomId: "room-1", roomName: "Lab 1" });
   exams.getShiftPaperSelection.mockResolvedValue(null);
+  exams.getSealedExamPapers.mockResolvedValue([]);
   exams.getExamSubject.mockResolvedValue({ examSubjectId: "exam-subject-1", cameraRequired: false, cameraUnavailablePolicy: "Allow" });
   exams.getExamShiftInvigilatorCandidates.mockResolvedValue(page([]));
   admin.getRoomSeats.mockResolvedValue([{ isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: true }, { isAvailable: true, hasComputer: true, hasCamera: false }, { isAvailable: false, hasComputer: true, hasCamera: true }]);
@@ -55,6 +57,18 @@ beforeEach(() => {
 });
 
 describe("student list of the schedule step", () => {
+  it("keeps student import available from the attached sealed package when ExamSubject lookup returns 404", async () => {
+    exams.getExamSubject.mockRejectedValue(new ApiFailure({ kind: "not_found" }));
+    exams.getShiftPaperSelection.mockResolvedValue({ versionId: "version-1" });
+    exams.getSealedExamPapers.mockResolvedValue([{ versionId: "version-1", name: "CSD201 Final FA26 Paper 1" }]);
+    show();
+    expect(await screen.findByText("CSD201 Final FA26 Paper 1")).toBeInTheDocument();
+    expect(screen.getByText(/handed-over package is attached/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Validate student list" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Download template" }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
+    expect(exams.getExamSubject).toHaveBeenCalledTimes(1);
+  });
+
   it("shows each student's real name and code from the user account, and a stand-in only when there is none", async () => {
     show();
     expect(await screen.findByText("Nguyễn Văn An")).toBeInTheDocument();
@@ -174,7 +188,7 @@ describe("people step of a shared shift", () => {
     exams.getExamShiftInvigilatorCandidates.mockResolvedValue(page([{ lecturerId: "lec-1", fullName: "Tran Lan", userCode: "GV1", departmentId: null }]));
   });
 
-  it("previews and applies one Backend allocation for the whole shared shift", async () => {
+  it("previews and applies one allocation for the whole shared shift", async () => {
     exams.getShiftPaperSelection.mockResolvedValue({ selectionId: "a", shiftId: "shift-1", versionId: "v", operationId: "o", selectedAt: "2026-11-14T01:00:00Z", releasedAt: null, consumedAt: null });
     exams.previewExamShiftAllocation.mockResolvedValue({ shiftId: "shift-1", requestId: "request-1", revision: 1, eTag: '"s-1"', isValid: true, planHash: "hash", rooms: [{ scheduleId: "sch-1", allocation: { roomId: "room-1", roomCode: "R1", roomName: "Lab 1", capacity: 3, students: [], invigilators: [] } }], unusedLecturerIds: [], issues: [] });
     exams.applyExamShiftAllocation.mockResolvedValue({ shiftId: "shift-1", requestId: "request-1", revision: 2, eTag: '"s-2"', planHash: "hash", appliedAt: "now", rooms: [] });
@@ -183,8 +197,8 @@ describe("people step of a shared shift", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(await screen.findByText("Tran Lan"));
     expect(await screen.findByText("1 students · 1 invigilators")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Preview Backend allocation" }));
-    expect(await screen.findByText("Backend allocation is valid")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Check room and seats" }));
+    expect(await screen.findByText("Room and seat placement is valid")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Apply allocation" }));
     await waitFor(() => expect(exams.applyExamShiftAllocation).toHaveBeenCalledWith("shift-1", expect.objectContaining({ requestId: "request-1", expectedPlanHash: "hash", lecturerIds: ["lec-1"] }), '"s-1"'));
   });
@@ -199,14 +213,28 @@ describe("people step of a shared shift", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
     fireEvent.click(await screen.findByText("Tran Lan"));
     expect(await screen.findByText("3 students need seats, but the rooms have 2.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply allocation" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Apply allocation" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Apply allocation" }));
+    expect(exams.applyExamShiftAllocation).not.toHaveBeenCalled();
   });
 
   it("asks for a package before any person can be added", async () => {
     exams.getShiftPaperSelection.mockResolvedValue(null);
     show();
     expect(await screen.findByText(/Attach a package to the shift first/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Preview Backend allocation" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Check room and seats" })).toBeDisabled();
     expect(exams.createBulkExamSchedules).not.toHaveBeenCalled();
+  });
+
+  it("explains that allocation must be previewed before it can be applied", async () => {
+    exams.getShiftPaperSelection.mockResolvedValue({ selectionId: "a", shiftId: "shift-1", versionId: "v", operationId: "o", selectedAt: "2026-11-14T01:00:00Z", releasedAt: null, consumedAt: null });
+    show();
+    await screen.findByText("Nguyễn Văn An");
+    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+    fireEvent.click(await screen.findByText("Tran Lan"));
+    expect(await screen.findByText(/Check the room and seat placement first/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Apply allocation" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Apply allocation" }));
+    expect(exams.applyExamShiftAllocation).not.toHaveBeenCalled();
   });
 });

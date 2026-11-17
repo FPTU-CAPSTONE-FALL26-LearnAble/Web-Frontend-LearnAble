@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import { operation, useOperationProgress } from "@/features/examiner/workflow/operationProgress";
 
 vi.mock("@/api/notifications", () => ({ getUnreadNotificationCount: vi.fn().mockResolvedValue({ unreadCount: 0 }) }));
 
@@ -29,7 +30,16 @@ function renderLayout(path = "/lecturer/dashboard") {
 }
 
 describe("LecturerLayout sidebar", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    useOperationProgress.setState({ open: false, steps: [], title: "", message: "", phase: "running", minimized: false });
+  });
+
+  it("shows save and seal progress above lecturer pages", () => {
+    renderLayout();
+    act(() => operation.start("Sealing the paper", ["Checking audio", "Creating package"]));
+    expect(screen.getByRole("region", { name: "Save and publish progress" })).toHaveTextContent("Sealing the paper");
+  });
 
   it("starts open and gives the page the remaining width when folded", async () => {
     const person = userEvent.setup();

@@ -259,9 +259,11 @@ export function ExamBankRoute() {
   return (
     <div>
       <PageHeading
-        eyebrow="Exam Paper Management"
-        title="Exam Paper Bank"
-        description="Build, review, and prepare secure exam packages for upcoming sessions."
+        eyebrow={paths.readOnly ? "Received exam papers" : "Exam Paper Management"}
+        title={paths.readOnly ? "Received Exam Papers" : "Exam Paper Bank"}
+        description={paths.readOnly
+          ? "Review papers prepared by lecturers and assign published papers to exam schedules. Paper content is read-only for examiners."
+          : "Build, review, and prepare secure exam packages for upcoming sessions."}
         actions={paths.readOnly ? undefined :
           <>
             <Button variant="outline" onClick={() => showPendingAction("Import")}>
@@ -283,24 +285,24 @@ export function ExamBankRoute() {
       />
       <section aria-label="Exam paper overview" className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
-          label="Valid exam packages"
+          label={paths.readOnly ? "Available to schedule" : "Valid exam packages"}
           value={`${(bank.data ?? []).filter((paper) => paper.status === "Published").length}/${bank.data?.length ?? 0}`}
           detail="Published exam papers"
           tone="green"
         />
         <Metric
-          label="Secure-browser ready"
+          label={paths.readOnly ? "Questions received" : "Secure-browser ready"}
           value={String((bank.data ?? []).reduce((total, paper) => total + paper.questions.length, 0))}
           detail="Questions assigned"
         />
         <Metric
-          label="In review"
+          label={paths.readOnly ? "Awaiting lecturer" : "In review"}
           value={String((bank.data ?? []).filter((paper) => paper.status === "Draft").length)}
-          detail="Draft papers"
+          detail={paths.readOnly ? "Draft papers are not schedulable" : "Draft papers"}
           tone="orange"
         />
         <Metric
-          label="Encrypted"
+          label={paths.readOnly ? "Total received" : "Encrypted"}
           value={bank.isPending ? "…" : String(bank.data?.length ?? 0)}
           detail="Exam papers in this workspace"
         />
@@ -355,7 +357,7 @@ export function ExamBankRoute() {
         }
       >
         {rows.map((paper) => (
-          <article key={paper.examPaperId} className="examiner-major flex flex-col p-5">
+          <article key={paper.examPaperId} className="examiner-major flex flex-col rounded-2xl border border-border bg-card p-5">
             <div className="flex items-start justify-between gap-3">
               <Badge variant="outline">{paper.examSubject.name ?? "Exam subject"}</Badge>
               <Status
@@ -399,7 +401,7 @@ export function ExamBankRoute() {
               {!paths.readOnly && paper.status === "Draft" ? (paper.examSubject.requiresSealing
                 ? <Button className="flex-1" asChild><Link to={paths.sealPaper(paper.examPaperId)}>Seal package</Link></Button>
                 : <Button className="flex-1" disabled={publish.isPending} onClick={() => publish.mutate({ id: paper.examPaperId, eTag: paper.eTag })}>Publish</Button>
-              ) : paper.status === "Published" && paths.readOnly ? <Button className="flex-1" asChild><Link to="/examiner/schedule/new/details">Schedule</Link></Button> : paper.status === "Published" && paper.examSubject.requiresSealing ? <Badge variant="outline">Sealed</Badge> : null}
+              ) : paper.status === "Published" && paths.readOnly ? <Button className="flex-1" asChild><Link to="/examiner/schedule/new/details">Use in schedule</Link></Button> : paper.status === "Draft" && paths.readOnly ? <Badge variant="outline">Lecturer is preparing</Badge> : paper.status === "Published" && paper.examSubject.requiresSealing ? <Badge variant="outline">Sealed</Badge> : null}
             </div>
           </article>
         ))}

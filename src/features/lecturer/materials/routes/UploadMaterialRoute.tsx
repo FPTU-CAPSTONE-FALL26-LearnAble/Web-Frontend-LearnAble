@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useMutation } from "@tanstack/react-query";
+import { describeError } from "@/app/providers";
 import {
   ArrowRight,
   CloudUpload,
@@ -19,11 +20,6 @@ import {
 } from "@/shared/ui/primitives/card";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/shared/ui/primitives/alert";
 import { ChoiceField, TextField } from "@/features/lecturer/questions/components/QuestionFields";
 import { useAcademicOptions } from "@/features/lecturer/shared/api/useLecturerData";
 import {
@@ -38,9 +34,12 @@ import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { formatFileSize } from "./LearningMaterialsRoute";
 import { createLearningMaterial } from "@/api/lecturer";
 import { toast } from "@/shared/ui/primitives/toast";
+import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 
 export const supportedMaterialExtensions = [
   "pdf",
+  "ppt",
+  "pptx",
   "doc",
   "docx",
   "txt",
@@ -56,7 +55,7 @@ export function validateMaterialFile(file: File) {
     file.name.split(".").pop()?.toLowerCase() ?? "",
   )
     ? ""
-    : "Choose a PDF, DOC, DOCX, text, image, or audio file.";
+    : "Choose a PDF, PPT, PPTX, DOC, DOCX, text, image, or audio file.";
 }
 export function UploadMaterialRoute() {
   useRouteAnnouncer("Upload Learning Material", "Upload Learning Material");
@@ -66,10 +65,8 @@ export function UploadMaterialRoute() {
   const [topicId, setTopicId] = useState("");
   const [language, setLanguage] = useState("English");
   const [objectives, setObjectives] = useState(["", "", ""]);
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const input = useRef<HTMLInputElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
   const academic = useAcademicOptions(subjectId || undefined);
   const upload = useMutation({
     mutationFn: () => {
@@ -84,12 +81,21 @@ export function UploadMaterialRoute() {
         file,
       });
     },
-    onSuccess: () => {
-      toast({ title: "Material uploaded", description: "The learning material is now available in your library." });
-      void navigate("/lecturer/materials");
+    onSuccess: (material) => {
+      toast({
+        title: "Material uploaded successfully",
+        description: "The material is uploaded. Review its extracted slides before generating audio.",
+        variant: "success",
+      });
+      void navigate(`/lecturer/materials/${material.materialId}/audio`);
     },
-    onError: () => setError("We couldn’t upload this material. Check the file type and try again."),
+    onError: (uploadError) => toast({
+      title: "Material could not be uploaded",
+      description: describeError(uploadError),
+      variant: "error",
+    }),
   });
+  useExpiredSession(upload.error);
   const dirty =
     !!file ||
     !!title ||
@@ -100,21 +106,23 @@ export function UploadMaterialRoute() {
   const choose = (next?: File) => {
     if (!next) return;
     const problem = validateMaterialFile(next);
-    setError(problem);
-    if (problem) return;
+    if (problem) {
+      toast({ title: "Unsupported material file", description: problem, variant: "error" });
+      return;
+    }
     setFile(next);
     if (!title)
       setTitle(next.name.replace(/\.[^.]+$/, "").replace(/[_-]/g, " "));
   };
   const review = () => {
     if (!file || !title.trim() || !subjectId || !topicId) {
-      setError(
-        "Select a file, enter a title, and choose a course and topic before continuing.",
-      );
-      requestAnimationFrame(() => errorRef.current?.focus());
+      toast({
+        title: "Material information is incomplete",
+        description: "Select a file, enter a title, and choose a course and topic before continuing.",
+        variant: "error",
+      });
       return;
     }
-    setError("");
     upload.mutate();
   };
   return (
@@ -133,14 +141,6 @@ export function UploadMaterialRoute() {
           <Link to="/lecturer/materials">Back to list</Link>
         </Button>
       </PageHeading>
-      {error && (
-        <div ref={errorRef} tabIndex={-1} className="outline-none">
-          <Alert variant="destructive">
-            <AlertTitle>Review your material</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      )}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <Card className="border-border shadow-none">
@@ -173,7 +173,7 @@ export function UploadMaterialRoute() {
                 <p className="text-xs font-bold">
                   <span className="text-destructive">PDF</span>
                   <span className="text-muted-foreground"> · </span>
-                  <span className="text-chart-4">DOCX</span>
+                  <span className="text-chart-4">PPTX</span>
                   <span className="text-muted-foreground"> · </span>
                   <span className="text-primary">IMAGE / AUDIO</span>
                 </p>
@@ -184,7 +184,7 @@ export function UploadMaterialRoute() {
                   ref={input}
                   id="material-file"
                   type="file"
-                  accept=".pdf,.docx,.pptx,.mp3,.mp4,.epub"
+                  accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.mp3,.wav,.png,.jpg,.jpeg,.webp"
                   className="sr-only"
                   onChange={(event) => choose(event.target.files?.[0])}
                 />

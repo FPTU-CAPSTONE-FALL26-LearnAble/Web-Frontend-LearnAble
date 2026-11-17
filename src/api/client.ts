@@ -168,7 +168,8 @@ export async function request<TSchema extends z.ZodTypeAny>(
 
   let data: unknown;
   try {
-    data = await res.json();
+    const text = await res.text();
+    data = text ? JSON.parse(text) : null;
   } catch {
     throw new ApiFailure({ kind: "parse" });
   }

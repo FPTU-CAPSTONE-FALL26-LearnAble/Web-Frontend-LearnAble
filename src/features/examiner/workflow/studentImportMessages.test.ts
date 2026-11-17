@@ -43,10 +43,16 @@ describe("describeImportFailure", () => {
     expect(describeImportFailure(rejected("The workbook is empty."))).toContain("The file is empty");
     expect(describeImportFailure(rejected("The workbook is invalid or contains unsupported content. Download a new template."))).toContain("cannot be read");
     expect(describeImportFailure(rejected("The workbook contains more than 10000 non-empty student rows."))).toContain("too many students");
+    expect(describeImportFailure(rejected("Macros, embedded objects and external connections are not supported."))).toBe("This Excel file contains features that cannot be imported, such as macros, linked data or embedded objects. Open a fresh LearnAble template, paste only the student values, then save it as an Excel Workbook (.xlsx) and try again.");
   });
 
   it("tells a lost connection apart from a bad file", () => {
     expect(describeImportFailure(new ApiFailure({ kind: "network" }))).toContain("could not be reached");
     expect(describeImportFailure(new Error("x"))).toContain("exam student template");
+  });
+
+  it("explains a missing exam and preserves a useful Backend rejection", () => {
+    expect(describeImportFailure(new ApiFailure({ kind: "not_found" }))).toContain("exam configuration no longer exists");
+    expect(describeImportFailure(new ApiFailure({ kind: "server", status: 400 }, "ExamSubject is unavailable."))).toBe("ExamSubject is unavailable.");
   });
 });

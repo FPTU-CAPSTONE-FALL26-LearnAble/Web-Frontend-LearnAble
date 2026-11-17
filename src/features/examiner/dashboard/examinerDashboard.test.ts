@@ -76,8 +76,8 @@ describe("buildAttention", () => {
         papers: [paper("Draft"), paper("Draft"), paper("Published")],
         schedules: [shift("d", "2026-11-12T07:10", "2026-11-12T08:40", "Draft"), shift("p", "2026-11-13T07:10", "2026-11-13T08:40")],
       });
-    expect(items.map((item) => [item.key, item.count])).toEqual([["papers", 2], ["schedules", 1]]);
-    expect(items.find((item) => item.key === "papers")?.to).toBe("/examiner/exams");
+    expect(items.map((item) => [item.key, item.count])).toEqual([["schedules", 1]]);
+    expect(items.some((item) => item.key === "papers")).toBe(false);
   });
 
   it("is empty when everything is in order", () => {
@@ -135,10 +135,10 @@ describe("buildOverview", () => {
 describe("buildFlow", () => {
   const stepOf = (flow: ReturnType<typeof buildFlow>, key: string) => flow.find((step) => step.key === key)!;
 
-  it("starts every stage as not started when there is nothing yet, with the way to begin", () => {
+  it("waits for lecturer papers while leaving scheduling not started", () => {
     const flow = buildFlow({ papers: [], schedules: [] }, now);
-    expect(flow.map((step) => step.status.label)).toEqual(["Not started", "Not started", "Standby"]);
-    expect(stepOf(flow, "papers").summary).toMatch(/No exam papers yet/);
+    expect(flow.map((step) => step.status.label)).toEqual(["Waiting", "Not started", "Standby"]);
+    expect(stepOf(flow, "papers").summary).toMatch(/No papers have been received from lecturers yet/);
     expect(stepOf(flow, "schedule").summary).toMatch(/No exam shifts planned/);
     expect(flow.some((step) => step.key === "registration")).toBe(false);
   });
@@ -151,14 +151,14 @@ describe("buildFlow", () => {
       },
       now,
     );
-    expect(stepOf(flow, "papers")).toMatchObject({ status: { label: "In progress" }, summary: "1 paper in draft · 1 published" });
+    expect(stepOf(flow, "papers")).toMatchObject({ status: { label: "Available" }, summary: "1 available to schedule · 1 paper still with lecturers" });
     expect(stepOf(flow, "schedule")).toMatchObject({ status: { label: "In progress" }, summary: "2 shifts in the next 30 days · 1 not published" });
     expect(stepOf(flow, "operate")).toMatchObject({ status: { label: "Live" } });
   });
 
-  it("marks finished stages ready and scheduled", () => {
+  it("marks received papers available and shifts scheduled", () => {
     const flow = buildFlow({ papers: [paper("Published")], schedules: [shift("p", "2026-11-12T07:10", "2026-11-12T08:40")] }, now);
-    expect(flow.map((step) => step.status.label).slice(0, 2)).toEqual(["Ready", "Scheduled"]);
+    expect(flow.map((step) => step.status.label).slice(0, 2)).toEqual(["Available", "Scheduled"]);
   });
 
   it("marks a stage unavailable when its data did not load, and links every step", () => {

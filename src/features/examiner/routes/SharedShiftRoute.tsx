@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDashed, Users } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { getExamEnrollments, getExamInvigilators, cancelSharedExamShift, getExamSchedule, getScheduleValidation, getSharedExamShift, getShiftPaperSelection } from "@/api/exams";
+import { getExamEnrollments, getExamInvigilators, cancelSharedExamShift, getExamSchedule, getScheduleValidation, getSharedExamShift, getShiftPaperSelection, releaseShiftPaper } from "@/api/exams";
 import { describeError } from "@/app/providers";
 import { ShiftPackagePanel } from "@/features/examiner/components/ShiftPackagePanel";
 import { useSchedulePreparationDraft } from "@/features/examiner/workflow/examPreparation";
@@ -64,8 +64,22 @@ export function SharedShiftRoute() {
   const schedules = useQueries({
     queries: (shift.data?.scheduleIds ?? []).map((scheduleId) => ({ queryKey: ["examiner", "shared-room", scheduleId, "schedule"], queryFn: () => getExamSchedule(scheduleId), meta: { silent: true } })),
   });
+  const roomEnrollments = useQueries({
+    queries: (shift.data?.scheduleIds ?? []).map((scheduleId) => ({ queryKey: ["examiner", "shared-room", scheduleId, "enrollments"], queryFn: () => getExamEnrollments(scheduleId), meta: { silent: true } })),
+  });
+  const roomInvigilators = useQueries({
+    queries: (shift.data?.scheduleIds ?? []).map((scheduleId) => ({ queryKey: ["examiner", "shared-room", scheduleId, "invigilators"], queryFn: () => getExamInvigilators(scheduleId), meta: { silent: true } })),
+  });
   const cancelShift = useMutation({
-    mutationFn: () => cancelSharedExamShift(shiftId, shift.data?.eTag),
+    mutationFn: async () => {
+      // Attaching a package changes the shift revision. Release it first and use the fresh ETag
+      // returned by that command; cancelling with the older ETag otherwise produces a 409.
+      if (shift.data?.status === "Draft" && selection.data) {
+        const released = await releaseShiftPaper(shiftId, shift.data.eTag);
+        return cancelSharedExamShift(shiftId, released.eTag);
+      }
+      return cancelSharedExamShift(shiftId, shift.data?.eTag);
+    },
     onSuccess: async () => {
       setCancelling(false);
       toast({ title: "Shift cancelled", description: "Its rooms are free again and its package is back in the pool." });
@@ -92,6 +106,10 @@ export function SharedShiftRoute() {
   const hasPackage = Boolean(selection.data);
   const isDraft = data.status === "Draft";
   const canChange = data.status === "Draft" || data.status === "Published";
+  const hasPeopleInEveryRoom = data.scheduleIds.length > 0
+    && roomEnrollments.every((query) => query.data?.some((item) => !/cancel/i.test(item.status)))
+    && roomInvigilators.every((query) => query.data?.some((item) => !/cancel/i.test(item.status)));
+  const peopleAdded = hasPeopleInEveryRoom || data.status === "Published" || data.status === "Open";
   const addPeople = () => {
     setDraft((current) => ({
       ...current,
@@ -107,7 +125,7 @@ export function SharedShiftRoute() {
   };
   const steps = [
     { label: "Attach a package", done: hasPackage },
-    { label: "Add students and invigilators", done: false },
+    { label: "Add students and invigilators", done: peopleAdded },
     { label: "Publish the shift", done: data.status === "Published" || data.status === "Open" },
     { label: "Open the exam", done: data.status === "Open" },
   ];
@@ -146,7 +164,7 @@ export function SharedShiftRoute() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this shift?</AlertDialogTitle>
-            <AlertDialogDescription>The students and invigilators are released from every room, and the package goes back to the pool for another shift. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>The package is released first, then the shift is cancelled. Students and invigilators are released from every room. Cancelled shifts remain in history and cannot be deleted.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={cancelShift.isPending}>Keep the shift</AlertDialogCancel>
