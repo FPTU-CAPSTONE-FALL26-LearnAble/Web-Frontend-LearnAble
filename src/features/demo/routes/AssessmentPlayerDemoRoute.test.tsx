@@ -28,7 +28,7 @@ describe("AssessmentPlayerDemoRoute", () => {
 
     await user.click(screen.getByRole("button", { name: "1 Unattempted Multiple choice" }));
     await user.click(screen.getByRole("button", { name: "Flag" }));
-    await user.click(screen.getByRole("button", { name: "Navigate to table of contents" }));
+    await user.click(screen.getByRole("button", { name: "Previous" }));
     await user.click(screen.getByRole("tab", { name: /Flagged \(1\)/i }));
 
     expect(screen.getByRole("button", { name: "1 Unattempted Multiple choice Flagged" })).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe("AssessmentPlayerDemoRoute", () => {
     expect(screen.getByRole("tablist", { name: "Filter questions" })).toBeInTheDocument();
 
     await user.click(next);
-    for (let questionIndex = 1; questionIndex < 18; questionIndex += 1) {
+    for (let questionIndex = 1; questionIndex < 50; questionIndex += 1) {
       await user.click(next);
     }
     expect(screen.getByRole("heading", { name: /upload your final design report/i })).toBeInTheDocument();

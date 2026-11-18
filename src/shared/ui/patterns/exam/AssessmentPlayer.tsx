@@ -12,7 +12,6 @@ import {
   type PlayerQuestion as PlayerQuestionData,
   type PlayerView,
 } from "./assessment-player-types";
-import { AssessmentPlayerFooter } from "./AssessmentPlayerFooter";
 import { AssessmentPlayerOverview } from "./AssessmentPlayerOverview";
 import {
   AssessmentPlayerOptions,
@@ -23,13 +22,19 @@ import {
 import { AssessmentPlayerShell } from "./AssessmentPlayerShell";
 import { PlayerQuestion } from "./PlayerQuestion";
 import { QuestionContentsTable } from "./QuestionContentsTable";
+import { QuestionNavigatorPanel } from "./QuestionNavigatorPanel";
+import { QuestionPager } from "./QuestionPager";
+import { ExamTimeBar, formatClock } from "./ExamTimeBar";
+import { ExamInfo, type ExamInfoProps } from "./ExamInfo";
 
 export interface AssessmentPlayerProps {
   /** Assessment name shown above the contents table. */
   title: string;
   candidate: { id: string; name: string };
-  /** Optional course/exam code displayed in the top bar. */
+  /** Optional course/exam code displayed in the top bar. Prefer `exam`. */
   examCode?: string;
+  /** Exam name, ID and server-issued verification image, shown beside the candidate. */
+  exam?: ExamInfoProps;
   /** Optional remaining time string displayed centered in the top bar. */
   remainingTime?: string;
   questions: PlayerQuestionData[];
@@ -45,6 +50,8 @@ export interface AssessmentPlayerProps {
   /** Connection/save status label; defaults to "Connected" for standalone demos. */
   status?: ReactNode;
   timer?: ReactNode;
+  /** Draws the media-player style time bar in the questions panel; ignored when `timer` is given. */
+  timeLimit?: { remainingMs: number; totalMs: number; deadlineAt?: string };
   saveStatus?: ReactNode;
   inputModeIndicator?: ReactNode;
   /** Prevent answer, reset and flag changes while submitting or expired. */
@@ -79,6 +86,7 @@ export function AssessmentPlayer({
   title,
   candidate,
   examCode,
+  exam,
   remainingTime,
   questions,
   answers,
@@ -89,6 +97,7 @@ export function AssessmentPlayer({
   onNavigationChange,
   status = vi.exam.player.connected,
   timer,
+  timeLimit,
   saveStatus,
   inputModeIndicator,
   interactionLocked = false,
@@ -179,6 +188,15 @@ export function AssessmentPlayer({
     [answers, filter, flagged, questions],
   );
 
+  const panelTimer =
+    timer ??
+    (timeLimit ? <ExamTimeBar {...timeLimit} /> : remainingTime);
+  const headerTimer =
+    timer ??
+    (timeLimit
+      ? vi.exam.timeBar.left(formatClock(timeLimit.remainingMs))
+      : remainingTime);
+
   const goTo = (nextIndex: number) => {
     const question = questions[nextIndex];
     if (question) navigate({ questionId: question.id, view: "question" });
@@ -193,8 +211,14 @@ export function AssessmentPlayer({
       <AssessmentPlayerShell
         candidate={candidate}
         status={status}
-        meta={examCode}
-        center={timer ?? remainingTime}
+        meta={exam ? undefined : examCode}
+        examInfo={exam ? <ExamInfo {...exam} /> : undefined}
+        center={
+          headerTimer ? (
+            // Shown here only while the questions panel is hidden (below lg).
+            <div className="lg:hidden">{headerTimer}</div>
+          ) : undefined
+        }
         trailing={
           <div className="flex flex-wrap items-center justify-end gap-3">
             {saveStatus}
@@ -209,21 +233,13 @@ export function AssessmentPlayer({
               aria-expanded={optionsOpen}
               onClick={() => setOptionsOpen(!optionsOpen)}
             >
-              <Menu aria-hidden className="size-[calc(1.25rem*var(--text-scale))]" />
+              <Menu
+                aria-hidden
+                className="size-[calc(1.25rem*var(--text-scale))]"
+              />
               <span>{vi.exam.player.options}</span>
             </Button>
           </div>
-        }
-        footer={
-          <AssessmentPlayerFooter
-            answers={answers}
-            currentIndex={index}
-            flagged={flagged}
-            questions={questions}
-            view={view}
-            onGoTo={goTo}
-            onViewChange={(nextView: PlayerView) => navigate({ view: nextView })}
-          />
         }
       >
         <AssessmentPlayerOptions
@@ -241,84 +257,112 @@ export function AssessmentPlayer({
           onRestoreFocus={() => optionsButtonRef.current?.focus()}
         />
         {feedback}
-        <main
-          ref={mainRef}
-          id="main"
-          className="flex min-h-0 w-full flex-1 flex-col px-2 pt-0"
-        >
-          <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded border border-border bg-background px-4 py-8 sm:px-8 sm:py-10">
-            <div className="mx-auto w-full max-w-player">
-              {view === "question" && current ? (
-                <fieldset disabled={interactionLocked} className="min-w-0">
-                  <PlayerQuestion
-                    key={current.id}
-                    question={current}
-                    questionNumber={index + 1}
-                    questionCount={questions.length}
-                    answer={answers[current.id]}
-                    flagged={flagged.includes(current.id)}
-                    onAnswerChange={(value) => {
-                      if (
-                        !interactionLocked &&
-                        !optionsOpen &&
-                        (canClearAnswer || answerState(value))
-                      ) {
-                        onAnswerChange(current.id, value);
-                      }
-                    }}
-                    onReset={
-                      canClearAnswer
-                        ? () => {
-                            if (!interactionLocked && !optionsOpen) {
-                              onAnswerChange(current.id, undefined);
-                            }
+        {/* DOM order = reading/Tab order: question, its controls, then the navigator. */}
+        <div className="flex min-h-0 flex-1 pr-2">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <main
+              ref={mainRef}
+              id="main"
+              className="flex min-h-0 w-full flex-1 flex-col p-2 pt-0"
+            >
+              <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded border border-border bg-background px-4 py-8 sm:px-8 sm:py-10">
+                <div className="mx-auto w-full max-w-player">
+                  {view === "question" && current ? (
+                    <fieldset disabled={interactionLocked} className="min-w-0">
+                      <PlayerQuestion
+                        key={current.id}
+                        question={current}
+                        questionNumber={index + 1}
+                        questionCount={questions.length}
+                        answer={answers[current.id]}
+                        flagged={flagged.includes(current.id)}
+                        onAnswerChange={(value) => {
+                          if (
+                            !interactionLocked &&
+                            !optionsOpen &&
+                            (canClearAnswer || answerState(value))
+                          ) {
+                            onAnswerChange(current.id, value);
                           }
-                        : undefined
-                    }
-                    onToggleFlag={() => {
-                      if (!interactionLocked && !optionsOpen) {
-                        onToggleFlag(current.id);
-                      }
-                    }}
-                    disabled={interactionLocked}
-                    className="mx-auto max-w-player"
-                  />
-                </fieldset>
-              ) : (
-                <section
-                  aria-labelledby={
-                    view === "review" ? "review-heading" : "contents-heading"
-                  }
-                >
-                  <AssessmentPlayerOverview
-                    title={title}
-                    entryDescription={
-                      showEntryDescription ? entryDescription : undefined
-                    }
-                    answeredCount={answeredCount}
-                    flaggedCount={flaggedCount}
-                    questionCount={questions.length}
-                    view={view}
-                    onFinishAndSubmit={onGoToSubmission}
-                    interactionLocked={interactionLocked}
-                  />
-                  {filters.map((tab) => (
-                    <TabsContent key={tab} value={tab} className="mt-5">
-                      <QuestionContentsTable
-                        questions={questions}
-                        visibleQuestions={visibleQuestions}
-                        answers={answers}
-                        flagged={flagged}
-                        showFlagColumn={view === "contents"}
-                        onOpenQuestion={goTo}
+                        }}
+                        onReset={
+                          canClearAnswer
+                            ? () => {
+                                if (!interactionLocked && !optionsOpen) {
+                                  onAnswerChange(current.id, undefined);
+                                }
+                              }
+                            : undefined
+                        }
+                        onToggleFlag={() => {
+                          if (!interactionLocked && !optionsOpen) {
+                            onToggleFlag(current.id);
+                          }
+                        }}
+                        disabled={interactionLocked}
+                        className="mx-auto max-w-player"
                       />
-                    </TabsContent>
-                  ))}
-                </section>
-              )}
-            </div>
+                    </fieldset>
+                  ) : (
+                    <section
+                      aria-labelledby={
+                        view === "review"
+                          ? "review-heading"
+                          : "contents-heading"
+                      }
+                    >
+                      <AssessmentPlayerOverview
+                        title={title}
+                        entryDescription={
+                          showEntryDescription ? entryDescription : undefined
+                        }
+                        answeredCount={answeredCount}
+                        flaggedCount={flaggedCount}
+                        questionCount={questions.length}
+                        view={view}
+                        onFinishAndSubmit={onGoToSubmission}
+                        interactionLocked={interactionLocked}
+                      />
+                      {filters.map((tab) => (
+                        <TabsContent key={tab} value={tab} className="mt-5">
+                          <QuestionContentsTable
+                            questions={questions}
+                            visibleQuestions={visibleQuestions}
+                            answers={answers}
+                            flagged={flagged}
+                            showFlagColumn={view === "contents"}
+                            onOpenQuestion={goTo}
+                          />
+                        </TabsContent>
+                      ))}
+                    </section>
+                  )}
+                </div>
+              </div>
+            </main>
+            <QuestionPager
+              currentIndex={index}
+              questionCount={questions.length}
+              view={view}
+              onGoTo={goTo}
+              onViewChange={(nextView: PlayerView) =>
+                navigate({ view: nextView })
+              }
+            />
           </div>
-        </main>
+          <QuestionNavigatorPanel
+            className="mb-2 hidden w-full max-w-navigator shrink-0 lg:flex"
+            questions={questions.map((question) => ({
+              id: question.id,
+              answered: answerState(answers[question.id]),
+              flagged: flagged.includes(question.id),
+            }))}
+            currentIndex={view === "question" ? index : null}
+            onNavigate={goTo}
+            onReview={() => navigate({ view: "review" })}
+            timer={panelTimer}
+          />
+        </div>
       </AssessmentPlayerShell>
     </Tabs>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AssessmentPlayer, type AssessmentPlayerProps } from "../AssessmentPlayer";
 import type { PlayerQuestion } from "../assessment-player-types";
@@ -59,14 +59,14 @@ describe("AssessmentPlayer", () => {
       answers: { one: "A" },
       flagged: ["two"],
     });
-    await user.click(screen.getByRole("button", { name: "Review" }));
+    await user.click(screen.getByRole("button", { name: "Review and submit" }));
     expect(
       screen.getByRole("heading", { name: "Review your answers" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("1 answered · 1 flagged · 1 unattempted out of 2 questions"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Answered")).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).getByText("Answered")).toBeInTheDocument();
     expect(screen.getByText("Flagged ⚑")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Finish & submit" }));
     expect(onGoToSubmission).toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe("AssessmentPlayer", () => {
     const user = userEvent.setup();
     expect(screen.getByRole("radio", { name: "A" })).toBeChecked();
     expect(screen.getByRole("button", { name: "Reset answer" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Navigate to table of contents" }));
+    await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(onNavigationChange).toHaveBeenCalledWith({ questionId: "one", view: "contents", filter: "all" });
 
     rerender(

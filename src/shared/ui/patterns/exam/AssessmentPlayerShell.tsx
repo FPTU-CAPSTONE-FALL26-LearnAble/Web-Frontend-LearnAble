@@ -6,8 +6,10 @@ export interface AssessmentPlayerShellProps {
   candidate: { id: string; name: string };
   /** Line or badge next to the candidate, e.g. the connection state. Omit before connecting. */
   status?: ReactNode;
-  /** Optional course or exam metadata shown beside the candidate status. */
+  /** Optional course or exam metadata shown under the centered header slot. */
   meta?: ReactNode;
+  /** Exam identity (e.g. ExamInfo) shown beside the candidate, after a divider. */
+  examInfo?: ReactNode;
   /** Centered header slot, e.g. remaining exam time. */
   center?: ReactNode;
   /** Right side of the top bar: a settings/options button or current screen name. */
@@ -29,6 +31,7 @@ export function AssessmentPlayerShell({
   candidate,
   status,
   meta,
+  examInfo,
   center,
   trailing,
   headerContent,
@@ -60,6 +63,12 @@ export function AssessmentPlayerShell({
                 </div>
               ) : null}
             </div>
+            {examInfo ? (
+              <>
+                <span aria-hidden className="h-8 w-px shrink-0 bg-border" />
+                {examInfo}
+              </>
+            ) : null}
           </div>
           <div className="flex flex-col items-center text-center leading-tight">
             {center ? (

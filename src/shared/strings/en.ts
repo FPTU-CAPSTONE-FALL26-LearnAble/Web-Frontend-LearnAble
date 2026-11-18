@@ -157,6 +157,17 @@ export const en = {
     unflagQuestion: "Flagged",
     flagged: "Flagged",
     timerLabel: "Time remaining",
+    info: {
+      idLabel: "Exam ID",
+      imageAlt: (name: string) => `Verification image for ${name}`,
+    },
+    timeBar: {
+      spoken: (minutes: number, total: string) =>
+        `Time remaining: about ${minutes} ${minutes === 1 ? "minute" : "minutes"} of ${total}`,
+      runningLow: "Time is running low",
+      left: (clock: string) => `${clock} left`,
+      of: (clock: string) => `of ${clock}`,
+    },
     submit: "Submit exam",
     submitConfirmTitle: "Submit this attempt?",
     submitConfirmBody: (answered: number, total: number) => `You answered ${answered} of ${total} questions. Answers cannot be changed after submission.`,
@@ -164,6 +175,28 @@ export const en = {
     submitConfirmNo: "Continue answering",
     unanswered: "Not answered",
     answered: "Answered",
+    questionsPanel: {
+      heading: "All questions",
+      summary: (answered: number, total: number, flagged: number) =>
+        `${answered} of ${total} questions answered · ${flagged} flagged`,
+      gridLabel: "Go to question",
+      legendLabel: "Key",
+      current: "Current",
+      answered: "Answered",
+      notAnswered: "Not answered",
+      flagged: "Flagged",
+      tileLabel: (index: number, answered: boolean, flagged: boolean, current: boolean) =>
+        [
+          `Question ${index}`,
+          answered ? "answered" : "not answered",
+          flagged ? "flagged" : null,
+          current ? "current" : null,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      review: "Review and submit",
+      reviewHint: "You can still change answers on the review screen.",
+    },
     saveStatus: {
       saved: "Saved",
       saving: "Saving",

@@ -19,7 +19,7 @@ export const assessmentPlayerCandidate = {
   name: "[CANDIDATE NAME]",
 };
 
-export const assessmentPlayerQuestions: PlayerQuestion[] = [
+const featuredQuestions: PlayerQuestion[] = [
   {
     id: "architecture",
     kind: "single",
@@ -211,4 +211,55 @@ export const assessmentPlayerQuestions: PlayerQuestion[] = [
     title: "Upload assignment",
     prompt: "Upload your final design report or source archive.",
   },
+];
+
+type Practice = [prompt: string, options?: string[]];
+
+/** Extra multiple-choice and true/false items so the demo runs at 50 questions. */
+const practice: Practice[] = [
+  ["Which keyword lets a Java class inherit from another class?", ["extends", "implements", "inherits", "super"]],
+  ["An interface in Java can declare instance fields that change per object."],
+  ["Which principle hides an object's internal state behind methods?", ["Encapsulation", "Inheritance", "Polymorphism", "Abstraction"]],
+  ["Which collection keeps keys unique and maps each one to a value?", ["Map", "List", "Queue", "Stack"]],
+  ["A constructor can have a return type in Java."],
+  ["Which access modifier limits a member to its own class?", ["private", "protected", "public", "default"]],
+  ["Which HTTP method is meant to be safe and idempotent?", ["GET", "POST", "PATCH", "CONNECT"]],
+  ["Method overloading is resolved at compile time."],
+  ["Which SQL clause filters rows after grouping?", ["HAVING", "WHERE", "ORDER BY", "LIMIT"]],
+  ["Which data structure works first in, first out?", ["Queue", "Stack", "Tree", "Set"]],
+  ["A static method can use the this keyword."],
+  ["Which Git command records staged changes?", ["git commit", "git add", "git push", "git fetch"]],
+  ["Which design pattern guarantees a class has one instance?", ["Singleton", "Factory", "Observer", "Adapter"]],
+  ["An abstract class can have a constructor."],
+  ["What is the time complexity of binary search on a sorted array?", ["O(log n)", "O(n)", "O(n log n)", "O(1)"]],
+  ["Which exception type must be declared or handled in Java?", ["Checked exception", "Runtime exception", "Error", "Assertion"]],
+  ["The finally block runs even when the try block returns."],
+  ["Which normal form removes repeating groups from a table?", ["First normal form", "Second normal form", "Third normal form", "Boyce–Codd normal form"]],
+  ["Which keyword prevents a method from being overridden?", ["final", "static", "const", "sealed"]],
+  ["A Java String can be changed in place after it is created."],
+  ["Which layer of an app usually holds business rules?", ["Service layer", "View layer", "Database driver", "Build script"]],
+  ["Which status code means a resource was not found?", ["404", "200", "301", "500"]],
+  ["Unit tests should depend on a live database to be reliable."],
+  ["Which UML diagram shows classes and their relationships?", ["Class diagram", "Sequence diagram", "Use case diagram", "Activity diagram"]],
+  ["Which keyword creates a new object in Java?", ["new", "create", "make", "init"]],
+  ["Polymorphism lets one interface stand for many implementations."],
+  ["Which sorting algorithm is stable and runs in O(n log n) in the worst case?", ["Merge sort", "Quick sort", "Selection sort", "Heap sort"]],
+  ["Which principle says a class should have one reason to change?", ["Single responsibility", "Open/closed", "Liskov substitution", "Dependency inversion"]],
+  ["Two objects that are equal must return the same hashCode."],
+  ["Which tool builds and manages Java project dependencies?", ["Maven", "Postman", "Figma", "Docker Hub"]],
+  ["Which loop always runs its body at least once?", ["do-while", "for", "while", "for-each"]],
+  ["An ArrayList grows automatically when it runs out of space."],
+];
+
+const practiceQuestions: PlayerQuestion[] = practice.map(([prompt, options], i) =>
+  options
+    ? { id: `practice-${i + 1}`, kind: "single", title: "Multiple choice", prompt, options }
+    : { id: `practice-${i + 1}`, kind: "boolean", title: "True / false", prompt },
+);
+
+/** 50 questions: the featured types, then practice items, ending on the upload task. */
+export const assessmentPlayerQuestions: PlayerQuestion[] = [
+  ...featuredQuestions.slice(0, -1),
+  ...practiceQuestions,
+  ...featuredQuestions.slice(-1),
 ];

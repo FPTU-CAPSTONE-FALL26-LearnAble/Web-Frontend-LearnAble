@@ -20,6 +20,13 @@ const buttonVariants = cva(
         success:
           "border-success-border bg-success text-success-foreground hover:bg-[color-mix(in_oklch,var(--success),var(--success-border)_18%)] focus-visible:border-success-border focus-visible:ring-success-border/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // Exam question tiles: status must read without colour, so these pair
+        // a ≥3:1 border with the fill. Used with size="tile".
+        "accent-soft":
+          "border-player-accent bg-player-accent-soft text-player-accent-soft-foreground hover:bg-[color-mix(in_oklch,var(--player-accent-soft),var(--player-accent)_15%)]",
+        flag: "border-player-flag-foreground bg-player-flag text-player-flag-foreground hover:bg-[color-mix(in_oklch,var(--player-flag),var(--player-flag-foreground)_12%)]",
+        "outline-strong":
+          "border-border shadow-xs bg-background text-foreground hover:bg-muted",
       },
       size: {
         default:
@@ -36,6 +43,8 @@ const buttonVariants = cva(
         "icon-lg": "size-10",
         "icon-xl":
           "p-4 [&_svg]:!size-[calc(1.5rem*var(--text-scale))] [&_svg]:stroke-[2] max-w-[calc(4rem*var(--text-scale))] max-h-[calc(4rem*var(--text-scale))]",
+        // Grid cell: number stacked over a status-icon row; colours come from the variant.
+        tile: "min-h-11 flex-col gap-1",
       },
     },
     defaultVariants: {

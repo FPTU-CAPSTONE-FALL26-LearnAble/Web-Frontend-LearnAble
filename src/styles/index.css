@@ -16,6 +16,7 @@
   --text-4xl: calc(2.25rem * var(--text-scale));
   --text-5xl: calc(3rem * var(--text-scale));
   --container-player: calc(48rem * (1 + (var(--text-scale) - 1) * 0.5));
+  --container-navigator: calc(20rem * (1 + (var(--text-scale) - 1) * 0.5));
 }
 
 :root {
