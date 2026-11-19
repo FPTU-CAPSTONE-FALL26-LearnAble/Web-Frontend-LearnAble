@@ -86,6 +86,15 @@
   --player-neutral-badge-border: #e5e7eb;
   --player-option-badge: #e5e7eb99;
   --player-connected: #16a34a;
+  /* Code editor syntax colours, each at least 4.5:1 on white. Themes that do
+     not set them fall back to the foreground colour (monochrome). */
+  --code-keyword: var(--color-violet-700);
+  --code-string: var(--color-green-700);
+  --code-number: var(--color-amber-700);
+  --code-function: var(--color-blue-700);
+  --code-preprocessor: var(--color-rose-700);
+  --code-comment: var(--color-slate-600);
+  --code-keyword-weight: 600;
 }
 
 @theme inline {
@@ -437,4 +446,16 @@
   --player-neutral-badge-border: #aaaaaa;
   --player-option-badge: #333333;
   --player-connected: #00ffff;
+}
+
+/* Every theme other than the default light one shows code in monochrome:
+   weight and italics only, so no syntax colour has to pass contrast on it. */
+[data-contrast]:not([data-contrast="default"]) {
+  --code-keyword: var(--foreground);
+  --code-string: var(--foreground);
+  --code-number: var(--foreground);
+  --code-function: var(--foreground);
+  --code-preprocessor: var(--foreground);
+  --code-comment: var(--foreground);
+  --code-keyword-weight: 700;
 }

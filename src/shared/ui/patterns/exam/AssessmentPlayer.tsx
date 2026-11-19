@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { Check, Menu } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { Tabs, TabsContent } from "@/shared/ui/primitives/tabs";
 import { vi } from "@/shared/strings/vi";
@@ -7,6 +7,7 @@ import {
   answerState,
   type Answer,
   type Answers,
+  type CodeRunResult,
   type PlayerFilter,
   type PlayerNavigation,
   type PlayerQuestion as PlayerQuestionData,
@@ -23,6 +24,7 @@ import { AssessmentPlayerShell } from "./AssessmentPlayerShell";
 import { PlayerQuestion } from "./PlayerQuestion";
 import { QuestionContentsTable } from "./QuestionContentsTable";
 import { QuestionNavigatorPanel } from "./QuestionNavigatorPanel";
+import { QuestionStrip, type TestsSummary } from "./QuestionStrip";
 import { QuestionPager } from "./QuestionPager";
 import { ExamTimeBar, formatClock } from "./ExamTimeBar";
 import { ExamInfo, type ExamInfoProps } from "./ExamInfo";
@@ -74,6 +76,8 @@ export interface AssessmentPlayerProps {
   focusOnMount?: boolean;
   /** Admission context read with the first Contents heading only. */
   entryDescription?: string;
+  /** Runs a coding question's code against its sample tests (never scored). */
+  onRunCode?: (questionId: string, code: string) => Promise<CodeRunResult>;
 }
 
 const filters: PlayerFilter[] = ["all", "unanswered", "flagged"];
@@ -115,6 +119,7 @@ export function AssessmentPlayer({
   feedback,
   focusOnMount = false,
   entryDescription,
+  onRunCode,
 }: AssessmentPlayerProps) {
   const [localNavigation, setLocalNavigation] = useState<PlayerNavigation>({
     questionId: null,
@@ -145,6 +150,36 @@ export function AssessmentPlayer({
   };
 
   const current = questions[index];
+  // Coding questions take the whole width.
+  const coding = view === "question" && current?.kind === "coding";
+  // A coding assessment (every question is coding) navigates with the bottom
+  // question strip on every screen, review included, never the side panel.
+  const codingExam =
+    questions.length > 0 &&
+    questions.every((question) => question.kind === "coding");
+  const useStrip = coding || codingExam;
+  // Latest run per coding question: reopening the question shows it again,
+  // and the question strip shows its test count.
+  const [runResults, setRunResults] = useState<Record<string, CodeRunResult>>(
+    {},
+  );
+  // Coding questions whose run is still going (shown on the strip and on return).
+  const [pendingRuns, setPendingRuns] = useState<Record<string, true>>({});
+  const runSummaries = useMemo(() => {
+    const summaries: Record<string, TestsSummary> = {};
+    for (const question of questions) {
+      const result = runResults[question.id];
+      if (!result) continue;
+      summaries[question.id] = {
+        passed:
+          result.status === "compiled"
+            ? result.tests.filter((test) => test.outcome === "passed").length
+            : 0,
+        total: question.coding?.samples.length ?? 0,
+      };
+    }
+    return summaries;
+  }, [questions, runResults]);
   const mainRef = useRef<HTMLElement>(null);
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const previousPosition = useRef({ view, questionId: current?.id });
@@ -189,8 +224,7 @@ export function AssessmentPlayer({
   );
 
   const panelTimer =
-    timer ??
-    (timeLimit ? <ExamTimeBar {...timeLimit} /> : remainingTime);
+    timer ?? (timeLimit ? <ExamTimeBar {...timeLimit} /> : remainingTime);
   const headerTimer =
     timer ??
     (timeLimit
@@ -201,6 +235,69 @@ export function AssessmentPlayer({
     const question = questions[nextIndex];
     if (question) navigate({ questionId: question.id, view: "question" });
   };
+
+  const navigatorItems = questions.map((question) => ({
+    id: question.id,
+    answered: answerState(answers[question.id]),
+    flagged: flagged.includes(question.id),
+  }));
+
+  const questionNode = current ? (
+    <PlayerQuestion
+      key={current.id}
+      question={current}
+      questionNumber={index + 1}
+      questionCount={questions.length}
+      answer={answers[current.id]}
+      flagged={flagged.includes(current.id)}
+      onAnswerChange={(value) => {
+        if (
+          !interactionLocked &&
+          !optionsOpen &&
+          (canClearAnswer || answerState(value))
+        ) {
+          onAnswerChange(current.id, value);
+        }
+      }}
+      onReset={
+        canClearAnswer
+          ? () => {
+              if (!interactionLocked && !optionsOpen) {
+                onAnswerChange(current.id, undefined);
+              }
+            }
+          : undefined
+      }
+      onToggleFlag={() => {
+        if (!interactionLocked && !optionsOpen) {
+          onToggleFlag(current.id);
+        }
+      }}
+      disabled={interactionLocked}
+      lastCodeRun={current ? runResults[current.id] : undefined}
+      codeRunPending={current ? Boolean(pendingRuns[current.id]) : false}
+      className={coding ? undefined : "mx-auto max-w-player"}
+      onRunCode={
+        onRunCode && current
+          ? async (code: string) => {
+              const questionId = current.id;
+              setPendingRuns((all) => ({ ...all, [questionId]: true }));
+              try {
+                const result = await onRunCode(questionId, code);
+                setRunResults((all) => ({ ...all, [questionId]: result }));
+                return result;
+              } finally {
+                setPendingRuns((all) => {
+                  const rest = { ...all };
+                  delete rest[questionId];
+                  return rest;
+                });
+              }
+            }
+          : undefined
+      }
+    />
+  ) : null;
 
   return (
     <Tabs
@@ -215,8 +312,10 @@ export function AssessmentPlayer({
         examInfo={exam ? <ExamInfo {...exam} /> : undefined}
         center={
           headerTimer ? (
-            // Shown here only while the questions panel is hidden (below lg).
-            <div className="lg:hidden">{headerTimer}</div>
+            // Shown here only while the questions panel is hidden.
+            <div className={useStrip ? undefined : "lg:hidden"}>
+              {headerTimer}
+            </div>
           ) : undefined
         }
         trailing={
@@ -258,110 +357,110 @@ export function AssessmentPlayer({
         />
         {feedback}
         {/* DOM order = reading/Tab order: question, its controls, then the navigator. */}
-        <div className="flex min-h-0 flex-1 pr-2">
+        <div className="flex min-h-0 flex-1">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <main
               ref={mainRef}
               id="main"
               className="flex min-h-0 w-full flex-1 flex-col p-2 pt-0"
             >
-              <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded border border-border bg-background px-4 py-8 sm:px-8 sm:py-10">
-                <div className="mx-auto w-full max-w-player">
-                  {view === "question" && current ? (
-                    <fieldset disabled={interactionLocked} className="min-w-0">
-                      <PlayerQuestion
-                        key={current.id}
-                        question={current}
-                        questionNumber={index + 1}
-                        questionCount={questions.length}
-                        answer={answers[current.id]}
-                        flagged={flagged.includes(current.id)}
-                        onAnswerChange={(value) => {
-                          if (
-                            !interactionLocked &&
-                            !optionsOpen &&
-                            (canClearAnswer || answerState(value))
-                          ) {
-                            onAnswerChange(current.id, value);
-                          }
-                        }}
-                        onReset={
-                          canClearAnswer
-                            ? () => {
-                                if (!interactionLocked && !optionsOpen) {
-                                  onAnswerChange(current.id, undefined);
-                                }
-                              }
-                            : undefined
-                        }
-                        onToggleFlag={() => {
-                          if (!interactionLocked && !optionsOpen) {
-                            onToggleFlag(current.id);
-                          }
-                        }}
+              {coding ? (
+                <fieldset
+                  disabled={interactionLocked}
+                  className="flex min-h-0 min-w-0 flex-1 flex-col"
+                >
+                  {questionNode}
+                </fieldset>
+              ) : (
+                <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto rounded border border-border bg-background px-4 py-8 sm:px-8 sm:py-10">
+                  <div className="mx-auto w-full max-w-player">
+                    {view === "question" && current ? (
+                      <fieldset
                         disabled={interactionLocked}
-                        className="mx-auto max-w-player"
-                      />
-                    </fieldset>
-                  ) : (
-                    <section
-                      aria-labelledby={
-                        view === "review"
-                          ? "review-heading"
-                          : "contents-heading"
-                      }
-                    >
-                      <AssessmentPlayerOverview
-                        title={title}
-                        entryDescription={
-                          showEntryDescription ? entryDescription : undefined
+                        className="min-w-0"
+                      >
+                        {questionNode}
+                      </fieldset>
+                    ) : (
+                      <section
+                        aria-labelledby={
+                          view === "review"
+                            ? "review-heading"
+                            : "contents-heading"
                         }
-                        answeredCount={answeredCount}
-                        flaggedCount={flaggedCount}
-                        questionCount={questions.length}
-                        view={view}
-                        onFinishAndSubmit={onGoToSubmission}
-                        interactionLocked={interactionLocked}
-                      />
-                      {filters.map((tab) => (
-                        <TabsContent key={tab} value={tab} className="mt-5">
-                          <QuestionContentsTable
-                            questions={questions}
-                            visibleQuestions={visibleQuestions}
-                            answers={answers}
-                            flagged={flagged}
-                            showFlagColumn={view === "contents"}
-                            onOpenQuestion={goTo}
-                          />
-                        </TabsContent>
-                      ))}
-                    </section>
-                  )}
+                      >
+                        <AssessmentPlayerOverview
+                          title={title}
+                          entryDescription={
+                            showEntryDescription ? entryDescription : undefined
+                          }
+                          answeredCount={answeredCount}
+                          flaggedCount={flaggedCount}
+                          questionCount={questions.length}
+                          view={view}
+                          onFinishAndSubmit={onGoToSubmission}
+                          interactionLocked={interactionLocked}
+                        />
+                        {filters.map((tab) => (
+                          <TabsContent key={tab} value={tab} className="mt-5">
+                            <QuestionContentsTable
+                              questions={questions}
+                              visibleQuestions={visibleQuestions}
+                              answers={answers}
+                              flagged={flagged}
+                              showFlagColumn={view === "contents"}
+                              onOpenQuestion={goTo}
+                            />
+                          </TabsContent>
+                        ))}
+                      </section>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </main>
-            <QuestionPager
-              currentIndex={index}
-              questionCount={questions.length}
-              view={view}
-              onGoTo={goTo}
-              onViewChange={(nextView: PlayerView) =>
-                navigate({ view: nextView })
-              }
-            />
+            {useStrip ? (
+              <div className="mx-2 mb-2 flex shrink-0 items-stretch gap-1 rounded border border-border bg-background p-1 shadow-xs">
+                <QuestionStrip
+                  className="flex-1"
+                  questions={navigatorItems}
+                  currentIndex={view === "question" ? index : null}
+                  results={runSummaries}
+                  running={pendingRuns}
+                  onNavigate={goTo}
+                />
+                <Button
+                  type="button"
+                  size="exam"
+                  className="h-auto"
+                  onClick={() => navigate({ view: "review" })}
+                >
+                  <Check aria-hidden />
+                  {vi.exam.questionsPanel.review}
+                </Button>
+              </div>
+            ) : (
+              <QuestionPager
+                currentIndex={index}
+                questionCount={questions.length}
+                view={view}
+                onGoTo={goTo}
+                onViewChange={(nextView: PlayerView) =>
+                  navigate({ view: nextView })
+                }
+              />
+            )}
           </div>
-          <QuestionNavigatorPanel
-            className="mb-2 hidden w-full max-w-navigator shrink-0 lg:flex"
-            questions={questions.map((question) => ({
-              id: question.id,
-              answered: answerState(answers[question.id]),
-              flagged: flagged.includes(question.id),
-            }))}
-            currentIndex={view === "question" ? index : null}
-            onNavigate={goTo}
-            onReview={() => navigate({ view: "review" })}
-            timer={panelTimer}
-          />
+          {useStrip ? null : (
+            <QuestionNavigatorPanel
+              className="mr-2 mb-2 hidden w-full max-w-navigator shrink-0 lg:flex"
+              questions={navigatorItems}
+              currentIndex={view === "question" ? index : null}
+              onNavigate={goTo}
+              onReview={() => navigate({ view: "review" })}
+              timer={panelTimer}
+            />
+          )}
         </div>
       </AssessmentPlayerShell>
     </Tabs>

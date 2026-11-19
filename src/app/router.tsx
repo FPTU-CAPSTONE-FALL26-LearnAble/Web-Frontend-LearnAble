@@ -88,6 +88,7 @@ import {
 } from "@/features/examiner/routes/ExaminerWorkflowRoutes";
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { AssessmentPlayerDemoRoute } from "@/features/demo/routes/AssessmentPlayerDemoRoute";
+import { CodingWorkspaceDemoRoute } from "@/features/demo/routes/CodingWorkspaceDemoRoute";
 import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
@@ -116,6 +117,7 @@ export const router = createBrowserRouter([
   { path: "/", element: <LandingRoute /> },
   { path: "/demo/components", element: <ComponentDemoRoute /> },
   { path: "/demo/assessment-player", element: <AssessmentPlayerDemoRoute /> },
+  { path: "/demo/coding-workspace", element: <CodingWorkspaceDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   { path: "/login", element: <LoginRoute /> },
   { path: "/student/login", element: <StudentLoginRoute /> },

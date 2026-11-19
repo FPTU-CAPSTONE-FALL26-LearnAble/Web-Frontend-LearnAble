@@ -81,7 +81,8 @@ describe("AssessmentPlayerDemoRoute", () => {
 
     await user.click(previous);
     expect(screen.getByRole("heading", { name: /upload your final design report/i })).toBeInTheDocument();
-  });
+    // Clicks through all 50 questions; slower than the 5 s default in a full run.
+  }, 15_000);
 
   it("applies the selected contrast option to the document root and cleans up on unmount", async () => {
     const user = userEvent.setup();

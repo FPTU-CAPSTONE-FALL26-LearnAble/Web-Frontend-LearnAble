@@ -23,9 +23,9 @@ export interface QuestionNavigatorPanelProps {
   className?: string;
 }
 
-type TileTone = "current" | "flagged" | "answered" | "unanswered";
+export type TileTone = "current" | "flagged" | "answered" | "unanswered";
 
-const toneVariant = {
+export const toneVariant = {
   current: "default",
   flagged: "flag",
   answered: "accent-soft",
@@ -42,13 +42,13 @@ const toneClasses: Record<TileTone, string> = {
   unanswered: "border-muted-foreground bg-background text-foreground",
 };
 
-function toneOf(item: QuestionNavigatorItem, current: boolean): TileTone {
+export function toneOf(item: QuestionNavigatorItem, current: boolean): TileTone {
   if (current) return "current";
   if (item.flagged) return "flagged";
   return item.answered ? "answered" : "unanswered";
 }
 
-function StatusIcons({
+export function StatusIcons({
   answered,
   flagged,
 }: {

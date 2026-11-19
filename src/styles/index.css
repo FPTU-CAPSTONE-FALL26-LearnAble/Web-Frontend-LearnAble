@@ -17,6 +17,8 @@
   --text-5xl: calc(3rem * var(--text-scale));
   --container-player: calc(48rem * (1 + (var(--text-scale) - 1) * 0.5));
   --container-navigator: calc(20rem * (1 + (var(--text-scale) - 1) * 0.5));
+  /* Coding workspace: split view at or above this width, tabs below. */
+  --container-coding-split: calc(64rem * (1 + (var(--text-scale) - 1) * 0.5));
 }
 
 :root {

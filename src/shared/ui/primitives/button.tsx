@@ -36,6 +36,10 @@ const buttonVariants = cva(
         lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         // em: lớn theo cỡ chữ (desktop phóng thang chữ bằng --text-scale); 100% = 8px/16px/12px như cũ.
         xl: "gap-[0.5em] p-[0.75em] text-base has-data-[icon=inline-end]:pr-[0.75em] has-data-[icon=inline-start]:pl-[0.75em]",
+        // exam: đúng mức tối thiểu 44×44 CSS px ở 100%, lớn theo --text-scale.
+        exam: "min-h-[calc(2.75rem*var(--text-scale))] gap-[0.5em] px-[0.75em] py-0 text-base has-data-[icon=inline-end]:pr-[0.75em] has-data-[icon=inline-start]:pl-[0.75em]",
+        "icon-exam":
+          "size-[calc(2.75rem*var(--text-scale))] [&_svg]:!size-[calc(1.5rem*var(--text-scale))] [&_svg]:stroke-[2]",
         icon: "size-9",
         "icon-xs":
           "size-6 rounded-sm in-data-[slot=button-group]:rounded-sm [&_svg:not([class*='size-'])]:size-[calc(0.75rem*var(--text-scale))]",
