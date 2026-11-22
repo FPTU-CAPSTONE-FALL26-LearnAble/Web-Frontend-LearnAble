@@ -1,13 +1,21 @@
 import { useEffect } from "react";
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
-import { SelectField, SelectItem } from "@/shared/ui/primitives/Select";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/RadioGroup";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/primitives/select";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/primitives/radio-group";
+import { Label } from "@/shared/ui/primitives/label";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
+import { ContrastThemePicker } from "@/features/accessibility/components/ContrastThemePicker";
 import { useTtsStore } from "@/features/accessibility/store/ttsStore";
-import { useViVoices } from "@/features/accessibility/hooks/useViVoices";
+import { useEnglishVoices, useViVoices } from "@/features/accessibility/hooks/useViVoices";
 import {
   useAccessibilityProfile,
   useUpdateAccessibilityProfile,
@@ -19,7 +27,8 @@ const RATES = ["0.75", "1", "1.25", "1.5"] as const;
 export function AccessibilitySettingsRoute() {
   useRouteAnnouncer(vi.a11ySettings.pageTitle, vi.a11ySettings.title);
 
-  const voices = useViVoices();
+  const voices = useEnglishVoices();
+  const vietnameseVoices = useViVoices();
   const { voiceUri, rate, setVoiceUri, setRate } = useTtsStore();
   const profileQuery = useAccessibilityProfile();
   const updateMutation = useUpdateAccessibilityProfile();
@@ -32,9 +41,14 @@ export function AccessibilitySettingsRoute() {
     }
   }, [profileQuery.data, setVoiceUri, setRate]);
 
-  // Không giả định máy có giọng vi-VN: mặc định giọng đầu tiên nếu chưa chọn
+  // Saved Vietnamese preferences remain supported but cannot activate during the English-only policy.
   const selectedVoice =
     voices.find((v) => v.voiceURI === voiceUri) ?? (voices.length > 0 ? voices[0] : null);
+
+  useEffect(() => {
+    const activeUri = selectedVoice?.voiceURI ?? null;
+    if (voiceUri !== activeUri) setVoiceUri(activeUri);
+  }, [selectedVoice, voiceUri, setVoiceUri]);
 
   const preview = () => {
     if (!selectedVoice) return;
@@ -55,46 +69,46 @@ export function AccessibilitySettingsRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.a11ySettings.title}
       </h1>
-      <p className="max-w-prose text-[var(--color-text-muted)]">{vi.a11ySettings.intro}</p>
+      <p className="max-w-prose text-muted-foreground">{vi.a11ySettings.intro}</p>
+
+      <Card className="max-w-2xl">
+        <div className="flex flex-col gap-5">
+          <CardTitle>{vi.a11ySettings.themeSection}</CardTitle>
+          <p className="text-muted-foreground">{vi.a11ySettings.themeHint}</p>
+          <ContrastThemePicker />
+        </div>
+      </Card>
 
       <Card className="flex max-w-2xl flex-col gap-5">
         <CardTitle>{vi.a11ySettings.ttsSection}</CardTitle>
 
-        {voices.length === 0 ? (
-          <div className="rounded-[var(--radius)] bg-[var(--color-warning-bg)] p-4 text-[var(--color-warning-text)]">
-            {/* Quyết định 7: KHÔNG âm thầm rơi về giọng tiếng Anh — nói thẳng. */}
-            <p>{vi.a11ySettings.noViVoice}</p>
-            <a
-              href="https://support.microsoft.com/vi-vn/topic/t%E1%BA%A3i-xu%E1%BB%91ng-ng%C3%B4n-ng%E1%BB%AF-v%C3%A0-gi%E1%BB%8Dng-n%C3%B3i"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-block font-medium underline"
-            >
-              {vi.a11ySettings.noViVoiceHelp}
-            </a>
-          </div>
-        ) : (
-          <SelectField
-            label={vi.a11ySettings.ttsVoice}
-            value={selectedVoice?.voiceURI}
-            onValueChange={setVoiceUri}
-          >
-            {voices.map((v) => (
-              <SelectItem key={v.voiceURI} value={v.voiceURI}>
-                {v.name}
-              </SelectItem>
-            ))}
-          </SelectField>
-        )}
+        <p className="text-muted-foreground">{vi.a11ySettings.englishOnly}</p>
+        {voices.length === 0 ? <p className="text-warning-foreground">{vi.a11ySettings.noEnVoice}</p> : null}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="tts-voice-select">{vi.a11ySettings.ttsVoice}</Label>
+          <Select value={selectedVoice?.voiceURI} onValueChange={setVoiceUri}>
+            <SelectTrigger id="tts-voice-select"><SelectValue placeholder={vi.a11ySettings.ttsVoice} /></SelectTrigger>
+            <SelectContent>
+              {voices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</SelectItem>)}
+              {vietnameseVoices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI} disabled>{voice.name} — {vi.a11ySettings.unavailable}</SelectItem>)}
+              {vietnameseVoices.length === 0 ? <SelectItem value="vi-unavailable" disabled>{vi.a11ySettings.vietnameseUnavailable}</SelectItem> : null}
+            </SelectContent>
+          </Select>
+        </div>
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 font-medium">{vi.a11ySettings.ttsRate}</legend>
           <RadioGroup value={String(rate)} onValueChange={(v) => setRate(Number(v))}>
             {RATES.map((r) => (
-              <RadioGroupItem key={r} value={r} label={vi.a11ySettings.ttsRateValue(r)} />
+              <div key={r} className="flex min-h-[44px] items-center gap-3">
+                <RadioGroupItem id={`rate-${r}`} value={r} />
+                <Label htmlFor={`rate-${r}`} className="cursor-pointer">
+                  {vi.a11ySettings.ttsRateValue(r)}
+                </Label>
+              </div>
             ))}
           </RadioGroup>
         </fieldset>
@@ -103,7 +117,7 @@ export function AccessibilitySettingsRoute() {
           <Button variant="secondary" onClick={preview} disabled={!selectedVoice}>
             {vi.a11ySettings.ttsPreview}
           </Button>
-          <Button onClick={save} disabled={updateMutation.isPending}>
+          <Button onClick={save} disabled={updateMutation.isPending || !selectedVoice}>
             {vi.common.save}
           </Button>
         </div>

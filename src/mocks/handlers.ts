@@ -1,34 +1,100 @@
 import { HttpResponse, delay, http } from "msw";
-import { mockExamResults, mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
+import { mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
+import { adminSystemHandlers } from "@/mocks/adminSystem";
+import { gestureConfigHandlers } from "@/mocks/gestureConfig";
+import { shortcutHandlers } from "@/mocks/shortcuts";
+import { studentScheduleHandlers } from "@/mocks/studentSchedule";
+import { learningAssistantHandlers } from "@/mocks/learningAssistant";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
  * team backend (§2). Đường dẫn khớp BASE_URL mặc định /api/v1.
  */
 
-const BASE = "/api/v1";
+const BASE = "http://18.190.2.18:8080/api";
+
+let mockPreferences = {
+  voiceCode: null as string | null,
+  speechRate: 1,
+  fontSize: 16,
+  zoomPercent: 100,
+  contrastTheme: "Default",
+  preferredInputMethod: "Keyboard",
+  audioFeedbackEnabled: true,
+};
+
+/**
+ * Offline sign-in: any password except "sai-mat-khau" works, and the email's
+ * first word picks the role — admin@…, staff@…, lecturer@…, examiner@…;
+ * anything else signs in as the student fixture. The role travels in the
+ * mock token so /auth/me can answer without server state.
+ */
+const mockAccounts = {
+  admin: { userId: "00000000-0000-0000-0000-0000000000a1", fullName: "Mock Admin", role: "Admin" },
+  staff: { userId: "00000000-0000-0000-0000-0000000000b1", fullName: "Mock Staff", role: "Staff" },
+  lecturer: { userId: "00000000-0000-0000-0000-0000000000c1", fullName: "Mock Lecturer", role: "Lecturer" },
+  examiner: { userId: "00000000-0000-0000-0000-0000000000d1", fullName: "Mock Examiner", role: "Examiner" },
+} as const;
+type MockRole = keyof typeof mockAccounts | "student";
+
+const roleFromIdentifier = (identifier = ""): MockRole => {
+  const first = identifier.toLowerCase().split(/[@._-]/)[0];
+  return first in mockAccounts ? (first as MockRole) : "student";
+};
+const roleFromToken = (header: string | null): MockRole => {
+  const role = header?.match(/mock-access-token\.(\w+)/)?.[1];
+  return role && role in mockAccounts ? (role as MockRole) : "student";
+};
+const mockTokens = (role: MockRole) => ({
+  accessToken: `mock-access-token.${role}`,
+  refreshToken: `mock-refresh-token.${role}`,
+  accessTokenExpiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+});
 
 export const handlers = [
   // API-01 — đăng nhập
-  http.post(`${BASE}/auth/login`, async ({ request }) => {
+  http.post("*/auth/login", async ({ request }) => {
     await delay(400);
-    const body = (await request.json()) as { email?: string; password?: string };
+    const body = (await request.json()) as { identifier?: string; password?: string };
     if (body.password === "sai-mat-khau") {
-      return HttpResponse.json({ message: "Invalid credentials" }, { status: 401 });
+      return HttpResponse.json(
+        { success: false, message: "Invalid email or password.", data: null, errors: ["INVALID_CREDENTIALS"] },
+        { status: 401 },
+      );
     }
-    return HttpResponse.json({ token: "mock-jwt-token", user: { ...mockUser, email: body.email ?? mockUser.email } });
+    return HttpResponse.json({
+      success: true,
+      message: "Signed in",
+      data: mockTokens(roleFromIdentifier(body.identifier)),
+      errors: null,
+    });
   }),
 
-  // API-02 — đọc hồ sơ trợ năng
-  http.get(`${BASE}/students/me/accessibility-profile`, async () => {
-    await delay(200);
-    return HttpResponse.json({ ttsVoiceUri: null, ttsRate: 1 });
+  http.post("*/auth/refresh-token", async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { refreshToken?: string };
+    const role = roleFromToken(body.refreshToken?.replace("mock-refresh-token", "mock-access-token") ?? null);
+    return HttpResponse.json({ success: true, message: null, data: mockTokens(role), errors: null });
   }),
 
-  // API-03 — cập nhật hồ sơ trợ năng
-  http.put(`${BASE}/students/me/accessibility-profile`, async ({ request }) => {
+  http.get("*/auth/me", async ({ request }) => {
+    await delay(100);
+    const role = roleFromToken(request.headers.get("Authorization"));
+    const data =
+      role === "student"
+        ? { userId: mockUser.id, fullName: mockUser.fullName, email: mockUser.email, role: mockUser.role }
+        : { ...mockAccounts[role], email: `${role}@learnable.local` };
+    return HttpResponse.json({ success: true, message: null, data, errors: null });
+  }),
+
+  // Student accessibility preferences — mirrors /StudentProfiles/me/preferences.
+  http.get("*/StudentProfiles/me/preferences", async () => {
     await delay(200);
-    return HttpResponse.json(await request.json());
+    return HttpResponse.json({ success: true, message: null, data: mockPreferences, errors: null });
+  }),
+  http.put("*/StudentProfiles/me/preferences", async ({ request }) => {
+    await delay(200);
+    mockPreferences = { ...mockPreferences, ...((await request.json()) as typeof mockPreferences) };
+    return HttpResponse.json({ success: true, message: null, data: mockPreferences, errors: null });
   }),
 
   // API-09 — danh sách bộ đề luyện tập
@@ -51,46 +117,23 @@ export const handlers = [
       : HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
 
-  // API-10 — trợ lý AI (RULE-14: có/không có nguồn)
-  http.post(`${BASE}/assistant/chat`, async ({ request }) => {
-    await delay(900);
-    const { question } = (await request.json()) as { question: string };
-    // Ca khó: câu hỏi ngoài tài liệu → trả lời không có nguồn
-    if (question.includes("ngoài tài liệu")) {
-      return HttpResponse.json({
-        answer:
-          "Nội dung này không nằm trong tài liệu môn học đã được tải lên, nên câu trả lời dưới đây chỉ mang tính tham khảo chung.",
-        grounded: false,
-        citations: [],
-      });
-    }
-    return HttpResponse.json({
-      answer:
-        "Tính đóng gói (encapsulation) che giấu trạng thái bên trong đối tượng và chỉ cho phép truy cập qua phương thức công khai. Xem thêm chương 2 của giáo trình.",
-      grounded: true,
-      citations: [
-        { title: "Giáo trình PRO192 — Chương 2: Đóng gói", page: 34 },
-        { title: "Slide bài giảng tuần 3", page: 12 },
-      ],
-    });
-  }),
-
   // API-11 — tiến độ luyện tập
   http.get(`${BASE}/students/me/practice-progress`, async () => {
     await delay(300);
     return HttpResponse.json(mockProgress);
   }),
 
-  // API-12 — kết quả thi
-  http.get(`${BASE}/students/me/exam-results`, async () => {
-    await delay(300);
-    return HttpResponse.json(mockExamResults);
-  }),
-  http.get(`${BASE}/students/me/exam-results/:sessionId`, async ({ params }) => {
-    await delay(200);
-    const found = mockExamResults.find((r) => r.sessionId === params.sessionId);
-    return found
-      ? HttpResponse.json(found)
-      : HttpResponse.json({ message: "Not found" }, { status: 404 });
-  }),
+  // Admin system configuration — proposed contract, not yet in the backend.
+  ...adminSystemHandlers,
+
+  // Exam keyboard shortcuts (FR-52) — mirrors the deployed MyShortcuts API.
+  ...shortcutHandlers,
+  // Exam hand gestures (FR-47) — mirrors /gesture-configurations.
+  ...gestureConfigHandlers,
+
+  // Student exam schedule and inbox (FFCB-106, FFCB-279) — mirrors the deployed API.
+  ...studentScheduleHandlers,
+
+  // Learning assistant (FFCB-139) — mirrors the deployed LearningAssistant API.
+  ...learningAssistantHandlers,
 ];

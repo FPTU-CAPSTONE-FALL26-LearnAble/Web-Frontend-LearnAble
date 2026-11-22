@@ -1,5 +1,5 @@
-import { Card, CardTitle } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Button } from "@/shared/ui/primitives/button";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { usePracticeProgress } from "@/features/progress/api/usePracticeProgress";
@@ -13,7 +13,7 @@ export function ProgressRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
+      <h1 tabIndex={-1} className="text-2xl font-bold">
         {vi.progress.title}
       </h1>
 
@@ -27,10 +27,10 @@ export function ProgressRoute() {
       {progressQuery.data ? (
         <>
           <Card aria-label={vi.progress.summaryLabel} className="flex flex-wrap gap-8">
-            <p className="text-[length:var(--text-lg)] font-bold">
+            <p className="text-lg font-bold">
               {vi.progress.attempts(progressQuery.data.attempts)}
             </p>
-            <p className="text-[length:var(--text-lg)] font-bold">
+            <p className="text-lg font-bold">
               {vi.progress.avgScore(progressQuery.data.avgScorePct)}
             </p>
           </Card>
@@ -59,7 +59,7 @@ export function ProgressRoute() {
             ) : (
               <ul className="mt-3 flex flex-col gap-3">
                 {progressQuery.data.history.map((h) => (
-                  <li key={h.id} className="flex flex-wrap justify-between gap-2 border-b border-[var(--color-border)] pb-3 last:border-none">
+                  <li key={h.id} className="flex flex-wrap justify-between gap-2 border-b border-border pb-3 last:border-none">
                     <span>{h.setTitle}</span>
                     <span className="font-medium">
                       {vi.practice.score(h.correct, h.total)} —{" "}

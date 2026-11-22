@@ -1,59 +1,104 @@
 import { Link, useParams } from "react-router";
-import { Card } from "@/shared/ui/primitives/Card";
-import { Button } from "@/shared/ui/primitives/Button";
+import { Button } from "@/shared/ui/primitives/button";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
 import { useExamResult } from "@/features/results/api/useExamResults";
 import { ResultStatus } from "@/features/results/components/ResultStatus";
+import { useMyExamSchedules } from "@/features/schedule/api/useMyExamSchedules";
+import { formatExamDate, formatExamTime } from "@/features/schedule/scheduleView";
 
-const dateFormat = new Intl.DateTimeFormat("vi-VN", { dateStyle: "long", timeStyle: "short" });
+const t = vi.results;
+const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "long",
+  timeStyle: "short",
+});
 
-/** SCR-07 (chi tiết) — FR-10 */
-export function ResultDetailRoute() {
-  const { sessionId } = useParams<"sessionId">();
-  const resultQuery = useExamResult(sessionId!);
-
-  useRouteAnnouncer(
-    vi.results.pageTitle,
-    resultQuery.data?.examName ?? vi.results.title,
+function BackLink() {
+  return (
+    <Button asChild variant="secondary" className="self-start">
+      <Link to="/results">{t.backToList}</Link>
+    </Button>
   );
+}
 
-  if (resultQuery.isPending) return <p>{vi.common.loading}</p>;
-  if (resultQuery.isError || !resultQuery.data) {
+/** SCR-07 (detail) — FR-10: the result of one exam schedule. */
+export function ResultDetailRoute() {
+  const { scheduleId } = useParams<"scheduleId">();
+  const resultQuery = useExamResult(scheduleId!);
+  const schedules = useMyExamSchedules();
+  const schedule = schedules.data?.find(
+    (item) => item.schedule.examScheduleId === scheduleId,
+  )?.schedule;
+  const name = schedule?.examName?.trim() || t.title;
+
+  useRouteAnnouncer(t.pageTitle, name);
+
+  if (resultQuery.isPending) return <p role="status">{vi.common.loading}</p>;
+  if (resultQuery.isError) {
     return (
       <div className="flex flex-col items-start gap-4">
-        <p role="alert">{vi.errors.notFound}</p>
-        <Button asChild variant="secondary">
-          <Link to="/ket-qua">{vi.common.back}</Link>
+        <h1 tabIndex={-1} className="text-2xl font-bold">
+          {name}
+        </h1>
+        <p role="alert" className="font-semibold text-destructive">
+          {t.resultError}
+        </p>
+        <Button variant="secondary" onClick={() => resultQuery.refetch()}>
+          {vi.common.retry}
         </Button>
+        <BackLink />
       </div>
     );
   }
 
-  const r = resultQuery.data;
+  const result = resultQuery.data;
   return (
     <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-[length:var(--text-2xl)] font-bold">
-        {r.examName}
+      <h1 tabIndex={-1} className="text-2xl font-bold">
+        {name}
       </h1>
 
-      <Card className="flex max-w-xl flex-col gap-4">
-        <p className="text-[length:var(--text-xl)] font-bold">
-          {vi.results.score(r.score, r.maxScore)}
-        </p>
-        <ResultStatus status={r.status} />
-        {r.status === "flagged" ? (
-          <p className="rounded-[var(--radius)] bg-[var(--color-warning-bg)] p-3 text-[var(--color-warning-text)]">
-            {vi.results.flaggedNote}
+      <div className="flex max-w-xl flex-col gap-4 rounded-xl border border-border bg-card p-6">
+        {result ? (
+          <>
+            {result.score !== null ? (
+              <p className="text-xl font-bold">
+                {result.maxScore !== null
+                  ? t.score(result.score, result.maxScore)
+                  : t.scoreOnly(result.score)}
+              </p>
+            ) : null}
+            <p>
+              <ResultStatus status={result.status} />
+            </p>
+            {result.status === "pending" ? <p>{t.pendingNote}</p> : null}
+          </>
+        ) : (
+          <>
+            <p>
+              <ResultStatus status="notReleased" />
+            </p>
+            <p>{t.notReleasedNote}</p>
+          </>
+        )}
+        {schedule ? (
+          <p>
+            {t.examDate(
+              formatExamDate(schedule.startsAt),
+              formatExamTime(schedule.startsAt),
+              formatExamTime(schedule.endsAt),
+            )}
           </p>
         ) : null}
-        <p>{vi.results.submittedAt(dateFormat.format(new Date(r.submittedAt)))}</p>
-        <p>{vi.results.duration(r.durationMinutes)}</p>
-      </Card>
+        {result?.submittedAt ? (
+          <p>{t.submittedAt(dateTimeFormat.format(new Date(result.submittedAt)))}</p>
+        ) : null}
+        {result?.releasedAt ? (
+          <p>{t.releasedAt(dateTimeFormat.format(new Date(result.releasedAt)))}</p>
+        ) : null}
+      </div>
 
-      <Button asChild variant="secondary" className="self-start">
-        <Link to="/ket-qua">{vi.common.back}</Link>
-      </Button>
+      <BackLink />
     </div>
   );
 }

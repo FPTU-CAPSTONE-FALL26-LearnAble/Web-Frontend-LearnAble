@@ -1,0 +1,358 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import {
+  createDepartment,
+  createUser,
+  getDepartments,
+  getAdminUsers,
+  setDepartmentActive,
+  startSemester,
+} from "@/api/admin";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
+import { DepartmentsRoute } from "./DepartmentsRoute";
+import { SemestersRoute } from "./SemestersRoute";
+import { UsersRoute } from "./UsersRoute";
+
+const page = <T,>(items: T[], totalCount = items.length, totalPages = 1) => ({
+  items,
+  pageNumber: 1,
+  pageSize: 10,
+  totalCount,
+  totalPages,
+  hasPreviousPage: false,
+  hasNextPage: totalPages > 1,
+});
+
+vi.mock("@/api/admin", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/api/admin")>();
+  return {
+    ...actual,
+    getUniversityLookup: vi.fn(async () =>
+      page([
+        { universityId: "uni-fpt", code: "FPTU", name: "FPT University" },
+        { universityId: "uni-hust", code: "HUST", name: "Hanoi University" },
+      ]),
+    ),
+    getDepartments: vi.fn(async () => ({
+      items: [
+        {
+          departmentId: "d1",
+          departmentCode: "SE",
+          departmentName: "Software Engineering",
+          description: "Builds software curricula",
+          isActive: true,
+          createdAt: "2026-01-06T00:00:00Z",
+          updatedAt: "2026-02-10T00:00:00Z",
+        },
+        {
+          departmentId: "d2",
+          departmentCode: "AI",
+          departmentName: "Artificial Intelligence",
+          description: null,
+          isActive: false,
+          createdAt: "2026-01-06T00:00:00Z",
+          updatedAt: "2026-03-01T00:00:00Z",
+        },
+      ],
+      pageNumber: 1,
+      pageSize: 10,
+      totalCount: 12,
+      totalPages: 2,
+      hasPreviousPage: false,
+      hasNextPage: true,
+    })),
+    createDepartment: vi.fn(async () => undefined),
+    setDepartmentActive: vi.fn(async () => undefined),
+    getAdminSemesters: vi.fn(async () =>
+      page([
+        {
+          semesterId: "s1",
+          semesterCode: "FA26",
+          semesterName: "Fall 2026",
+          academicYear: "2026-2027",
+          startDate: "2026-09-07",
+          endDate: "2026-12-20",
+          status: "Planned",
+          createdAt: "2026-01-06T00:00:00Z",
+          updatedAt: "2026-01-06T00:00:00Z",
+        },
+      ]),
+    ),
+    startSemester: vi.fn(async () => undefined),
+    getAdminUsers: vi.fn(async () =>
+      page([
+        {
+          userId: "u1",
+          universityId: "uni-fpt",
+          userCode: "HE180100",
+          email: "student@fpt.edu.vn",
+          fullName: "Nguyen Minh Long",
+          phone: null,
+          dateOfBirth: null,
+          gender: null,
+          role: "Student",
+          status: "Active",
+          createdAt: "2026-01-06T00:00:00Z",
+          updatedAt: "2026-01-06T00:00:00Z",
+        },
+      ]),
+    ),
+    createUser: vi.fn(async () => undefined),
+  };
+});
+
+function view(element: ReactNode, role: "Admin" | "Staff" = "Admin") {
+  useAuthStore.setState({
+    user: {
+      id: "admin-test",
+      fullName: "Admin One",
+      email: "admin@fpt.edu.vn",
+      role,
+      universityId: "uni-fpt",
+    },
+  });
+  const router = createMemoryRouter([{ path: "/", element }], {
+    initialEntries: ["/"],
+  });
+  return render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => vi.clearAllMocks());
+beforeAll(() => {
+  // Radix Select needs these pointer APIs, which jsdom does not implement.
+  HTMLElement.prototype.hasPointerCapture = () => false;
+  HTMLElement.prototype.setPointerCapture = () => {};
+  HTMLElement.prototype.releasePointerCapture = () => {};
+  HTMLElement.prototype.scrollIntoView = () => {};
+});
+
+describe("Admin workspaces", { timeout: 30000 }, () => {
+  it("reads departments, filters, paginates and stays accessible", async () => {
+    const user = userEvent.setup();
+    const result = view(<DepartmentsRoute />);
+    expect(await screen.findByText("Software Engineering")).toBeInTheDocument();
+    expect(getDepartments).toHaveBeenCalledWith(
+      expect.objectContaining({ PageNumber: 1, PageSize: 10 }),
+    );
+
+    await user.type(screen.getByLabelText("Search departments"), "Software");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(getDepartments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ SearchTerm: "Software" }),
+      ),
+    );
+
+    await user.click(screen.getByLabelText("Status"));
+    await user.click(screen.getByRole("option", { name: "Inactive only" }));
+    await waitFor(() =>
+      expect(getDepartments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ IsActive: false }),
+      ),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(getDepartments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ PageNumber: 2 }),
+      ),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() =>
+      expect(getDepartments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ SearchTerm: "", IsActive: undefined }),
+      ),
+    );
+    await expectNoAxeViolations(result.container);
+  });
+
+  it("does not colour Inactive as a success status", async () => {
+    view(<DepartmentsRoute />);
+    expect(await screen.findByText("Artificial Intelligence")).toBeInTheDocument();
+    const badge = screen.getByText("Inactive");
+    expect(badge).toHaveClass("bg-muted");
+    expect(badge).not.toHaveClass("bg-success");
+  });
+
+  it("validates a new department locally before calling the API", async () => {
+    const user = userEvent.setup();
+    view(<DepartmentsRoute />);
+    await screen.findByText("Software Engineering");
+    await user.click(screen.getByRole("button", { name: "New department" }));
+
+    await user.click(screen.getByRole("button", { name: "Create department" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Department code is required.",
+    );
+    expect(createDepartment).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Department code"), "DS");
+    await user.type(screen.getByLabelText("Department name"), "Data Science");
+    await user.click(screen.getByRole("button", { name: "Create department" }));
+    await waitFor(() =>
+      expect(createDepartment).toHaveBeenCalledWith({
+        // A regular admin always writes into their own university.
+        universityId: "uni-fpt",
+        departmentCode: "DS",
+        departmentName: "Data Science",
+        description: null,
+      }),
+    );
+  });
+
+  it("locks the university of an admin to their own tenant", async () => {
+    const user = userEvent.setup();
+    view(<DepartmentsRoute />);
+    await screen.findByText("Software Engineering");
+    await user.click(screen.getByRole("button", { name: "New department" }));
+    const university = await screen.findByLabelText("University");
+    expect(university).toBeDisabled();
+    expect(university).toHaveTextContent("FPTU · FPT University");
+  });
+
+  it("confirms before changing a department's active state", async () => {
+    const user = userEvent.setup();
+    view(<DepartmentsRoute />);
+    await screen.findByText("Software Engineering");
+    const row = screen.getByText("Software Engineering").closest("tr")!;
+    await user.click(within(row).getByRole("button", { name: "Deactivate" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Deactivate department?");
+    expect(setDepartmentActive).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Deactivate" }));
+    await waitFor(() =>
+      expect(setDepartmentActive).toHaveBeenCalledWith("d1", false),
+    );
+  });
+
+  it("only offers Start on a planned semester and confirms the transition", async () => {
+    const user = userEvent.setup();
+    view(<SemestersRoute />);
+    expect(await screen.findByText("Fall 2026")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Close" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(startSemester).toHaveBeenCalledWith("s1"));
+  });
+
+  it("creates a Staff account for another university", async () => {
+    const user = userEvent.setup();
+    view(<UsersRoute />);
+    await screen.findByText("Nguyen Minh Long");
+    expect(await screen.findByText("FPTU · FPT University")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "New account" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByLabelText("University"));
+    await user.click(
+      await screen.findByRole("option", { name: "HUST · Hanoi University" }),
+    );
+    await user.click(within(dialog).getByLabelText("Role"));
+    await user.click(await screen.findByRole("option", { name: "Staff" }));
+    await user.type(screen.getByLabelText("Full name"), "Tran Thi Mai");
+    await user.type(screen.getByLabelText("User code"), "STF001");
+    await user.type(screen.getByLabelText("Email address"), "mai@hust.edu.vn");
+    await user.type(screen.getByLabelText("Initial password"), "Staff1234");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          universityId: "uni-hust",
+          role: "Staff",
+          userCode: "STF001",
+          email: "mai@hust.edu.vn",
+        }),
+      ),
+    );
+  });
+
+  it("locks Staff account creation to the Staff member's university", async () => {
+    vi.mocked(createUser).mockResolvedValueOnce({
+      userId: "examiner-1",
+      universityId: "uni-fpt",
+      userCode: "EXM001",
+      email: "examiner@fpt.edu.vn",
+      fullName: "Examiner One",
+      phone: null,
+      dateOfBirth: null,
+      gender: null,
+      role: "Examiner",
+      status: "Active",
+      createdAt: "2026-11-16T00:00:00Z",
+      updatedAt: "2026-11-16T00:00:00Z",
+      revision: "rev-1",
+    });
+    const user = userEvent.setup();
+    view(<UsersRoute />, "Staff");
+    await screen.findByText("Nguyen Minh Long");
+
+    await user.click(screen.getByRole("button", { name: "New account" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("University")).toBeDisabled();
+    expect(within(dialog).getByLabelText("University")).toHaveTextContent(
+      "FPTU · FPT University",
+    );
+    await user.click(within(dialog).getByLabelText("Role"));
+    expect(screen.queryByRole("option", { name: "Staff" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Admin" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "Examiner" }));
+    await user.type(within(dialog).getByLabelText("Full name"), "Examiner One");
+    await user.type(within(dialog).getByLabelText("User code"), "EXM001");
+    await user.type(within(dialog).getByLabelText("Email address"), "examiner@fpt.edu.vn");
+    await user.type(within(dialog).getByLabelText("Initial password"), "Examiner123");
+    await user.click(within(dialog).getByRole("button", { name: "Create account" }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          universityId: "uni-fpt",
+          role: "Examiner",
+        }),
+      ),
+    );
+    expect(getAdminUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ UniversityId: "uni-fpt" }),
+    );
+  });
+
+  it("requires a valid email and an 8-character password for a new account", async () => {
+    const user = userEvent.setup();
+    view(<UsersRoute />);
+    await screen.findByText("Nguyen Minh Long");
+    expect(getAdminUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ PageNumber: 1 }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "New account" }));
+    await user.type(screen.getByLabelText("Full name"), "Tran Thi Mai");
+    await user.type(screen.getByLabelText("User code"), "HE180200");
+    await user.type(screen.getByLabelText("Email address"), "not-an-email");
+    await user.type(screen.getByLabelText("Initial password"), "short");
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Email must be a valid address.");
+    expect(alert).toHaveTextContent("Password must be at least 8 characters.");
+  });
+});

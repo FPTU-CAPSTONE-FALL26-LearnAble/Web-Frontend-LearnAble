@@ -1,0 +1,19 @@
+{
+  // Cloudflare Workers Builds serves the Vite output as static assets.
+  // Two Workers projects are connected to this repository, so the dev one is
+  // declared as an environment rather than a second configuration file.
+  "name": "web-frontend-learnable",
+  "compatibility_date": "2026-09-11",
+  "assets": {
+    "directory": "./dist",
+    // The app uses createBrowserRouter, so deep links such as /admin/users have
+    // no matching file on disk. Without this, a refresh on any route below the
+    // root returns 404 even though the deployment itself succeeded.
+    "not_found_handling": "single-page-application"
+  },
+  "env": {
+    "dev": {
+      "name": "web-frontend-learnable-dev"
+    }
+  }
+}

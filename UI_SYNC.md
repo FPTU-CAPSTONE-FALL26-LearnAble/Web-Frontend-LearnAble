@@ -3,7 +3,10 @@
 Cây UI dùng chung giữa `learnable-web` và `learnable-desktop` gồm đúng **bốn thư mục**:
 
 ```
-src/shared/ui/        # primitives + patterns + test đi kèm
+src/shared/ui/
+  primitives/    # Lớp primitive duy nhất (A) — độc lập ngữ cảnh, hỗ trợ size="default" | "exam", min 44x44px
+  patterns/exam/ # Lớp pattern dùng chung cho thi/luyện tập (B) — ExamShell, QuestionCard, AnswerOptionList, SaveStatus
+  cn.ts          # Tiện ích nối className duy nhất cho src/shared/
 src/shared/a11y/      # LiveRegion, announce(), SkipLink, useRouteAnnouncer
 src/shared/tokens/    # tokens.css — lớp thị giác (RULE-17)
 src/shared/strings/   # vi.ts — toàn bộ copy tiếng Việt

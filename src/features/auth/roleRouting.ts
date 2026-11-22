@@ -1,0 +1,64 @@
+export type SupportedRole =
+  | "student"
+  | "lecturer"
+  | "examiner"
+  | "admin"
+  | "staff";
+
+const defaultDestination: Record<SupportedRole, string> = {
+  student: "/home",
+  lecturer: "/lecturer/dashboard",
+  examiner: "/examiner/dashboard",
+  admin: "/admin/dashboard",
+  staff: "/staff/dashboard",
+};
+
+const studentRoutes = [
+  "/home",
+  "/practice",
+  "/assistant",
+  "/progress",
+  "/results",
+  "/schedule",
+  "/notifications",
+  "/settings/accessibility",
+];
+
+export function isStudentPath(path: string) {
+  return studentRoutes.some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
+
+export function normalizeSupportedRole(
+  role?: string | null,
+): SupportedRole | null {
+  const normalized = role?.trim().toLowerCase();
+  return normalized === "student" ||
+    normalized === "lecturer" ||
+    normalized === "examiner" ||
+    normalized === "admin" ||
+    normalized === "staff"
+    ? normalized
+    : null;
+}
+
+export function isPathAllowedForRole(role: SupportedRole, path: string) {
+  if (role === "lecturer") return path.startsWith("/lecturer/");
+  if (role === "examiner") return path.startsWith("/examiner/");
+  if (role === "admin") return path.startsWith("/admin/");
+  if (role === "staff") return path.startsWith("/staff/");
+  return isStudentPath(path);
+}
+
+export function getRoleDestination(
+  role?: string | null,
+  requestedPath?: string,
+): string | null {
+  const normalizedRole = normalizeSupportedRole(role);
+  if (!normalizedRole) return null;
+  if (requestedPath && isPathAllowedForRole(normalizedRole, requestedPath)) {
+    return requestedPath;
+  }
+  return defaultDestination[normalizedRole];
+}

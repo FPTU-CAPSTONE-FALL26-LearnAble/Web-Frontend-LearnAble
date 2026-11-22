@@ -1,0 +1,34 @@
+/* Staff-only presentation aliases. Shared primitives and other role themes stay unchanged. */
+.staff-shell main h1 {
+  color: var(--primary);
+}
+
+/* Staff table and workspace headings use the role's established brand accent. */
+.staff-shell main h2.text-lg.font-bold {
+  color: var(--primary);
+}
+
+/* Summary labels and values are sufficient on these operational pages. */
+.staff-shell
+  section[aria-label="Account summary"]
+  [data-slot="card-content"]
+  > p.text-xs.text-muted-foreground,
+.staff-shell
+  section[aria-label="Major summary"]
+  [data-slot="card-content"]
+  > p.text-xs.text-muted-foreground {
+  display: none;
+}
+
+/* Dialogs are portalled to body, so scope them by the mounted Staff shell. */
+body:has(.staff-shell) [data-slot="dialog-content"] {
+  width: min(94vw, 760px);
+  max-width: 760px;
+}
+
+body:has(.staff-shell) [data-slot="dialog-title"] {
+  color: var(--primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}

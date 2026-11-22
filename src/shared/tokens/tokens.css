@@ -1,54 +1,440 @@
+@import "tailwindcss";
+@import "shadcn/tailwind.css";
+@import "tw-animate-css";
+
 /*
  * LearnAble design tokens — RULE-17 / NFR-15.
  * High-contrast + large-text là theme MẶC ĐỊNH và DUY NHẤT, không phải opt-in.
  * Mọi cặp màu chữ/nền phải đạt ≥ 7:1 (AAA), UI phi văn bản ≥ 4.5:1 —
  * kiểm bằng scripts/check-contrast.mjs trong CI, không kiểm bằng mắt.
  */
-:root {
-  /* ---- Màu (cặp chữ/nền được CI kiểm tra) ---- */
-  --color-bg: #ffffff;
-  --color-surface: #f4f4f5;
-  --color-text: #18181b; /* trên --color-bg: ~17.4:1 */
-  --color-text-muted: #3f3f46; /* trên --color-bg: ~10.3:1 */
-  --color-primary: #1d3f8f; /* trên --color-bg: ~9.7:1 */
-  --color-primary-text: #ffffff; /* trên --color-primary */
-  --color-primary-hover: #16306e;
-  --color-border: #52525b; /* phi văn bản, trên --color-bg: ~6.4:1 */
-  --color-error: #99191f; /* trên --color-bg: ~8.6:1 */
-  --color-error-text: #ffffff;
-  --color-success: #14532d; /* trên --color-bg: ~10.6:1 */
-  --color-warning-bg: #fef3c7;
-  --color-warning-text: #451a03; /* trên --color-warning-bg: ~12:1 */
-  --color-focus: #16306e;
-  --color-selected-bg: #dbe4ff;
-  --color-selected-text: #16306e; /* trên --color-selected-bg: ~8:1 */
 
-  /* ---- Chữ ---- */
-  /* Root 18px đặt ở index.css qua html { font-size }. */
-  --font-body: "Inter Variable", system-ui, sans-serif;
-  --text-body: 1.125rem; /* không có chữ nào < 1rem */
-  --text-sm: 1rem;
-  --text-lg: 1.375rem;
-  --text-xl: 1.75rem;
-  --text-2xl: 2.25rem;
-  --leading-body: 1.7; /* tối thiểu — dấu tiếng Việt chồng thanh điệu cần khoảng thở */
-  --leading-heading: 1.35;
+@theme default inline {
+  --color-brand-50: oklch(95.886% 0.02615 61.9);
+  --color-brand-100: oklch(92.01% 0.07747 52.892);
+  --color-brand-200: oklch(81.758% 0.13352 45.306);
+  --color-brand-300: oklch(74.696% 0.17496 41.756);
+  --color-brand-400: oklch(67.774% 0.19083 39.878);
+  --color-brand-500: oklch(62.035% 0.17986 39.596);
+  --color-brand-600: oklch(56.028% 0.16325 39.397);
+  --color-brand-700: oklch(50.305% 0.14588 39.586);
+  --color-brand-800: oklch(44.581% 0.12896 39.689);
+  --color-brand-900: oklch(39.186% 0.11447 39.291);
+  --color-brand-950: oklch(35.094% 0.09851 40.946);
+}
 
-  /* ---- Kích thước tương tác ---- */
-  --target-min: 44px; /* min 44×44 CSS px, áp trong primitive, không per-screen */
+/* The attribute form lets a preview show a theme other than the page's own. */
+:root,
+[data-contrast="default"] {
+  --background: var(--color-white);
+  --foreground: var(--color-slate-950);
+  --card: var(--color-white);
+  --card-foreground: var(--color-slate-950);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-slate-950);
+  --primary: var(--color-brand-500);
+  --primary-foreground: var(--color-white);
+  --primary-hover: var(--color-brand-600);
+  --secondary: var(--color-slate-100);
+  --secondary-foreground: var(--color-slate-800);
+  --muted: var(--color-slate-200);
+  --muted-foreground: var(--color-slate-600);
+  --accent: var(--color-slate-100);
+  --accent-foreground: var(--color-slate-900);
+  --warning: var(--color-yellow-100);
+  --warning-foreground: var(--color-yellow-900);
+  --success: var(--color-green-100);
+  --success-foreground: var(--color-green-900);
+  --success-border: var(--color-green-500);
+  --info: var(--color-blue-100);
+  --info-foreground: var(--color-blue-900);
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-slate-300);
+  --input: var(--color-slate-200);
+  --checkbox: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --color-focus: var(--color-brand-600);
+  --ring: var(--color-brand-600);
+  --focus-ring-width: 4px;
+  --focus-ring-offset: 4px;
+  --chart-1: var(--color-sky-300);
+  --chart-2: var(--color-sky-500);
+  --chart-3: var(--color-sky-600);
+  --chart-4: var(--color-sky-700);
+  --chart-5: var(--color-sky-800);
+  --radius: 0.5rem;
+  --sidebar: var(--color-slate-50);
+  --sidebar-foreground: var(--color-slate-950);
+  --sidebar-primary: var(--color-brand-600);
+  --sidebar-primary-foreground: var(--color-brand-50);
+  --sidebar-accent: var(--color-brand-50);
+  --sidebar-accent-foreground: var(--color-brand-950);
+  --sidebar-border: var(--color-slate-200);
+  --sidebar-ring: var(--color-brand-600);
+  --player-accent: #ea580c;
+  --player-accent-foreground: #ffffff;
+  --player-accent-soft: #ffede6;
+  --player-accent-soft-foreground: #c2410c;
+  --player-accent-soft-border: #fed7aa;
+  --player-selected-border: transparent;
+  --player-flag: #fefce8;
+  --player-flag-foreground: #854d0e;
+  --player-flag-border: #fde047;
+  --player-table-header: #f9fafb;
+  --player-neutral-badge: #f3f4f6;
+  --player-neutral-badge-foreground: #4b5563;
+  --player-neutral-badge-border: #e5e7eb;
+  --player-option-badge: #e5e7eb99;
+  --player-connected: #16a34a;
+}
 
-  /* ---- Focus ring ---- */
-  --focus-ring-width: 3px;
-  --focus-ring-offset: 2px;
+@theme inline {
+  --color-player-accent: var(--player-accent);
+  --color-player-accent-foreground: var(--player-accent-foreground);
+  --color-player-accent-soft: var(--player-accent-soft);
+  --color-player-accent-soft-foreground: var(--player-accent-soft-foreground);
+  --color-player-accent-soft-border: var(--player-accent-soft-border);
+  --color-player-selected-border: var(--player-selected-border);
+  --color-player-flag: var(--player-flag);
+  --color-player-flag-foreground: var(--player-flag-foreground);
+  --color-player-flag-border: var(--player-flag-border);
+  --color-player-table-header: var(--player-table-header);
+  --color-player-neutral-badge: var(--player-neutral-badge);
+  --color-player-neutral-badge-foreground: var(--player-neutral-badge-foreground);
+  --color-player-neutral-badge-border: var(--player-neutral-badge-border);
+  --color-player-option-badge: var(--player-option-badge);
+  --color-player-connected: var(--player-connected);
+}
 
-  /* ---- Spacing (thang thô có chủ đích) ---- */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
+.dark,
+[data-contrast="dark"] {
+  --background: var(--color-slate-950);
+  --foreground: var(--color-slate-50);
+  --card: var(--color-slate-900);
+  --card-foreground: var(--color-slate-50);
+  --popover: var(--color-slate-900);
+  --popover-foreground: var(--color-slate-50);
+  --primary: var(--color-brand-600);
+  --primary-foreground: var(--color-brand-50);
+  --primary-hover: var(--color-brand-600);
+  --secondary: var(--color-slate-800);
+  --secondary-foreground: var(--color-slate-50);
+  --muted: var(--color-slate-800);
+  --muted-foreground: var(--color-slate-400);
+  --accent: var(--color-slate-800);
+  --accent-foreground: var(--color-slate-50);
+  --warning: var(--color-yellow-900);
+  --warning-foreground: var(--color-yellow-100);
+  --success: var(--color-green-900);
+  --success-foreground: var(--color-green-100);
+  --success-border: var(--color-green-500);
+  --info: var(--color-blue-900);
+  --info-foreground: var(--color-blue-100);
+  --destructive: var(--color-red-400);
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-slate-800);
+  --input: var(--color-slate-800);
+  --checkbox: color-mix(in srgb, var(--foreground) 20%, transparent);
+  --color-focus: var(--color-brand-100);
+  --ring: var(--color-brand-100);
+  --focus-ring-width: 4px;
+  --focus-ring-offset: 4px;
+  --chart-1: var(--color-sky-300);
+  --chart-2: var(--color-sky-500);
+  --chart-3: var(--color-sky-600);
+  --chart-4: var(--color-sky-700);
+  --chart-5: var(--color-sky-800);
+  --sidebar: var(--color-slate-900);
+  --sidebar-foreground: var(--color-slate-50);
+  --sidebar-primary: var(--color-brand-500);
+  --sidebar-primary-foreground: var(--color-brand-950);
+  --sidebar-accent: var(--color-slate-800);
+  --sidebar-accent-foreground: var(--color-slate-50);
+  --sidebar-border: var(--color-slate-800);
+  --sidebar-ring: var(--color-brand-200);
+  --player-accent: var(--color-brand-500);
+  --player-accent-foreground: var(--color-white);
+  --player-accent-soft: var(--color-brand-950);
+  --player-accent-soft-foreground: var(--color-brand-100);
+  --player-accent-soft-border: var(--color-brand-600);
+  --player-selected-border: var(--color-brand-500);
+  --player-flag: var(--color-yellow-950);
+  --player-flag-foreground: var(--color-yellow-200);
+  --player-flag-border: var(--color-yellow-600);
+  --player-table-header: var(--color-slate-900);
+  --player-neutral-badge: var(--color-slate-800);
+  --player-neutral-badge-foreground: var(--color-slate-300);
+  --player-neutral-badge-border: var(--color-slate-700);
+  --player-option-badge: var(--color-slate-700);
+  --player-connected: var(--color-green-400);
+}
 
-  --radius: 8px;
+/*
+ * Contrast themes a student can choose (kept on the device, no Backend call).
+ * Every one stays at or above the default's contrast: text ≥ 7:1, non-text
+ * UI ≥ 4.5:1. They only swap the semantic tokens above, so every screen
+ * follows without knowing a theme exists. The dark ones are applied together
+ * with `.dark`, so `dark:` utilities keep working.
+ */
+
+/* White on black, yellow for actions and focus. */
+[data-contrast="black"] {
+  --background: var(--color-black);
+  --foreground: var(--color-white);
+  --card: var(--color-neutral-950);
+  --card-foreground: var(--color-white);
+  --popover: var(--color-neutral-950);
+  --popover-foreground: var(--color-white);
+  --primary: var(--color-yellow-300);
+  --primary-foreground: var(--color-black);
+  --primary-hover: var(--color-yellow-200);
+  --secondary: var(--color-neutral-800);
+  --secondary-foreground: var(--color-white);
+  --muted: var(--color-neutral-800);
+  --muted-foreground: var(--color-neutral-300);
+  --accent: var(--color-neutral-800);
+  --accent-foreground: var(--color-white);
+  --warning: var(--color-yellow-950);
+  --warning-foreground: var(--color-yellow-200);
+  --success: var(--color-green-950);
+  --success-foreground: var(--color-green-200);
+  --success-border: var(--color-green-400);
+  --info: var(--color-neutral-950);
+  --info-foreground: var(--color-cyan-200);
+  --destructive: var(--color-red-400);
+  --destructive-foreground: var(--color-black);
+  --border: var(--color-neutral-400);
+  --input: var(--color-neutral-400);
+  --checkbox: var(--color-neutral-300);
+  --color-focus: var(--color-yellow-300);
+  --ring: var(--color-yellow-300);
+  --sidebar: var(--color-black);
+  --sidebar-foreground: var(--color-white);
+  --sidebar-primary: var(--color-yellow-300);
+  --sidebar-primary-foreground: var(--color-black);
+  --sidebar-accent: var(--color-neutral-800);
+  --sidebar-accent-foreground: var(--color-white);
+  --sidebar-border: var(--color-neutral-400);
+  --sidebar-ring: var(--color-yellow-300);
+  --player-accent: var(--color-yellow-300);
+  --player-accent-foreground: var(--color-black);
+  --player-accent-soft: var(--color-neutral-900);
+  --player-accent-soft-foreground: var(--color-white);
+  --player-accent-soft-border: var(--color-yellow-300);
+  --player-selected-border: var(--color-yellow-300);
+  --player-flag: var(--color-neutral-800);
+  --player-flag-foreground: var(--color-yellow-200);
+  --player-flag-border: var(--color-yellow-300);
+  --player-table-header: var(--color-black);
+  --player-neutral-badge: var(--color-neutral-900);
+  --player-neutral-badge-foreground: var(--color-neutral-300);
+  --player-neutral-badge-border: var(--color-neutral-400);
+  --player-option-badge: var(--color-neutral-800);
+  --player-connected: var(--color-green-400);
+}
+
+/* Yellow on black: the classic low-vision pairing, less glare than white. */
+[data-contrast="yellow"] {
+  --background: var(--color-black);
+  --foreground: var(--color-yellow-300);
+  --card: var(--color-black);
+  --card-foreground: var(--color-yellow-300);
+  --popover: var(--color-black);
+  --popover-foreground: var(--color-yellow-300);
+  --primary: var(--color-yellow-300);
+  --primary-foreground: var(--color-black);
+  --primary-hover: var(--color-yellow-200);
+  --secondary: var(--color-neutral-900);
+  --secondary-foreground: var(--color-yellow-300);
+  --muted: var(--color-neutral-900);
+  --muted-foreground: var(--color-yellow-200);
+  --accent: var(--color-neutral-900);
+  --accent-foreground: var(--color-yellow-300);
+  --warning: var(--color-black);
+  --warning-foreground: var(--color-yellow-200);
+  --success: var(--color-black);
+  --success-foreground: var(--color-yellow-200);
+  --success-border: var(--color-yellow-300);
+  --info: var(--color-black);
+  --info-foreground: var(--color-cyan-300);
+  --destructive: var(--color-white);
+  --destructive-foreground: var(--color-black);
+  --border: var(--color-yellow-300);
+  --input: var(--color-yellow-300);
+  --checkbox: var(--color-yellow-300);
+  --color-focus: var(--color-white);
+  --ring: var(--color-white);
+  --sidebar: var(--color-black);
+  --sidebar-foreground: var(--color-yellow-300);
+  --sidebar-primary: var(--color-yellow-300);
+  --sidebar-primary-foreground: var(--color-black);
+  --sidebar-accent: var(--color-neutral-900);
+  --sidebar-accent-foreground: var(--color-yellow-300);
+  --sidebar-border: var(--color-yellow-300);
+  --sidebar-ring: var(--color-white);
+  --player-accent: var(--color-yellow-300);
+  --player-accent-foreground: var(--color-black);
+  --player-accent-soft: var(--color-neutral-900);
+  --player-accent-soft-foreground: var(--color-yellow-300);
+  --player-accent-soft-border: var(--color-yellow-300);
+  --player-selected-border: var(--color-white);
+  --player-flag: var(--color-neutral-900);
+  --player-flag-foreground: var(--color-yellow-300);
+  --player-flag-border: var(--color-yellow-300);
+  --player-table-header: var(--color-black);
+  --player-neutral-badge: var(--color-neutral-900);
+  --player-neutral-badge-foreground: var(--color-yellow-300);
+  --player-neutral-badge-border: var(--color-yellow-300);
+  --player-option-badge: var(--color-neutral-800);
+  --player-connected: var(--color-cyan-300);
+}
+
+/* Black on white, with black borders and actions. */
+[data-contrast="white"] {
+  --background: var(--color-white);
+  --foreground: var(--color-black);
+  --card: var(--color-white);
+  --card-foreground: var(--color-black);
+  --popover: var(--color-white);
+  --popover-foreground: var(--color-black);
+  --primary: var(--color-black);
+  --primary-foreground: var(--color-white);
+  --primary-hover: var(--color-neutral-800);
+  --secondary: var(--color-neutral-200);
+  --secondary-foreground: var(--color-black);
+  --muted: var(--color-neutral-200);
+  --muted-foreground: var(--color-neutral-800);
+  --accent: var(--color-neutral-200);
+  --accent-foreground: var(--color-black);
+  --warning: var(--color-yellow-100);
+  --warning-foreground: var(--color-yellow-950);
+  --success: var(--color-green-100);
+  --success-foreground: var(--color-green-950);
+  --success-border: var(--color-green-800);
+  --info: var(--color-blue-100);
+  --info-foreground: var(--color-blue-950);
+  --destructive: var(--color-red-800);
+  --destructive-foreground: var(--color-white);
+  --border: var(--color-black);
+  --input: var(--color-black);
+  --checkbox: var(--color-black);
+  --color-focus: var(--color-blue-700);
+  --ring: var(--color-blue-700);
+  --sidebar: var(--color-white);
+  --sidebar-foreground: var(--color-black);
+  --sidebar-primary: var(--color-black);
+  --sidebar-primary-foreground: var(--color-white);
+  --sidebar-accent: var(--color-neutral-200);
+  --sidebar-accent-foreground: var(--color-black);
+  --sidebar-border: var(--color-black);
+  --sidebar-ring: var(--color-blue-700);
+  --player-accent: var(--color-black);
+  --player-accent-foreground: var(--color-white);
+  --player-accent-soft: var(--color-neutral-200);
+  --player-accent-soft-foreground: var(--color-black);
+  --player-accent-soft-border: var(--color-black);
+  --player-selected-border: var(--color-black);
+  --player-flag: var(--color-yellow-100);
+  --player-flag-foreground: var(--color-yellow-950);
+  --player-flag-border: var(--color-black);
+  --player-table-header: var(--color-neutral-100);
+  --player-neutral-badge: var(--color-neutral-200);
+  --player-neutral-badge-foreground: var(--color-black);
+  --player-neutral-badge-border: var(--color-black);
+  --player-option-badge: var(--color-neutral-200);
+  --player-connected: var(--color-green-800);
+}
+
+/*
+ * The assessment player's own contrast switch (AssessmentPlayerContrastOptions). The
+ * desktop exam client sets these on <html>; they also carry the player tokens.
+ */
+:root[data-contrast="inverted"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #232323;
+  --popover-foreground: #ffffff;
+  --primary: #d59369;
+  --primary-foreground: #000000;
+  --primary-hover: #e6bba0;
+  --secondary: #101010;
+  --secondary-foreground: #ffffff;
+  --muted: #1b1b1b;
+  --muted-foreground: #cccccc;
+  --accent: #262626;
+  --accent-foreground: #ffffff;
+  --warning: #262626;
+  --warning-foreground: #f2c602;
+  --success: #147b50;
+  --success-foreground: #ffffff;
+  --info: #0d0d14;
+  --info-foreground: #84e1d5;
+  --destructive: #66e8ff;
+  --border: #7a7a7a;
+  --checkbox: #c1c1c1;
+  --input: #c1c1c1;
+  --color-focus: #f1670f;
+  --ring: #f1670f;
+  --player-accent: #d59369;
+  --player-accent-foreground: #000000;
+  --player-accent-soft: #44270f;
+  --player-accent-soft-foreground: #ffffff;
+  --player-accent-soft-border: #d59369;
+  --player-selected-border: #d59369;
+  --player-flag: #262626;
+  --player-flag-foreground: #f2c602;
+  --player-flag-border: #b2b2b2;
+  --player-table-header: #000000;
+  --player-neutral-badge: #101010;
+  --player-neutral-badge-foreground: #cccccc;
+  --player-neutral-badge-border: #7a7a7a;
+  --player-option-badge: #333333;
+  --player-connected: #84e1d5;
+}
+
+:root[data-contrast="yellowOnBlack"] {
+  --background: #000000;
+  --foreground: #ffff00;
+  --card: #000000;
+  --card-foreground: #ffff00;
+  --popover: #232323;
+  --popover-foreground: #ffff00;
+  --primary: #ffff00;
+  --primary-foreground: #000000;
+  --primary-hover: #d9d900;
+  --secondary: #1b1b1b;
+  --secondary-foreground: #ffff00;
+  --muted: #272727;
+  --muted-foreground: #ffff99;
+  --accent: #262626;
+  --accent-foreground: #ffff00;
+  --warning: #262626;
+  --warning-foreground: #f2c602;
+  --success: #002b2b;
+  --success-foreground: #ffff54;
+  --info: #002b2b;
+  --info-foreground: #00ffff;
+  --destructive: #f04242;
+  --border: #aaaaaa;
+  --checkbox: #ffff00;
+  --input: #ffff00;
+  --color-focus: #00ffff;
+  --ring: #00ffff;
+  --player-accent: #ffff00;
+  --player-accent-foreground: #000000;
+  --player-accent-soft: #002b2b;
+  --player-accent-soft-foreground: #ffff00;
+  --player-accent-soft-border: #00ffff;
+  --player-selected-border: #00ffff;
+  --player-flag: #262626;
+  --player-flag-foreground: #ffff00;
+  --player-flag-border: #ffff00;
+  --player-table-header: #000000;
+  --player-neutral-badge: #272727;
+  --player-neutral-badge-foreground: #ffff00;
+  --player-neutral-badge-border: #aaaaaa;
+  --player-option-badge: #333333;
+  --player-connected: #00ffff;
 }
