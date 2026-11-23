@@ -63,12 +63,15 @@ describe("LecturerDashboardRoute", () => {
     expect(screen.getByText("Monday, 9 November 2026")).toBeInTheDocument();
   });
 
-  it("opens with three headline numbers that link to where they are managed", async () => {
+  it("opens with three compact headline numbers that link to where they are managed", async () => {
     renderDashboard();
     const overview = await screen.findByRole("region", { name: "Overview" });
-    await waitFor(() => expect(within(overview).getByRole("link", { name: /Questions/ })).toHaveTextContent("1612 active · 3 draft"));
-    expect(within(overview).getByRole("link", { name: /Learning materials/ })).toHaveTextContent("64 published · 2 draft");
-    expect(within(overview).getByRole("link", { name: /Invigilation shifts, next 30 days/ })).toHaveTextContent("3One in progress now");
+    await waitFor(() => expect(within(overview).getByRole("link", { name: /Questions/ })).toHaveTextContent("16"));
+    expect(within(overview).getByRole("link", { name: /Questions/ })).not.toHaveTextContent("active");
+    expect(within(overview).getByRole("link", { name: /Learning materials/ })).toHaveTextContent("6");
+    expect(within(overview).getByRole("link", { name: /Learning materials/ })).not.toHaveTextContent("published");
+    expect(within(overview).getByRole("link", { name: /Invigilation shifts, next 30 days/ })).toHaveTextContent("3");
+    expect(within(overview).queryByText("None scheduled")).not.toBeInTheDocument();
     expect(within(overview).queryByText(/registration/i)).not.toBeInTheDocument();
   });
 
@@ -115,7 +118,7 @@ describe("LecturerDashboardRoute", () => {
     api.getMaterials.mockImplementation(library({}, []));
     renderDashboard();
     const overview = await screen.findByRole("region", { name: "Overview" });
-    await waitFor(() => expect(within(overview).getByRole("link", { name: /Questions/ })).toHaveTextContent("00 active · 0 draft"));
+    await waitFor(() => expect(within(overview).getByRole("link", { name: /Questions/ })).toHaveTextContent("0"));
     expect(await within(region("Next invigilation shift")).findByText("You have no upcoming invigilation shifts.")).toBeInTheDocument();
     expect(within(region("Your schedule")).getByText("Nothing is scheduled for you in the next 30 days.")).toBeInTheDocument();
     expect(await within(region("Question bank")).findByText("No questions yet")).toBeInTheDocument();
@@ -209,7 +212,7 @@ describe("LecturerDashboardRoute", () => {
     api.getMyExamSchedules.mockReturnValue(new Promise(() => undefined));
     renderDashboard();
     expect(within(region("Next invigilation shift")).getByRole("status")).toHaveTextContent("Loading…");
-    expect(within(region("Overview")).getAllByText("Loading…").length).toBeGreaterThan(0);
+    expect(within(region("Overview")).getAllByText("—")).toHaveLength(3);
   });
 
   it("offers the two ways to add content", async () => {

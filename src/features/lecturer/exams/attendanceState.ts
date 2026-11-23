@@ -52,7 +52,7 @@ export function studentActions(student: ExamStudent, scheduleStatus: ScheduleSta
   return {
     checkIn: student.attendanceStatus === "NotCheckedIn" && !locked && scheduleStatus !== "Cancelled",
     undoCheckIn: student.attendanceStatus === "Present" && !locked && !started,
-    markAbsent: student.attendanceStatus === "NotCheckedIn" && scheduleStatus === "Open" && beforeEnd,
+    markAbsent: student.attendanceStatus === "NotCheckedIn" && (scheduleStatus === "Published" || scheduleStatus === "Open") && beforeEnd,
     undoAbsence: student.attendanceStatus === "Absent" && beforeEnd,
     checkOut: student.attemptProgress === "Submitted" && student.attendanceStatus !== "CheckedOut",
   };

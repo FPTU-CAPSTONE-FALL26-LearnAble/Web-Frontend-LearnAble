@@ -7,7 +7,7 @@ import { UploadMaterialRoute, validateMaterialFile } from "./materials/routes/Up
 import { ExamScheduleRoute } from "./exams/routes/ExamScheduleRoute";
 import { LecturerLayout } from "./shell/LecturerLayout";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { getMaterials } from "@/api/lecturer";
+import { createLearningMaterial, getMaterials } from "@/api/lecturer";
 import { expectNoAxeViolations } from "@/shared/ui/testing/expectNoAxeViolations";
 import { toast } from "@/shared/ui/primitives/toast";
 
@@ -47,7 +47,7 @@ vi.mock("@/api/exams", () => ({
 }));
 function view(element: React.ReactNode, path = "/") {
   useAuthStore.setState({ user: { id: "lecturer-test", fullName: "Lecturer One", email: "test@fpt.edu.vn", role: "Lecturer" } });
-  const router = createMemoryRouter([{ path: path.includes("attendance") ? "/lecturer/exams/:examId/attendance" : path, element }, { path: "/lecturer/materials", element: <p>Material list destination</p> }], { initialEntries: [path] });
+  const router = createMemoryRouter([{ path: path.includes("attendance") ? "/lecturer/exams/:examId/attendance" : path, element }, { path: "/lecturer/materials", element: <p>Material list destination</p> }, { path: "/lecturer/materials/:materialId/audio", element: <p>Audio studio destination</p> }], { initialEntries: [path] });
   return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
 }
 beforeEach(() => { vi.clearAllMocks(); });
@@ -74,6 +74,19 @@ describe("Lecturer workspaces", { timeout: 30000 }, () => {
     await waitFor(() => expect(getMaterials).toHaveBeenLastCalledWith(expect.objectContaining({ Status: "Archived" })));
     await user.click(screen.getByRole("button", { name: "Reset filters" })); await waitFor(() => expect(getMaterials).toHaveBeenLastCalledWith(expect.objectContaining({ Status: undefined })));
   });
+  it("shows file-specific icons and an indeterminate extraction state", async () => {
+    vi.mocked(getMaterials).mockResolvedValueOnce({
+      items: [{ materialId: "m2", topicId: "t1", title: "Draft lecture", fileName: "lecture.docx", fileSizeBytes: 1024, materialType: "DOCX", status: "Draft", ocrStatus: "Pending", isTtsReady: false }],
+      totalCount: 1,
+      totalPages: 1,
+    } as Awaited<ReturnType<typeof getMaterials>>);
+    const result = view(<LearningMaterialsRoute />);
+    expect(await screen.findByText("Draft lecture")).toBeInTheDocument();
+    expect(screen.getByText("Text extraction queued")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Text extraction" })).toHaveAttribute("aria-valuetext", "Pending");
+    expect(result.container.querySelector("svg.lucide-file-type-2.text-info-foreground")).toBeInTheDocument();
+    expect(screen.queryByText("Manage lecture resources and their processing status.")).not.toBeInTheDocument();
+  });
   it("supports backend material file extensions and rejects others", () => {
     for (const ext of ["pdf", "doc", "docx", "txt", "mp3", "png"]) expect(validateMaterialFile(new File(["data"], `lecture.${ext}`))).toBe("");
     expect(validateMaterialFile(new File(["data"], "program.exe"))).toContain("Choose a PDF");
@@ -91,9 +104,30 @@ describe("Lecturer workspaces", { timeout: 30000 }, () => {
     await user.click(screen.getByRole("link", { name: "Back to list" })); expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Keep editing" })); await expectNoAxeViolations(result.container);
   });
+  it("opens Audio Studio after upload without warning about unsaved changes", async () => {
+    const NativeRequest = globalThis.Request;
+    vi.stubGlobal("Request", class extends NativeRequest {
+      constructor(input: RequestInfo | URL, init?: RequestInit) {
+        super(input, init ? { ...init, signal: undefined } : undefined);
+      }
+    });
+    vi.mocked(createLearningMaterial).mockResolvedValueOnce({ materialId: "material-1" } as Awaited<ReturnType<typeof createLearningMaterial>>);
+    const user = userEvent.setup();
+    view(<UploadMaterialRoute />, "/lecturer/materials/new");
+    await user.upload(screen.getByLabelText("Material file"), new File(["sample"], "lecture.pdf", { type: "application/pdf" }));
+    await user.click(screen.getByRole("combobox", { name: "Course (required)" }));
+    await user.click(screen.getByRole("option", { name: /SWE201/ }));
+    await user.click(screen.getByRole("combobox", { name: "Topic (required)" }));
+    await user.click(screen.getByRole("option", { name: "Architecture" }));
+    await user.click(screen.getByRole("button", { name: "Upload material" }));
+    expect(await screen.findByText("Audio studio destination")).toBeInTheDocument();
+    expect(screen.queryByText("Leave without saving?")).not.toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Material uploaded successfully", variant: "success" }));
+    vi.unstubAllGlobals();
+  });
   it("renders weekly schedule and links to the correct attendance room", async () => {
     const result = view(<ExamScheduleRoute />); expect(await screen.findByText("SWE201 – Software Engineering")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open attendance" })).toHaveAttribute("href", "/lecturer/exams/11111111-1111-4111-8111-111111111111/attendance"); await expectNoAxeViolations(result.container);
+    expect(screen.getByRole("link", { name: "Take attendance" })).toHaveAttribute("href", "/lecturer/exams/11111111-1111-4111-8111-111111111111/attendance"); await expectNoAxeViolations(result.container);
   });
   it("opens the shared mobile navigation and closes it with the keyboard", async () => {
     const user = userEvent.setup(); const result = view(<LecturerLayout />);

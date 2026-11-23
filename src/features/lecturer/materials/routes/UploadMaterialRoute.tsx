@@ -1,15 +1,19 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { describeError } from "@/app/providers";
 import {
   ArrowRight,
+  CheckCircle2,
+  CircleHelp,
   CloudUpload,
+  ExternalLink,
   FileText,
+  MonitorCog,
   RefreshCw,
   Save,
-  ScanText,
   Trash2,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import {
@@ -35,6 +39,15 @@ import { formatFileSize } from "./LearningMaterialsRoute";
 import { createLearningMaterial } from "@/api/lecturer";
 import { toast } from "@/shared/ui/primitives/toast";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
+import { getMaterialTtsAgents } from "@/api/materialTts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
 
 export const supportedMaterialExtensions = [
   "pdf",
@@ -65,9 +78,24 @@ export function UploadMaterialRoute() {
   const [topicId, setTopicId] = useState("");
   const [language, setLanguage] = useState("English");
   const [objectives, setObjectives] = useState(["", "", ""]);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [uploadedMaterialId, setUploadedMaterialId] = useState("");
   const navigate = useNavigate();
+  useEffect(() => {
+    if (uploadedMaterialId) void navigate(`/lecturer/materials/${uploadedMaterialId}/audio`);
+  }, [navigate, uploadedMaterialId]);
   const input = useRef<HTMLInputElement>(null);
   const academic = useAcademicOptions(subjectId || undefined);
+  const agents = useQuery({
+    queryKey: ["material-tts", "agents"],
+    queryFn: getMaterialTtsAgents,
+    retry: 1,
+    refetchInterval: 30_000,
+    meta: { silent: true },
+  });
+  const activeAgents = (agents.data ?? []).filter(
+    (agent) => !agent.revokedAt && new Date(agent.expiresAt) > new Date(),
+  );
   const upload = useMutation({
     mutationFn: () => {
       if (!file) throw new Error("No file selected");
@@ -84,10 +112,10 @@ export function UploadMaterialRoute() {
     onSuccess: (material) => {
       toast({
         title: "Material uploaded successfully",
-        description: "The material is uploaded. Review its extracted slides before generating audio.",
+        description: "The file was saved. Review the extracted text before generating audio.",
         variant: "success",
       });
-      void navigate(`/lecturer/materials/${material.materialId}/audio`);
+      setUploadedMaterialId(material.materialId);
     },
     onError: (uploadError) => toast({
       title: "Material could not be uploaded",
@@ -96,13 +124,13 @@ export function UploadMaterialRoute() {
     }),
   });
   useExpiredSession(upload.error);
-  const dirty =
+  const dirty = !uploadedMaterialId && (
     !!file ||
     !!title ||
     !!subjectId ||
     !!topicId ||
     objectives.some(Boolean) ||
-    language !== "English";
+    language !== "English");
   const choose = (next?: File) => {
     if (!next) return;
     const problem = validateMaterialFile(next);
@@ -133,12 +161,17 @@ export function UploadMaterialRoute() {
         current="Upload material"
         currentClassName="font-semibold text-primary"
       />
-      <PageHeading
-        title="Upload Learning Material"
-        description="Prepare your lecture resource and its academic information."
-      >
+      <PageHeading title="Upload Learning Material">
         <Button variant="outline" asChild>
           <Link to="/lecturer/materials">Back to list</Link>
+        </Button>
+        <Button variant="outline" onClick={() => notConnected("Save material draft")}>
+          <Save aria-hidden />
+          Save draft
+        </Button>
+        <Button disabled={upload.isPending} onClick={review}>
+          {upload.isPending ? "Uploading…" : "Upload material"}
+          <ArrowRight aria-hidden />
         </Button>
       </PageHeading>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
@@ -148,9 +181,6 @@ export function UploadMaterialRoute() {
               <CardTitle className="text-xl font-extrabold text-primary">
                 Material information & file
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                The selected file is uploaded only when you confirm below.
-              </p>
             </CardHeader>
             <CardContent>
               <div
@@ -248,60 +278,64 @@ export function UploadMaterialRoute() {
                 Academic information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
-              <TextField
-                label="Material title (required)"
-                value={title}
-                onChange={setTitle}
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ChoiceField
-                  label="Course (required)"
-                  value={subjectId}
-                  options={(academic.subjects.data?.items ?? []).map((s) => ({
-                    value: s.subjectId,
-                    label: `${s.subjectCode} · ${s.subjectNameEn ?? unavailable}`,
-                  }))}
-                  onChange={(value) => {
-                    setSubjectId(value);
-                    setTopicId("");
+            <CardContent className="space-y-6">
+              <section className="space-y-4" aria-labelledby="material-placement-title">
+                <div>
+                  <h3 id="material-placement-title" className="font-bold text-foreground">Course placement</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Choose where students will find this material.</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ChoiceField
+                    label="Course (required)"
+                    value={subjectId}
+                    options={(academic.subjects.data?.items ?? []).map((s) => ({
+                      value: s.subjectId,
+                      label: `${s.subjectCode} · ${s.subjectNameEn ?? unavailable}`,
+                    }))}
+                    onChange={(value) => {
+                      setSubjectId(value);
+                      setTopicId("");
+                    }}
+                  />
+                  <ChoiceField
+                    label="Topic (required)"
+                    value={topicId}
+                    options={(academic.topics.data?.items ?? []).map((t) => ({
+                      value: t.topicId,
+                      label: t.topicName,
+                    }))}
+                    onChange={setTopicId}
+                    disabled={!subjectId}
+                  />
+                </div>
+                <ReadState
+                  pending={academic.subjects.isPending || academic.topics.isPending}
+                  error={academic.subjects.error || academic.topics.error}
+                  retry={() => {
+                    void academic.subjects.refetch();
+                    void academic.topics.refetch();
                   }}
                 />
-                <ChoiceField
-                  label="Topic (required)"
-                  value={topicId}
-                  options={(academic.topics.data?.items ?? []).map((t) => ({
-                    value: t.topicId,
-                    label: t.topicName,
-                  }))}
-                  onChange={setTopicId}
-                  disabled={!subjectId}
-                />
-              </div>
-              <ReadState
-                pending={
-                  academic.subjects.isPending || academic.topics.isPending
-                }
-                error={academic.subjects.error || academic.topics.error}
-                retry={() => {
-                  void academic.subjects.refetch();
-                  void academic.topics.refetch();
-                }}
-              />
-              <ChoiceField
-                label="Material language"
-                value={language}
-                options={["English", "Vietnamese", "Bilingual"]}
-                onChange={setLanguage}
-              />
-              <fieldset className="space-y-3">
-                <legend className="mb-3 text-sm font-bold">
-                  Learning objectives
-                </legend>
+              </section>
+              <section className="space-y-4 border-t border-border pt-5" aria-labelledby="material-details-title">
+                <h3 id="material-details-title" className="font-bold text-foreground">Material details</h3>
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                  <TextField label="Material title (required)" value={title} onChange={setTitle} />
+                  <ChoiceField
+                    label="Material language"
+                    value={language}
+                    options={["English", "Vietnamese", "Bilingual"]}
+                    onChange={setLanguage}
+                  />
+                </div>
+              </section>
+              <fieldset className="space-y-4 border-t border-border pt-5">
+                <legend className="text-base font-bold">Learning objectives</legend>
+                <p className="text-sm text-muted-foreground">Optional. Add up to three goals students should achieve.</p>
                 {objectives.map((value, index) => (
                   <TextField
                     key={index}
-                    label={`Learning objective ${index + 1}`}
+                    label={`Objective ${index + 1}`}
                     value={value}
                     onChange={(next) =>
                       setObjectives((old) =>
@@ -312,66 +346,109 @@ export function UploadMaterialRoute() {
                     }
                   />
                 ))}
-                <p className="text-xs text-muted-foreground">
-                  Enter objectives manually. Table-of-contents extraction is not
-                  connected.
-                </p>
               </fieldset>
             </CardContent>
           </Card>
         </div>
         <aside aria-label="Material processing" className="min-w-0 space-y-5">
-          <Card className="border-border shadow-none">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg text-primary">
-                <CloudUpload aria-hidden className="size-5 text-primary" />
-                Upload status
+              <CardTitle className="flex items-center gap-2">
+                <MonitorCog aria-hidden className="size-5 text-primary" />
+                Tạo audio bằng máy của bạn
               </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Local TTS dùng GPU NVIDIA trên máy giảng viên để tạo giọng đọc. Việc upload tài liệu vẫn hoạt động khi chưa cài agent.
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-extrabold">{upload.isPending ? "Uploading…" : upload.isSuccess ? "Uploaded" : "Ready"}</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Processing begins after the material is uploaded.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border shadow-none">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ScanText aria-hidden className="size-5 stroke-[2.5] text-primary" />
-                OCR & text extraction
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Pages extracted, processing speed and dictionary checks:{" "}
-                {unavailable.toLowerCase()}.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => notConnected("Retry OCR")}
-              >
-                <RefreshCw aria-hidden />
-                Retry OCR
-              </Button>
+              <div className="space-y-4">
+                {agents.isPending ? (
+                  <p role="status" className="flex items-center gap-2 text-sm">
+                    <RefreshCw aria-hidden className="size-4 animate-spin text-primary" />
+                    Đang kiểm tra ứng dụng Local TTS…
+                  </p>
+                ) : activeAgents.length > 0 ? (
+                  <div role="status" className="rounded-xl bg-success p-4 text-success-foreground">
+                    <p className="flex items-center gap-2 font-bold">
+                      <CheckCircle2 aria-hidden className="size-5" />
+                      Thiết bị đã ghép với LearnAble
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {activeAgents[0]?.deviceName || "Thiết bị Local TTS"} có token còn hiệu lực. Hãy giữ agent chạy và tạo một audio ngắn để kiểm tra model trước khi dùng thật.
+                    </p>
+                  </div>
+                ) : (
+                  <div role="status" className="rounded-xl bg-warning p-4 text-warning-foreground">
+                    <p className="flex items-center gap-2 font-bold">
+                      <WifiOff aria-hidden className="size-5" />
+                      Chưa kết nối Local TTS
+                    </p>
+                    <p className="mt-1 text-sm">
+                      Nhờ bộ phận kỹ thuật cài agent, SDK và model, sau đó ghép máy với tài khoản Lecturer. Bạn vẫn có thể upload tài liệu ngay bây giờ.
+                    </p>
+                  </div>
+                )}
+                {agents.error ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    Không thể kiểm tra kết nối lúc này. Hãy tải lại trang hoặc tiếp tục upload tài liệu.
+                  </p>
+                ) : null}
+                <Button variant="outline" onClick={() => setGuideOpen(true)}>
+                  <CircleHelp aria-hidden />
+                  Hướng dẫn cài đặt
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </aside>
       </div>
-      <footer className="z-20 flex flex-wrap justify-end gap-3 border-t border-border bg-background py-4 xl:sticky xl:bottom-0">
-        <Button
-          variant="outline"
-          onClick={() => notConnected("Save material draft")}
-        >
-          <Save aria-hidden />
-          Save draft
-        </Button>
-        <Button disabled={upload.isPending} onClick={review}>
-          {upload.isPending ? "Uploading…" : "Upload material"}
-          <ArrowRight aria-hidden />
-        </Button>
-      </footer>
       <UnsavedChangesDialog dirty={dirty} />
+      <Dialog open={guideOpen} onOpenChange={setGuideOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Thiết lập Local TTS trên máy giảng viên</DialogTitle>
+            <DialogDescription>
+              Hiện cần bộ phận kỹ thuật hỗ trợ cài agent và model. Bạn có thể tiếp tục upload tài liệu trong khi chờ thiết lập.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            <ol className="space-y-4">
+              {[
+                ["Kiểm tra máy", "Agent hiện cần GPU NVIDIA hỗ trợ CUDA; Windows 11 64-bit được khuyến nghị."],
+                ["Nhận và tải gói model", "Nhận URL manifest và mã SHA-256 từ trường. Gói model phải có base, adapter đã fine-tune, codec và giọng tham chiếu; một file adapter riêng không đủ."],
+                ["Ghép máy", "Kỹ thuật viên chạy lệnh pair bằng tài khoản Lecturer của bạn. Hãy tự nhập mật khẩu vào lời nhắc ẩn; không gửi mật khẩu cho người khác."],
+                ["Kiểm tra audio thật", "Chạy agent với model đã cài, upload một tài liệu ngắn, tạo audio và nghe thử trước khi dùng cho tài liệu thật."],
+              ].map(([title, description], index) => (
+                <li key={title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
+                  <span aria-hidden className="grid size-8 place-items-center rounded-full bg-primary font-bold text-primary-foreground">{index + 1}</span>
+                  <div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>
+                </li>
+              ))}
+            </ol>
+            <section aria-labelledby="tts-help-title" className="rounded-xl bg-muted p-4">
+              <h3 id="tts-help-title" className="font-bold">Nếu chưa tạo được audio</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Gửi thông báo lỗi và cấu hình GPU cho bộ phận kỹ thuật. Trạng thái thiết bị đã ghép không đảm bảo agent đang chạy hoặc model đã tạo được tiếng.
+              </p>
+            </section>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" asChild>
+              <a href="/guides/local-tts-model/README.md" download="README-Local-TTS.md">
+                Tải README
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="/guides/local-tts-lecturer-guide.html" target="_blank" rel="noreferrer">
+                <ExternalLink aria-hidden />
+                Mở hướng dẫn đầy đủ
+              </a>
+            </Button>
+            <Button onClick={() => setGuideOpen(false)}>Đã hiểu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

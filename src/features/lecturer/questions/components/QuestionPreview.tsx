@@ -3,6 +3,7 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { Bookmark, BookmarkCheck, Check, CheckCircle2, ChevronLeft, ChevronRight, Keyboard, Monitor } from "lucide-react";
 import type { QuestionDraft } from "@/features/lecturer/questions/model";
+import { questionWarnings, type PreviewImage } from "@/features/lecturer/questions/components/accessibilityReview";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
@@ -10,23 +11,19 @@ import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import { Label } from "@/shared/ui/primitives/label";
 import { Textarea } from "@/shared/ui/primitives/textarea";
 
-export function QuestionPreview({ draft, image, audio, compact = false }: {
+export function QuestionPreview({ draft, image, images = [], audio, compact = false, reviewUnavailable = false }: {
   draft: QuestionDraft;
   image: string;
+  images?: PreviewImage[];
   audio?: { question?: ReactNode; option?: (index: number) => ReactNode };
   compact?: boolean;
+  reviewUnavailable?: boolean;
 }) {
   const [answer, setAnswer] = useState("");
   const [multipleAnswers, setMultipleAnswers] = useState<string[]>([]);
   const [flagged, setFlagged] = useState(false);
   const answered = Boolean(answer || multipleAnswers.length);
-  const warnings = [
-    !draft.content.trim() ? "Question content is empty." : "",
-    draft.type === "diagram" && image && !draft.alt.trim() ? "Diagram alternative text is missing." : "",
-    (draft.type === "single" || draft.type === "multiple") && draft.options.some((option) => !option.text.trim())
-      ? "One or more answer options are empty."
-      : "",
-  ].filter(Boolean);
+  const warnings = [...questionWarnings(draft, images), ...(reviewUnavailable ? ["Question images could not be checked."] : [])];
 
   let formula = "";
   let formulaError = "";
@@ -132,7 +129,6 @@ export function QuestionPreview({ draft, image, audio, compact = false }: {
     <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
       <Monitor aria-hidden className="size-5 text-primary" />
       <h2 className="text-sm font-bold uppercase tracking-wide text-primary">Live review</h2>
-      {compact ? null : <Badge variant="outline" className="ml-auto">Student experience</Badge>}
     </div>
 
     <div className={`rounded-lg border px-4 py-3 text-sm ${warnings.length ? "border-warning-foreground/40 bg-warning text-warning-foreground" : "border-success-border bg-success text-success-foreground"}`}>
@@ -178,6 +174,10 @@ export function QuestionPreview({ draft, image, audio, compact = false }: {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {images.map((item, index) => <figure key={item.imageId} className="space-y-2">
+                {item.url ? <img src={item.url} alt={item.description?.trim() || ""} className="max-h-80 w-full object-contain" /> : <p role="status">Image {index + 1} preview is unavailable.</p>}
+                <figcaption className="text-sm text-muted-foreground">Image {index + 1}: {item.description?.trim() || "Accessible description missing"}</figcaption>
+              </figure>)}
               {answerContent}
             </CardContent>
           </Card>

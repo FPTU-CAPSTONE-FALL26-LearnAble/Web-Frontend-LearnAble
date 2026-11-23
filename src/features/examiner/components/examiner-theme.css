@@ -1,10 +1,15 @@
+.examiner-shell [data-slot="card"],
+.examiner-shell :where(section, article, aside, fieldset, details, form, dl, ul, ol, div, p, label, li)[class~="border"][class*="rounded"]:not([class~="rounded-full"]) {
+  border-width: 2px;
+}
+
 .examiner-shell .examiner-panel {
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 16px;
   background: var(--card);
 }
 .examiner-shell .examiner-major {
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 16px;
   background: var(--card);
 }

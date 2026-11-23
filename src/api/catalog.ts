@@ -2,7 +2,7 @@ import { z } from "zod";
 import { envelopeFailure, request } from "@/api/client";
 
 const unavailable = "Not available";
-const questionTypeSchema = z.enum(["Single", "Multiple", "Essay"]);
+const questionTypeSchema = z.enum(["Single", "Multiple", "Essay", "Coding"]);
 
 const questionOptionSchema = z
   .object({
@@ -206,7 +206,7 @@ export type Page<T> = {
 };
 export type ReadFilters = Record<string, string | number | boolean | undefined>;
 
-export const questionTypes = ["Single", "Multiple", "Essay"] as const;
+export const questionTypes = ["Single", "Multiple", "Essay", "Coding"] as const;
 export type QuestionType = (typeof questionTypes)[number];
 
 export function queryString(filters: ReadFilters) {

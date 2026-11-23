@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Volume2 } from "lucide-react";
-import { getSealedPaperAudio, getSealedPaperPreview, type SealedPaper } from "@/api/exams";
+import { getSealedPaperAudio, getSealedPaperImage, getSealedPaperPreview, type SealedPaper } from "@/api/exams";
 import { describeError } from "@/app/providers";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
@@ -22,6 +22,20 @@ function LockedAudio({ paper, examQuestionId, optionId, label }: { paper: Sealed
   if (audio.isPending) return <p className="text-xs text-muted-foreground">Loading audio…</p>;
   if (audio.isError || !audio.data.url) return <p className="text-xs text-muted-foreground">This audio could not be loaded. {audio.isError ? describeError(audio.error) : ""}</p>;
   return <audio controls autoPlay preload="metadata" aria-label={label} src={audio.data.url} className="w-full"><track kind="captions" /></audio>;
+}
+
+function LockedImage({ paper, examQuestionId, image }: { paper: SealedPaper; examQuestionId: string; image: { imageId: string; description?: string | null; displayOrder: number } }) {
+  const source = useQuery({
+    queryKey: ["sealed-image", paper.versionId, examQuestionId, image.imageId],
+    queryFn: () => getSealedPaperImage(paper.paperId, paper.versionId, examQuestionId, image.imageId),
+    staleTime: 8 * 60 * 1000,
+    retry: false,
+    meta: { silent: true },
+  });
+  if (source.isPending) return <div role="status" aria-label={`Loading question image ${image.displayOrder}`} className="h-40 animate-pulse rounded-xl bg-muted" />;
+  if (source.isError || !source.data.url) return <p role="alert" className="text-sm text-muted-foreground">Question image {image.displayOrder} could not be loaded.</p>;
+  const description = source.data.description ?? image.description ?? `Question image ${image.displayOrder}`;
+  return <figure className="space-y-2"><img src={source.data.url} alt={description} className="max-h-96 w-auto max-w-full rounded-xl border border-border object-contain" /><figcaption className="text-sm text-muted-foreground">{description}</figcaption></figure>;
 }
 
 /** The questions of a sealed package exactly as they were locked, with their audio. Nothing here can be changed. */
@@ -46,6 +60,7 @@ export function SealedPackagePreview({ paper, onClose }: { paper: SealedPaper | 
           <ol aria-label="Questions" className="space-y-4">
             {questions.map((question, index) => {
               const options = [...question.snapshot.options].sort((a, b) => a.originalDisplayOrder - b.originalDisplayOrder);
+              const images = [...(question.snapshot.images ?? [])].sort((a, b) => a.displayOrder - b.displayOrder);
               return (
                 <li key={question.examQuestionId} className="space-y-3 rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -53,6 +68,7 @@ export function SealedPackagePreview({ paper, onClose }: { paper: SealedPaper | 
                     <Badge variant="outline">{question.maxScore} points</Badge>
                   </div>
                   <p className="whitespace-pre-wrap">{question.snapshot.content}</p>
+                  {images.map((image) => <LockedImage key={image.imageId} paper={paper} examQuestionId={question.examQuestionId} image={image} />)}
                   <LockedAudio paper={paper} examQuestionId={question.examQuestionId} label={`question ${index + 1}`} />
                   {options.length ? (
                     <ul className="space-y-2">

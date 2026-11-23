@@ -110,6 +110,10 @@ export type IntegrityFilters = {
 export const getIntegrityReviews = (filters: IntegrityFilters = {}) =>
   unwrap(`/integrity-reviews${queryString(filters)}`, integritySummaryPageSchema);
 
+/** The integrity queue already narrowed to one exam schedule. */
+export const getScheduleIntegrityReviews = (scheduleId: string, filters: Omit<IntegrityFilters, "ScheduleId"> = {}) =>
+  unwrap(`/examschedules/${scheduleId}/integrity-reviews${queryString(filters)}`, integritySummaryPageSchema);
+
 const integrityEventSchema = z.object({
   eventId: z.string(),
   actorId: z.string().nullable().optional(),

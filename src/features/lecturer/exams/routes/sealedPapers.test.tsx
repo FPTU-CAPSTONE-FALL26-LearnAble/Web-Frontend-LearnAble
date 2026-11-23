@@ -24,7 +24,7 @@ const exams = vi.hoisted(() => ({
   publishSharedExamShift: vi.fn(async () => ({})),
   openSharedExamShift: vi.fn(async () => ({})),
 }));
-const lecturer = vi.hoisted(() => ({ getQuestionAudioGeneration: vi.fn() }));
+const lecturer = vi.hoisted(() => ({ getQuestionAudioGeneration: vi.fn(), getQuestionImages: vi.fn(), describeQuestionImage: vi.fn() }));
 vi.mock("@/api/exams", () => exams);
 vi.mock("@/api/lecturer", () => lecturer);
 
@@ -47,6 +47,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   exams.getScheduleValidation.mockResolvedValue({ isValid: true, errors: [] });
+  lecturer.getQuestionImages.mockImplementation(async (questionId: string) => ({ questionId, revision: '"r1"', images: [] }));
   useOperationProgress.setState({ open: false, steps: [], title: "", message: "", phase: "running", minimized: false });
 });
 
@@ -62,6 +63,15 @@ describe("SealPaperRoute", () => {
     expect(await screen.findByText("1 of 2 questions still need audio.")).toBeInTheDocument();
     expect(screen.getByText("No audio")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fix" })).toHaveAttribute("href", "/lecturer/questions/new?purpose=exam&edit=q2");
+    expect(screen.getByRole("button", { name: "Seal the paper" })).toBeDisabled();
+  });
+
+  it("blocks sealing until every image has a description", async () => {
+    exams.getExamPaper.mockResolvedValue(paper);
+    lecturer.getQuestionAudioGeneration.mockResolvedValue(audio(5, 5));
+    lecturer.getQuestionImages.mockImplementation(async (questionId: string) => ({ questionId, revision: '"r1"', images: questionId === "q1" ? [{ imageId: "img1", originalFileName: "diagram.png", description: null }] : [] }));
+    show(<SealPaperRoute />, "/lecturer/exam-papers/p1/seal", "/lecturer/exam-papers/:paperId/seal");
+    expect(await screen.findByText("1 image needs a description before sealing.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Seal the paper" })).toBeDisabled();
   });
 

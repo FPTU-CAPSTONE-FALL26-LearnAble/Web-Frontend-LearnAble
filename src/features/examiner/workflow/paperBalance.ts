@@ -22,8 +22,8 @@ export type PaperBalance = {
 };
 
 export const DIFFICULTY_ORDER = ["Easy", "Medium", "Hard"] as const;
-export const TYPE_ORDER = ["Single", "Multiple", "Essay"] as const;
-export const TYPE_LABELS: Record<string, string> = { Single: "Single choice", Multiple: "Multiple choice", Essay: "Essay" };
+export const TYPE_ORDER = ["Single", "Multiple", "Essay", "Coding"] as const;
+export const TYPE_LABELS: Record<string, string> = { Single: "Single choice", Multiple: "Multiple choice", Essay: "Essay", Coding: "Coding" };
 
 /** The mix people usually aim for; only a starting point the examiner can change. */
 export const DEFAULT_DIFFICULTY_TARGET: Record<(typeof DIFFICULTY_ORDER)[number], number> = { Easy: 30, Medium: 50, Hard: 20 };

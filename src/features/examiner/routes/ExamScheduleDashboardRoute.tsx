@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CalendarDays, Trash2, XCircle } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, DoorOpen, MapPin, Timer, Trash2, XCircle } from "lucide-react";
 import { Button } from "@/shared/ui/primitives/button";
 import { cancelExamSchedule, deleteExamSchedule, getExamInvigilators, getExamRooms, getExamSchedules, type ExamSchedule } from "@/api/exams";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
@@ -149,6 +149,50 @@ function Status({
   );
 }
 
+function OperationalShiftCard({ schedule }: { schedule: ExamSchedule }) {
+  const start = new Date(schedule.startsAt);
+  const end = new Date(schedule.endsAt);
+  const entryOpen = new Date(schedule.entryOpensAt);
+  const entryClose = new Date(schedule.entryClosesAt);
+  const duration = Math.round((end.getTime() - start.getTime()) / 60_000);
+  const time = (value: Date) => value.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-success-border bg-card">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{start.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}</p>
+          <h3 className="mt-1 truncate text-lg font-bold text-foreground">{schedule.examName ?? "Scheduled exam"}</h3>
+        </div>
+        <Status tone="success">{schedule.status}</Status>
+      </div>
+      <dl className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-4">
+        <div className="flex gap-3 bg-card p-4">
+          <Clock3 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+          <div><dt className="text-xs font-semibold text-muted-foreground">Exam time</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{time(start)}–{time(end)}</dd></div>
+        </div>
+        <div className="flex gap-3 bg-card p-4">
+          <MapPin className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+          <div><dt className="text-xs font-semibold text-muted-foreground">Room</dt><dd className="mt-1 font-bold text-foreground">{schedule.roomName ?? "Room pending"}</dd></div>
+        </div>
+        <div className="flex gap-3 bg-card p-4">
+          <DoorOpen className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+          <div><dt className="text-xs font-semibold text-muted-foreground">Entry window</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{time(entryOpen)}–{time(entryClose)}</dd></div>
+        </div>
+        <div className="flex gap-3 bg-card p-4">
+          <Timer className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+          <div><dt className="text-xs font-semibold text-muted-foreground">Duration</dt><dd className="mt-1 font-bold tabular-nums text-foreground">{duration} minutes</dd></div>
+        </div>
+      </dl>
+      <div className="flex justify-end p-3">
+        <Button variant="secondary" size="sm" asChild>
+          <Link to={`/examiner/schedule/${schedule.examScheduleId}`}>View shift details <ArrowRight aria-hidden /></Link>
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 export function ExamScheduleDashboardRoute() {
   const [range, setRange] = useState<"day" | "week" | "month">("day");
   const [pendingAction, setPendingAction] = useState<{ kind: "cancel" | "delete"; schedule: ExamSchedule } | null>(null);
@@ -227,7 +271,7 @@ export function ExamScheduleDashboardRoute() {
             <p className="text-xs font-bold uppercase text-white/60">
               Live schedule data
             </p>
-            <h2 className="mt-2 text-xl font-extrabold">
+            <h2 className="mt-2 text-xl font-extrabold text-primary">
               Published and operational exam shifts
             </h2>
           </div>
@@ -252,26 +296,15 @@ export function ExamScheduleDashboardRoute() {
             </Button>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
-          {visibleSchedules.slice(0, 4).map((schedule) => (
-            <div
-              key={schedule.examScheduleId}
-              className="rounded-xl border border-white/20 bg-white/5 p-4"
-            >
-              <p className="text-2xl font-extrabold">
-                {new Date(schedule.startsAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-              </p>
-              <p className="mt-2 font-bold">{schedule.examName ?? "Scheduled exam"}</p>
-              <p className="text-xs text-white/60">{schedule.status}</p>
-            </div>
-          ))}
+        <div className="mt-5 grid gap-4 2xl:grid-cols-2">
+          {visibleSchedules.slice(0, 4).map((schedule) => <OperationalShiftCard key={schedule.examScheduleId} schedule={schedule} />)}
           {!visibleSchedules.length ? <p className="col-span-full rounded-xl border border-white/20 p-5 text-sm text-white/70">No schedules in this {range}.</p> : null}
         </div>
       </section>
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_.8fr]">
         <div className="examiner-major overflow-hidden">
           <div className="border-b border-border p-5">
-            <h2 className="text-lg font-extrabold">Published and operational shifts</h2>
+            <h2 className="text-lg font-extrabold text-primary">Published and operational shifts</h2>
           </div>
           {scheduleRows.map((schedule) => (
             <article
@@ -355,7 +388,7 @@ export function ExamScheduleDashboardRoute() {
         </div>
         <aside className="space-y-5">
           <div className="examiner-panel p-5">
-            <h2 className="text-lg font-extrabold">Room readiness</h2>
+            <h2 className="text-lg font-extrabold text-primary">Room readiness</h2>
             <div className="mt-4 space-y-3">
               {roomRows.map((room) => (
                 <div
@@ -376,7 +409,7 @@ export function ExamScheduleDashboardRoute() {
             </div>
           </div>
           <div className="examiner-panel p-5">
-            <h2 className="text-lg font-extrabold">Staffing coverage</h2>
+            <h2 className="text-lg font-extrabold text-primary">Staffing coverage</h2>
             <p className="mt-3 text-3xl font-extrabold">{invigilatorQueries.some((query) => query.isPending) ? "…" : `${staffedSchedules}/${scheduleRows.length}`}</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Schedules with at least one assigned Lecturer.

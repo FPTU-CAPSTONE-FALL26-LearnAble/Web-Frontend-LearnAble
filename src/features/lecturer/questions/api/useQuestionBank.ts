@@ -75,7 +75,7 @@ export function useQuestionBank(purpose: QuestionPurpose, filters: QuestionBankQ
       subjectCode: subject?.subjectCode ?? "Not available",
       subjectName: subject?.subjectNameEn ?? "Not available",
       topic: topic?.topicName ?? "Not available",
-      type: question.questionType === "Single" ? "Single Choice" : question.questionType === "Multiple" ? "Multiple Choice" : "Essay",
+      type: question.questionType === "Single" ? "Single Choice" : question.questionType === "Multiple" ? "Multiple Choice" : question.questionType === "Coding" ? "Write Code" : "Essay",
       difficulty: (["Easy", "Medium", "Hard"].includes(question.difficulty) ? question.difficulty : "Medium") as ManagedQuestion["difficulty"],
       score: question.defaultScore,
       status: (["Active", "Draft", "Archived"].includes(question.status) ? question.status : "Draft") as ManagedQuestion["status"],

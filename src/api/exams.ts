@@ -111,6 +111,8 @@ export const examSubjectSchema = z.object({
   eTag: z.string().nullable().optional(),
   /** True when papers of this exam must be sealed into a locked package before they can be scheduled. */
   requiresSealing: z.boolean().optional(),
+  /** Backend-owned workflow discriminator. Practice sessions only accept Purpose=Practice. */
+  purpose: z.string().nullable().optional(),
 });
 export type ExamSubject = z.infer<typeof examSubjectSchema>;
 
@@ -235,6 +237,8 @@ export const examStudentSchema = z.object({
   studentId: z.string(),
   studentCode: z.string().nullable(),
   studentName: z.string().nullable(),
+  /** Optional until the attendance response exposes the student's ID photo. */
+  avatarUrl: z.string().nullable().optional(),
   seatId: nullableString,
   seatCode: nullableString,
   attendanceStatus: attendanceStatusSchema,
@@ -814,6 +818,11 @@ const sealedQuestionSchema = z.object({
     content: nullableString,
     questionType: z.string(),
     options: z.array(z.object({ optionId: z.string(), content: nullableString, isCorrect: z.boolean(), originalDisplayOrder: z.number() })).nullable().transform((value) => value ?? []),
+    images: z.array(z.object({
+      imageId: z.string(), description: nullableString, displayOrder: z.number(),
+      width: z.number(), height: z.number(), contentType: nullableString,
+    })).nullish().transform((value) => value ?? []),
+    answerFormat: nullableString,
   }),
 });
 
@@ -832,6 +841,17 @@ export const getSealedPaperAudio = (paperId: string, versionId: string, examQues
   unwrap(
     `/lecturer/exam-papers/${paperId}/versions/${versionId}/questions/${examQuestionId}/audio${optionId ? `?optionId=${optionId}` : ""}`,
     z.object({ url: nullableString, expiresAt: z.string() }),
+  );
+
+/** A temporary link to one image frozen into a sealed question. */
+export const getSealedPaperImage = (paperId: string, versionId: string, examQuestionId: string, imageId: string) =>
+  unwrap(
+    `/lecturer/exam-papers/${paperId}/versions/${versionId}/questions/${examQuestionId}/images/${imageId}`,
+    z.object({
+      imageId: z.string(), description: nullableString, displayOrder: z.number(),
+      width: z.number(), height: z.number(), contentType: nullableString,
+      url: nullableString, expiresAt: z.string(),
+    }),
   );
 
 export const getSharedExamShift = (shiftId: string) => unwrap(`/exam-shifts/${shiftId}`, sharedExamShiftSchema);

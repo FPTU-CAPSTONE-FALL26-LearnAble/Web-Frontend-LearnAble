@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock3, FileQuestion, PackageCheck, Star, Tag } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -18,7 +18,6 @@ export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const operationId = useRef(crypto.randomUUID());
-  const autoAttachAttempted = useRef(false);
   const key = ["examiner", "shift-package", shiftId];
   const shift = useQuery({ queryKey: [...key, "shift"], queryFn: () => getSharedExamShift(shiftId), meta: { silent: true } });
   const selection = useQuery({ queryKey: [...key, "selection"], queryFn: () => getShiftPaperSelection(shiftId), meta: { silent: true } });
@@ -88,12 +87,6 @@ export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string
           : attached
             ? "Attached to draft"
             : "Waiting for package";
-  useEffect(() => {
-    const packageIsMissingOrUnknown = (selection.isSuccess && !attached) || selection.isError;
-    if (autoAttachAttempted.current || shiftStatus !== "Draft" || loading || !packageIsMissingOrUnknown) return;
-    autoAttachAttempted.current = true;
-    attach.mutate();
-  }, [attached, attach, loading, selection.isError, selection.isSuccess, shiftStatus]);
   return (
     <section aria-label="Exam package" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5">
