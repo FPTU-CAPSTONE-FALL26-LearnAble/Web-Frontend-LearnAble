@@ -9,12 +9,9 @@ import {
   LayoutDashboard,
   LogOut,
   MonitorCheck,
-  Camera,
   PackageCheck,
-  TimerReset,
   Bell,
   BellRing,
-  Keyboard,
   Code2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -25,7 +22,12 @@ import type { User } from "@/api/auth";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { Button } from "@/shared/ui/primitives/button";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { SidebarCollapseButton, SidebarRailButton, SidebarRailDivider, SidebarRailLink } from "@/components/SidebarControls";
+import {
+  SidebarCollapseButton,
+  SidebarRailButton,
+  SidebarRailDivider,
+  SidebarRailLink,
+} from "@/components/SidebarControls";
 import { cn } from "@/lib/utils";
 import { getUnreadNotificationCount } from "@/api/notifications";
 
@@ -48,19 +50,27 @@ const dashboard: NavigationItem = {
   icon: LayoutDashboard,
 };
 
-const notifications: NavigationItem = { label: "Notifications", path: "/examiner/notifications", icon: Bell };
-const shortcuts: NavigationItem = { label: "Keyboard shortcuts", path: "/examiner/shortcuts", icon: Keyboard };
-
+const notifications: NavigationItem = {
+  label: "Notifications",
+  path: "/examiner/notifications",
+  icon: Bell,
+};
 const groups: NavigationGroup[] = [
   {
     id: "preparation",
     label: "Exam preparation",
     icon: FileStack,
     items: [
-      { label: "Exam papers", path: "/examiner/exams", icon: FileStack },
-      { label: "Sealed packages", path: "/examiner/sealed-papers", icon: PackageCheck },
-      { label: "Proctoring policy", path: "/examiner/proctoring-policy", icon: Camera },
-      { label: "Exam schedule", path: "/examiner/schedule", icon: CalendarDays },
+      {
+        label: "Sealed packages",
+        path: "/examiner/sealed-papers",
+        icon: PackageCheck,
+      },
+      {
+        label: "Exam schedule",
+        path: "/examiner/schedule",
+        icon: CalendarDays,
+      },
     ],
   },
   {
@@ -73,7 +83,6 @@ const groups: NavigationGroup[] = [
         path: "/examiner/monitoring",
         icon: MonitorCheck,
       },
-      { label: "Extra time", path: "/examiner/accommodations", icon: TimerReset },
       { label: "Coding jobs", path: "/examiner/coding-jobs", icon: Code2 },
     ],
   },
@@ -82,9 +91,17 @@ const groups: NavigationGroup[] = [
     label: "Review & reporting",
     icon: ChartNoAxesCombined,
     items: [
-      { label: "Grade release", path: "/examiner/results", icon: ClipboardCheck },
+      {
+        label: "Grade release",
+        path: "/examiner/results",
+        icon: ClipboardCheck,
+      },
       { label: "Integrity review", path: "/examiner/reviews", icon: Flag },
-      { label: "Flagged sessions", path: "/examiner/flags", icon: AlertTriangle },
+      {
+        label: "Flagged sessions",
+        path: "/examiner/flags",
+        icon: AlertTriangle,
+      },
       {
         label: "Exam reports",
         path: "/examiner/reports",
@@ -113,7 +130,8 @@ function NavigationGroup({
   onNavigate?: () => void;
 }) {
   const groupActive = group.items.some(
-    (item) => activePath === item.path || activePath.startsWith(`${item.path}/`),
+    (item) =>
+      activePath === item.path || activePath.startsWith(`${item.path}/`),
   );
   const [open, setOpen] = useState(groupActive);
 
@@ -185,7 +203,9 @@ export function ExaminerSidebar({
   const navRef = useRef<HTMLElement>(null);
   // Bring the current page into view when it sits below the fold of a short window.
   useEffect(() => {
-    navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: "nearest" });
+    navRef.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView?.({ block: "nearest" });
   }, [pathname]);
   const unreadNotifications = useQuery({
     queryKey: ["my-notifications", "unread-count"],
@@ -211,26 +231,55 @@ export function ExaminerSidebar({
           aria-label="Examiner navigation"
           className="examiner-scroll mt-3 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 pb-2"
         >
-          <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
-          <SidebarRailLink to={notifications.path} label={notifications.label} icon={Bell} end badge={unreadCount} />
-          <SidebarRailLink to="/examiner/notifications/manage" label="Send notifications" icon={BellRing} end />
-          <SidebarRailLink to={shortcuts.path} label={shortcuts.label} icon={shortcuts.icon} end />
+          <SidebarRailLink
+            to={dashboard.path}
+            label={dashboard.label}
+            icon={dashboard.icon}
+            end
+          />
+          <SidebarRailLink
+            to={notifications.path}
+            label={notifications.label}
+            icon={Bell}
+            end
+            badge={unreadCount}
+          />
+          <SidebarRailLink
+            to="/examiner/notifications/manage"
+            label="Send notifications"
+            icon={BellRing}
+            end
+          />
           {groups.map((group) => (
             <Fragment key={group.id}>
               <SidebarRailDivider />
               {group.items.map(({ label, path, icon }) => (
-                <SidebarRailLink key={path} to={path} label={label} icon={icon} />
+                <SidebarRailLink
+                  key={path}
+                  to={path}
+                  label={label}
+                  icon={icon}
+                />
               ))}
             </Fragment>
           ))}
           <SidebarRailDivider />
-          <SidebarRailButton label="Emergency" icon={AlertTriangle} danger onClick={() => onUnavailable("Emergency workspace")} />
+          <SidebarRailButton
+            label="Emergency"
+            icon={AlertTriangle}
+            danger
+            onClick={() => onUnavailable("Emergency workspace")}
+          />
         </nav>
         <div className="flex shrink-0 flex-col items-center gap-2 border-t border-border pt-3">
           <Avatar title={user.fullName}>
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
-          <SidebarRailButton label="Sign out" icon={LogOut} onClick={onSignOut} />
+          <SidebarRailButton
+            label="Sign out"
+            icon={LogOut}
+            onClick={onSignOut}
+          />
         </div>
       </div>
     );
@@ -239,7 +288,12 @@ export function ExaminerSidebar({
     <div className="flex h-full flex-col bg-white px-4 py-4">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-1 pb-3">
         <BrandIdentity />
-        {onToggleCollapsed ? <SidebarCollapseButton collapsed={false} onToggle={onToggleCollapsed} /> : null}
+        {onToggleCollapsed ? (
+          <SidebarCollapseButton
+            collapsed={false}
+            onToggle={onToggleCollapsed}
+          />
+        ) : null}
       </div>
       {/* Only the list scrolls, so the brand and the account controls never leave the screen. */}
       <nav
@@ -256,9 +310,33 @@ export function ExaminerSidebar({
           <DashboardIcon className="size-5 shrink-0" aria-hidden />
           {dashboard.label}
         </NavLink>
-        <NavLink to={notifications.path} end onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><Bell className="size-5 shrink-0" aria-hidden /><span className="min-w-0 flex-1">{notifications.label}</span>{unreadNotifications.data?.unreadCount ? <span aria-label={`${unreadNotifications.data.unreadCount} unread notifications`} className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">{unreadNotifications.data.unreadCount > 99 ? "99+" : unreadNotifications.data.unreadCount}</span> : null}</NavLink>
-        <NavLink to="/examiner/notifications/manage" onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><BellRing className="size-5 shrink-0" aria-hidden /><span>Send notifications</span></NavLink>
-        <NavLink to={shortcuts.path} onClick={onNavigate} className={({ isActive }) => itemClasses(isActive)}><Keyboard className="size-5 shrink-0" aria-hidden /><span>{shortcuts.label}</span></NavLink>
+        <NavLink
+          to={notifications.path}
+          end
+          onClick={onNavigate}
+          className={({ isActive }) => itemClasses(isActive)}
+        >
+          <Bell className="size-5 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">{notifications.label}</span>
+          {unreadNotifications.data?.unreadCount ? (
+            <span
+              aria-label={`${unreadNotifications.data.unreadCount} unread notifications`}
+              className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground"
+            >
+              {unreadNotifications.data.unreadCount > 99
+                ? "99+"
+                : unreadNotifications.data.unreadCount}
+            </span>
+          ) : null}
+        </NavLink>
+        <NavLink
+          to="/examiner/notifications/manage"
+          onClick={onNavigate}
+          className={({ isActive }) => itemClasses(isActive)}
+        >
+          <BellRing className="size-5 shrink-0" aria-hidden />
+          <span>Send notifications</span>
+        </NavLink>
         {groups.map((group) => (
           <NavigationGroup
             key={group.id}
@@ -282,7 +360,12 @@ export function ExaminerSidebar({
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="line-clamp-2 wrap-anywhere text-sm font-bold" title={user.fullName}>{user.fullName}</p>
+            <p
+              className="line-clamp-2 wrap-anywhere text-sm font-bold"
+              title={user.fullName}
+            >
+              {user.fullName}
+            </p>
             <p className="text-xs text-muted-foreground">
               FPT University examiner
             </p>

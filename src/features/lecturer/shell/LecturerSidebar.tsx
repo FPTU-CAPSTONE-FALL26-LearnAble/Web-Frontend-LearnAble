@@ -11,13 +11,17 @@ import {
   LayoutDashboard,
   LogOut,
   FlaskConical,
-  Code2,
 } from "lucide-react";
 import type { User } from "@/api/auth";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { BrandIdentity } from "@/components/BrandIdentity";
-import { SidebarCollapseButton, SidebarRailButton, SidebarRailDivider, SidebarRailLink } from "@/components/SidebarControls";
+import {
+  SidebarCollapseButton,
+  SidebarRailButton,
+  SidebarRailDivider,
+  SidebarRailLink,
+} from "@/components/SidebarControls";
 import { Button } from "@/shared/ui/primitives/button";
 import { Separator } from "@/shared/ui/primitives/separator";
 import { cn } from "@/lib/utils";
@@ -39,17 +43,32 @@ interface LecturerSidebarProps {
 }
 
 const questionLinks = [
-  { label: "Exam Questions", path: "/lecturer/questions/exam", icon: FileQuestion },
-  { label: "Practice Questions", path: "/lecturer/questions/practice", icon: GraduationCap },
+  {
+    label: "Exam Questions",
+    path: "/lecturer/questions/exam",
+    icon: FileQuestion,
+  },
+  {
+    label: "Practice Questions",
+    path: "/lecturer/questions/practice",
+    icon: GraduationCap,
+  },
 ];
 
 const examLinks = [
   { label: "Exam Papers", path: "/lecturer/exam-papers", icon: FileStack },
-  { label: "Sealed Packages", path: "/lecturer/sealed-papers", icon: PackageCheck },
+  {
+    label: "Sealed Packages",
+    path: "/lecturer/sealed-papers",
+    icon: PackageCheck,
+  },
   { label: "Exam Schedule", path: "/lecturer/exams", icon: CalendarDays },
   { label: "Essay Grading", path: "/lecturer/grading", icon: ClipboardCheck },
-  { label: "Practice Sessions", path: "/lecturer/practice-sessions", icon: FlaskConical },
-  { label: "Coding Jobs", path: "/lecturer/coding-jobs", icon: Code2 },
+  {
+    label: "Practice Sessions",
+    path: "/lecturer/practice-sessions",
+    icon: FlaskConical,
+  },
 ];
 
 const navigation = [
@@ -65,7 +84,12 @@ const navigation = [
     path: "/lecturer/materials",
     available: true,
   },
-  { label: "Notifications", icon: Bell, path: "/lecturer/notifications", available: true },
+  {
+    label: "Notifications",
+    icon: Bell,
+    path: "/lecturer/notifications",
+    available: true,
+  },
 ];
 
 export function LecturerSidebar({
@@ -77,7 +101,9 @@ export function LecturerSidebar({
   onToggleCollapsed,
 }: LecturerSidebarProps) {
   const questionActive = activePath.startsWith("/lecturer/questions");
-  const examActive = examLinks.some(({ path }) => activePath === path || activePath.startsWith(`${path}/`));
+  const examActive = examLinks.some(
+    ({ path }) => activePath === path || activePath.startsWith(`${path}/`),
+  );
   const unreadNotifications = useQuery({
     queryKey: ["my-notifications", "unread-count"],
     queryFn: getUnreadNotificationCount,
@@ -101,7 +127,10 @@ export function LecturerSidebar({
       .toUpperCase() || "L";
   const unreadCount = unreadNotifications.data?.unreadCount ?? 0;
   const unreadBadge = unreadCount ? (
-    <span aria-label={`${unreadCount} unread notifications`} className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">
+    <span
+      aria-label={`${unreadCount} unread notifications`}
+      className="inline-flex min-w-6 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground"
+    >
       {unreadCount > 99 ? "99+" : unreadCount}
     </span>
   ) : null;
@@ -110,8 +139,16 @@ export function LecturerSidebar({
     return (
       <div className="flex h-full flex-col items-center bg-card px-2 py-3">
         <SidebarCollapseButton collapsed onToggle={onToggleCollapsed} />
-        <nav aria-label="Lecturer navigation" className="lecturer-scroll mt-3 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 pb-2">
-          <SidebarRailLink to={dashboard.path} label={dashboard.label} icon={dashboard.icon} end />
+        <nav
+          aria-label="Lecturer navigation"
+          className="lecturer-scroll mt-3 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto px-1 pb-2"
+        >
+          <SidebarRailLink
+            to={dashboard.path}
+            label={dashboard.label}
+            icon={dashboard.icon}
+            end
+          />
           <SidebarRailDivider />
           {questionLinks.map(({ label, path, icon }) => (
             <SidebarRailLink key={path} to={path} label={label} icon={icon} />
@@ -122,7 +159,13 @@ export function LecturerSidebar({
           ))}
           <SidebarRailDivider />
           {others.map(({ label, path, icon }) => (
-            <SidebarRailLink key={path} to={path} label={label} icon={icon} badge={path.endsWith("/notifications") ? unreadCount : undefined} />
+            <SidebarRailLink
+              key={path}
+              to={path}
+              label={label}
+              icon={icon}
+              badge={path.endsWith("/notifications") ? unreadCount : undefined}
+            />
           ))}
         </nav>
         <div className="flex shrink-0 flex-col items-center gap-2 border-t border-border pt-3">
@@ -133,15 +176,23 @@ export function LecturerSidebar({
             className={({ isActive }) =>
               cn(
                 "grid size-11 place-items-center rounded-lg border outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
-                isActive ? "border-sidebar-primary/30 bg-sidebar-accent" : "border-transparent hover:bg-sidebar-accent",
+                isActive
+                  ? "border-sidebar-primary/30 bg-sidebar-accent"
+                  : "border-transparent hover:bg-sidebar-accent",
               )
             }
           >
             <Avatar>
-              <AvatarFallback className="bg-primary font-bold text-primary-foreground">{initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary font-bold text-primary-foreground">
+                {initials}
+              </AvatarFallback>
             </Avatar>
           </NavLink>
-          <SidebarRailButton label="Sign out" icon={LogOut} onClick={onSignOut} />
+          <SidebarRailButton
+            label="Sign out"
+            icon={LogOut}
+            onClick={onSignOut}
+          />
         </div>
       </div>
     );
@@ -151,7 +202,12 @@ export function LecturerSidebar({
       <div>
         <div className="flex items-center justify-between gap-2 border-b border-border px-1 pb-3">
           <BrandIdentity />
-          {onToggleCollapsed ? <SidebarCollapseButton collapsed={false} onToggle={onToggleCollapsed} /> : null}
+          {onToggleCollapsed ? (
+            <SidebarCollapseButton
+              collapsed={false}
+              onToggle={onToggleCollapsed}
+            />
+          ) : null}
         </div>
       </div>
       <nav aria-label="Lecturer navigation" className="mt-3 space-y-0.5">
@@ -247,13 +303,39 @@ export function LecturerSidebar({
           >
             <FileStack aria-hidden className="size-5 shrink-0" />
             <span className="flex-1">Exam operations</span>
-            <ChevronDown aria-hidden className={cn("size-4 transition-transform duration-200 motion-reduce:transition-none", examsOpen && "rotate-180")} />
+            <ChevronDown
+              aria-hidden
+              className={cn(
+                "size-4 transition-transform duration-200 motion-reduce:transition-none",
+                examsOpen && "rotate-180",
+              )}
+            />
           </button>
           {examsOpen ? (
-            <div id="lecturer-exam-navigation" className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
+            <div
+              id="lecturer-exam-navigation"
+              className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2"
+            >
               {examLinks.map((item) => {
                 const Icon = item.icon;
-                return <NavLink key={item.path} to={item.path} onClick={onNavigate} className={({ isActive }) => cn("flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold transition-colors", isActive ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground" : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground")}><Icon aria-hidden className="size-4 shrink-0" />{item.label}</NavLink>;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold transition-colors",
+                        isActive
+                          ? "border-sidebar-primary/30 bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                      )
+                    }
+                  >
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {item.label}
+                  </NavLink>
+                );
               })}
             </div>
           ) : null}
