@@ -108,7 +108,7 @@ export function QuestionBankRoute({
   const [filtersHidden, toggleFilters] = usePersistedFlag("learnable.lecturer.question-filters-hidden", false);
   const chosenSubject = subjects.find((item) => item.subjectId === filters.subject);
   const chosenTopic = allTopics.find((item) => item.topicId === filters.topic);
-  const questionTypeNames: Record<string, string> = { Single: "Single Choice", Multiple: "Multiple Choice", Essay: "Essay" };
+  const questionTypeNames: Record<string, string> = { Single: "Single Choice", Multiple: "Multiple Choice", Essay: "Essay", Coding: "Coding" };
   // Every filter is listed, also those left at "All", so a folded panel still shows exactly what is applied.
   const filterSummary: Array<{ name: string; value: string; active: boolean }> = [
     { name: "Exam type", value: examTypeOptions.find((item) => item.value === filters.examType)?.label ?? "Not selected", active: true },
@@ -371,6 +371,7 @@ export function QuestionBankRoute({
                 { value: "Single", label: "Single Choice" },
                 { value: "Multiple", label: "Multiple Choice" },
                 { value: "Essay", label: "Essay" },
+                { value: "Coding", label: "Coding" },
               ]}
               onChange={(value) => update("type", value)}
             />

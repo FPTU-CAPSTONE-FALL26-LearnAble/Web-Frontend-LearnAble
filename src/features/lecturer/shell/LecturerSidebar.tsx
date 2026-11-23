@@ -10,7 +10,8 @@ import {
   Bell,
   LayoutDashboard,
   LogOut,
-  Keyboard,
+  FlaskConical,
+  Code2,
 } from "lucide-react";
 import type { User } from "@/api/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +48,8 @@ const examLinks = [
   { label: "Sealed Packages", path: "/lecturer/sealed-papers", icon: PackageCheck },
   { label: "Exam Schedule", path: "/lecturer/exams", icon: CalendarDays },
   { label: "Essay Grading", path: "/lecturer/grading", icon: ClipboardCheck },
+  { label: "Practice Sessions", path: "/lecturer/practice-sessions", icon: FlaskConical },
+  { label: "Coding Jobs", path: "/lecturer/coding-jobs", icon: Code2 },
 ];
 
 const navigation = [
@@ -63,7 +66,6 @@ const navigation = [
     available: true,
   },
   { label: "Notifications", icon: Bell, path: "/lecturer/notifications", available: true },
-  { label: "Keyboard Shortcuts", icon: Keyboard, path: "/lecturer/shortcuts", available: true },
 ];
 
 export function LecturerSidebar({

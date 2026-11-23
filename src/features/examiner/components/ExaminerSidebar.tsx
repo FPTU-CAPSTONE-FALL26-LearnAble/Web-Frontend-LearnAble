@@ -15,6 +15,7 @@ import {
   Bell,
   BellRing,
   Keyboard,
+  Code2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -73,6 +74,7 @@ const groups: NavigationGroup[] = [
         icon: MonitorCheck,
       },
       { label: "Extra time", path: "/examiner/accommodations", icon: TimerReset },
+      { label: "Coding jobs", path: "/examiner/coding-jobs", icon: Code2 },
     ],
   },
   {

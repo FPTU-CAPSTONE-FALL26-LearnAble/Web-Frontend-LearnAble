@@ -20,6 +20,7 @@ configure({ asyncUtilTimeout: 4000 });
 const lecturerApi = vi.hoisted(() => ({
   createQuestionWithOptions: vi.fn(async () => ({ questionId: "created-question", createdOptions: [] })),
   getQuestion: vi.fn(),
+  getQuestionImages: vi.fn(async () => ({ questionId: "edit-1", revision: "r1", images: [] })),
   updateQuestion: vi.fn(async () => undefined),
   updateQuestionOption: vi.fn(async () => undefined),
   deleteQuestionOption: vi.fn(async () => undefined),
@@ -90,6 +91,12 @@ vi.mock("@/api/lecturer", () => ({
       totalPages: Math.ceil(rows.length / size),
     };
   },
+}));
+vi.mock("@/api/coding", () => ({
+  getCodingLanguages: async () => ["python3", "csharp-mono-6.6.0.161"],
+  getCodingQuestion: vi.fn(),
+  saveCodingQuestion: vi.fn(),
+  validateCodingQuestion: vi.fn(),
 }));
 const excel = vi.hoisted(() => ({ downloadQuestionWorkbook: vi.fn(async () => undefined) }));
 vi.mock("@/features/lecturer/questions/export/questionExport", async (importOriginal) => ({
@@ -186,14 +193,17 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     const user = userEvent.setup();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const result = view(<CreateQuestionRoute />, "/?purpose=exam");
-    for (const label of [questionTypes.single, questionTypes.multiple, questionTypes.essay]) {
+    expect(screen.getByRole("link", { name: "Import question file" })).toHaveAttribute(
+      "href", "/lecturer/questions/import?purpose=exam",
+    );
+    for (const label of [questionTypes.single, questionTypes.multiple, questionTypes.essay, questionTypes.code]) {
       await user.click(screen.getByRole("button", { name: label }));
       expect(screen.getByRole("button", { name: label })).toHaveAttribute(
         "aria-pressed",
         "true",
       );
     }
-    for (const label of [questionTypes.code, questionTypes.math, questionTypes.diagram]) {
+    for (const label of [questionTypes.math, questionTypes.diagram]) {
       expect(screen.getByRole("button", { name: `${label} · unavailable` })).toBeDisabled();
     }
     await user.click(
@@ -206,7 +216,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       screen.getByLabelText("Question content (required)"),
       "Describe this architecture.",
     );
-    expect(screen.getAllByText("Describe this architecture.")).toHaveLength(2);
+    expect(screen.getAllByText("Describe this architecture.")).toHaveLength(3);
     await user.click(screen.getByRole("button", { name: "Save draft" }));
     expect(readDraft("question-test", "exam")?.content).toBe(
       "Describe this architecture.",
@@ -249,6 +259,23 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
     );
     localStorage.setItem(draftKey("bad"), '{"type":"single"}');
     expect(readDraft("bad")).toBeNull();
+
+    const coding = createDraft("code");
+    if (coding.type !== "code") throw new Error("Expected coding draft");
+    coding.content = "Add the values from standard input.";
+    coding.course = "CSD201";
+    coding.topic = "Arrays";
+    coding.examTypeId = "exam-type-final";
+    coding.starterCode = "numbers = list(map(int, input().split()))";
+    coding.expectedOutput = "15";
+    expect(validateDraft(coding, false)).toContain(
+      "Starter code, constraints, and both public and hidden test cases are required.",
+    );
+    coding.constraints = "1 to 100 integers.";
+    coding.testInput = "1 2 3 4 5";
+    coding.hiddenTestInput = "10 -2 7";
+    coding.hiddenExpectedOutput = "15";
+    expect(validateDraft(coding, false)).toEqual([]);
   });
   it("shows which questions have audio and filters the page by it", async () => {
     const user = userEvent.setup();
@@ -445,6 +472,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       draft.topic = "Microservices Architecture";
       draft.content = "Explain service boundaries.";
       draft.instructions = "Write a concise response.";
+      draft.difficulty = "Hard";
     }
     localStorage.setItem(
       draftKey("question-test", "exam"),
@@ -457,6 +485,10 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       screen.getByRole("button", { name: "Save to Question Bank" }),
     );
     await waitFor(() => expect(lecturerApi.createQuestionWithOptions).toHaveBeenCalled());
+    expect(lecturerApi.createQuestionWithOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ difficulty: "Hard" }),
+      [],
+    );
     await waitFor(() => expect(lecturerApi.queueQuestionAudioGeneration).toHaveBeenCalledWith("created-question"));
     expect(
       screen.queryByRole("button", { name: "Listen to AI reading" }),

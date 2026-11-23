@@ -1,12 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DoorClosed, Lock, MapPin, PackageCheck, UnlockKeyhole } from "lucide-react";
-import { Button } from "@/shared/ui/primitives/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
-import { Input } from "@/shared/ui/primitives/input";
-import { Breadcrumb, PageHeading, ScrollRegion, StatusBadge } from "@/features/lecturer/shared/components/Workbench";
-import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { Lock, MapPin, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/primitives/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,18 +13,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/primitives/alert-dialog";
+import { Button } from "@/shared/ui/primitives/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/primitives/card";
+import { Input } from "@/shared/ui/primitives/input";
+import { Breadcrumb, PageHeading, ScrollRegion, StatusBadge } from "@/features/lecturer/shared/components/Workbench";
+import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import {
   checkInStudent,
-  closeExamSchedule,
   checkOutStudent,
-  getExamPapers,
-  getExamSchedule,
+  closeExamSchedule,
   getExamSeatMap,
   getExamStudents,
-  getSharedExamShift,
-  getShiftPaperSelection,
   markStudentAbsent,
-  openExamSchedule,
   undoCheckInStudent,
   undoStudentAbsence,
   type ExamStudent,
@@ -46,7 +42,6 @@ import {
   type StudentStage,
 } from "@/features/lecturer/exams/attendanceState";
 import { toast } from "@/shared/ui/primitives/toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/primitives/select";
 
 type Action = "checkIn" | "undoCheckIn" | "markAbsent" | "undoAbsence" | "checkOut";
 
@@ -68,43 +63,37 @@ const doneMessages: Record<Action, string> = {
   checkOut: "Student checked out.",
 };
 
+const initials = (name?: string | null) => {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  return parts.slice(-2).map((part) => part[0]).join("").toUpperCase();
+};
+
+function StudentPortrait({ student, size = "compact" }: { student: ExamStudent; size?: "compact" | "large" }) {
+  const abbreviation = initials(student.studentName);
+  return (
+    <Avatar className={`${size === "large" ? "h-24 w-18" : "h-20 w-14"} shrink-0 rounded-md after:rounded-md`}>
+      <AvatarImage className="rounded-md object-cover" src={student.avatarUrl ?? undefined} alt={`ID photo of ${student.studentName ?? "student"}`} />
+      <AvatarFallback className="rounded-md" aria-label={`ID photo unavailable for ${student.studentName ?? "student"}`}>
+        {abbreviation || <UserRound className="size-6" aria-hidden />}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 export function AttendanceRoute() {
   useRouteAnnouncer("Student Attendance & Seating Map", "Student Attendance & Seating Map");
   const { examId } = useParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [examPaperId, setExamPaperId] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
   const scheduleId = examId ?? "";
   const enabled = Boolean(examId);
   const seatMap = useQuery({ queryKey: ["lecturer", "seat-map", scheduleId], queryFn: () => getExamSeatMap(scheduleId), enabled });
   const students = useQuery({ queryKey: ["lecturer", "exam-students", scheduleId], queryFn: () => getExamStudents(scheduleId), enabled });
-  const schedule = useQuery({ queryKey: ["lecturer", "exam-schedule", scheduleId], queryFn: () => getExamSchedule(scheduleId), enabled });
-  // A shift made for a sealed package is "shared": the backend only lets the examiner open it.
-  const sharedShift = useQuery({
-    queryKey: ["lecturer", "shared-shift", schedule.data?.examShiftId],
-    queryFn: () => getSharedExamShift(schedule.data!.examShiftId),
-    enabled: Boolean(schedule.data?.examShiftId),
-    retry: false,
-    meta: { silent: true },
-  });
-  const attachedPackage = useQuery({
-    queryKey: ["lecturer", "shift-package", schedule.data?.examShiftId],
-    queryFn: () => getShiftPaperSelection(schedule.data!.examShiftId),
-    enabled: Boolean(schedule.data?.examShiftId),
-    meta: { silent: true },
-  });
-  const papers = useQuery({
-    queryKey: ["lecturer", "exam-papers", schedule.data?.examSubjectId],
-    queryFn: () => getExamPapers(schedule.data!.examSubjectId),
-    enabled: Boolean(schedule.data?.examSubjectId) && attachedPackage.isSuccess && !attachedPackage.data,
-  });
-  const publishedPapers = (papers.data ?? []).filter((paper) => paper.status === "Published" && paper.questions.length > 0);
-  useExpiredSession(seatMap.error || students.error || schedule.error || papers.error);
+  useExpiredSession(seatMap.error || students.error);
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["lecturer", "exam-students", scheduleId] }),
     queryClient.invalidateQueries({ queryKey: ["lecturer", "seat-map", scheduleId] }),
-    queryClient.invalidateQueries({ queryKey: ["lecturer", "exam-schedule", scheduleId] }),
   ]);
   const attendance = useMutation({
     mutationFn: ({ action, student }: { action: Action; student: ExamStudent }) => {
@@ -124,34 +113,24 @@ export function AttendanceRoute() {
       await refresh();
     },
   });
-  const openSchedule = useMutation({
-    mutationFn: () => openExamSchedule(scheduleId, attachedPackage.data ? undefined : examPaperId),
-    onSuccess: async () => {
-      toast({ title: "Exam opened", description: "Check-in is now locked. Checked-in students can start." });
-      await refresh();
-    },
-    onError: (error) => toast({ title: "The exam could not be opened", description: describeError(error), variant: "error" }),
-  });
   const closeRoom = useMutation({
     mutationFn: () => closeExamSchedule(scheduleId),
     onSuccess: async () => {
       setConfirmClose(false);
-      toast({ title: "Exam ended for this room", description: "Attendance and results for this room are now fixed." });
+      toast({ title: "Exam room ended", description: "The room is now closed and attendance is read-only." });
       await refresh();
     },
-    onError: async (error) => {
-      setConfirmClose(false);
-      toast({ title: "The room could not be closed", description: describeError(error), variant: "error" });
-      await refresh();
+    onError: (error) => {
+      toast({ title: "The exam room could not be ended", description: describeError(error), variant: "error" });
     },
   });
   if (!examId) return <p role="alert">No exam schedule was selected.</p>;
-  if (seatMap.isPending || students.isPending || schedule.isPending) return <div role="status" aria-label="Loading attendance" className="h-48 animate-pulse rounded-xl bg-muted" />;
-  if (seatMap.error || students.error || schedule.error) {
+  if (seatMap.isPending || students.isPending) return <div role="status" aria-label="Loading attendance" className="h-48 animate-pulse rounded-xl bg-muted" />;
+  if (seatMap.error || students.error) {
     return (
       <div role="alert" className="rounded-xl border border-destructive p-6 text-destructive">
         <p className="font-bold">Unable to load attendance data.</p>
-        <Button className="mt-3" variant="outline" onClick={() => { void seatMap.refetch(); void students.refetch(); void schedule.refetch(); }}>Retry</Button>
+        <Button className="mt-3" variant="outline" onClick={() => { void seatMap.refetch(); void students.refetch(); }}>Retry</Button>
       </div>
     );
   }
@@ -163,15 +142,14 @@ export function AttendanceRoute() {
   const needle = search.toLowerCase();
   const rows = everyone.filter((student) => `${student.studentCode ?? ""} ${student.studentName ?? ""} ${student.seatCode ?? ""}`.toLowerCase().includes(needle));
   const checkedIn = everyone.length - counts.notCheckedIn - counts.absent;
-  const hasPackage = Boolean(attachedPackage.data);
-  const sharedShiftOpenedByExaminer = sharedShift.isSuccess;
-  const canOpen = !sharedShiftOpenedByExaminer && status !== "Open" && status !== "Closed" && status !== "Cancelled" && (hasPackage || Boolean(examPaperId));
-  const shiftEnded = Date.now() >= new Date(endsAt).getTime();
   const time = (value: string) => new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const hasActiveAttempt = everyone.some((student) => student.attemptProgress === "InProgress");
+  const shiftEnded = Date.now() >= new Date(endsAt).getTime();
+  const canCloseRoom = status === "Open" && shiftEnded && !hasActiveAttempt;
   return (
     <div className="space-y-6">
-      <Breadcrumb parent="Exam Schedule" path="/lecturer/exams" current={`${seatMap.data.roomName ?? "Exam room"} · ${time(seatMap.data.startsAt)}–${time(endsAt)}`} />
-      <PageHeading title="Student Attendance & Seating Map" description="Check students in, open the exam, then check them out after they submit." />
+      <Breadcrumb parent="Exam Schedule" path="/lecturer/exams" current={`${seatMap.data.roomName ?? "Exam room"} · ${time(seatMap.data.startsAt)}–${time(endsAt)}`} currentClassName="font-semibold text-primary" />
+      <PageHeading title="Student Attendance & Seating Map" />
       <dl aria-label="Attendance summary" className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
         {stageOrder.map((stage) => (
           <div key={stage} className="rounded-xl border border-border p-3">
@@ -190,7 +168,7 @@ export function AttendanceRoute() {
       ) : null}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(360px,1fr)]">
         <Card className="border-border shadow-none">
-          <CardHeader><CardTitle className="text-primary">Seating map · {seatMap.data.roomName ?? "Exam room"}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-primary"><span className="font-bold">Seating map · {seatMap.data.roomName ?? "Exam room"}</span></CardTitle></CardHeader>
           <CardContent>
             <ScrollRegion label="Live seating map" className="overflow-x-auto">
               <ul aria-label="Seats" className="grid min-w-[520px] grid-cols-2 gap-3 sm:grid-cols-4">
@@ -199,9 +177,24 @@ export function AttendanceRoute() {
                   return (
                     <li key={seat.seatId} className={`min-h-32 rounded-xl border p-3 ${stage === "absent" ? "border-muted-foreground/50 bg-muted/50" : stage && stage !== "notCheckedIn" ? "border-success-border" : "border-border"}`}>
                       <p className="flex items-center gap-1 text-xs font-bold"><MapPin className="size-4" aria-hidden />Seat {seat.seatCode ?? `${seat.rowNumber}-${seat.columnNumber}`}</p>
-                      <p className="mt-3 truncate text-sm font-bold">{seat.student?.studentName ?? "Available"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{seat.student?.studentCode ?? "No candidate"}</p>
-                      <div className="mt-3"><StatusBadge value={stage ? stageLabels[stage] : "Available"} tone={stage ? toneOf[stage] : "neutral"} /></div>
+                      {seat.student ? (
+                        <div className="mt-3 min-w-0">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <StudentPortrait student={seat.student} />
+                            <div className="min-w-0 pt-1">
+                              <p className="break-words text-sm font-bold leading-tight">{seat.student.studentName ?? "Unnamed student"}</p>
+                              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{seat.student.studentCode ?? "No student code"}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3"><StatusBadge value={stage ? stageLabels[stage] : "Available"} tone={stage ? toneOf[stage] : "neutral"} /></div>
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <p className="text-sm font-bold">Available</p>
+                          <p className="mt-1 text-xs text-muted-foreground">No candidate</p>
+                          <div className="mt-3"><StatusBadge value="Available" tone="neutral" /></div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -213,7 +206,7 @@ export function AttendanceRoute() {
         <Card className="border-border shadow-none">
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-2 text-primary">
-              <span>Student attendance</span>
+              <span className="font-bold">Student attendance</span>
               <StatusBadge value={`${checkedIn}/${students.data?.totalCount ?? everyone.length} checked in`} tone="info" />
             </CardTitle>
             <Input aria-label="Search attendance students" placeholder="Search name, student ID or seat" value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -227,21 +220,27 @@ export function AttendanceRoute() {
                 const run = (action: Action) => attendance.mutate({ action, student });
                 return (
                   <article key={student.enrollmentId} className="rounded-xl border border-border p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-bold">{student.studentName ?? "Unnamed student"}</h3>
-                        <p className="text-xs text-muted-foreground">{student.studentCode ?? "No student code"} · Seat {student.seatCode ?? "Unassigned"}</p>
+                    <div className="flex items-start gap-4">
+                      <StudentPortrait student={student} size="large" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="truncate font-bold">{student.studentName ?? "Unnamed student"}</h3>
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">{student.studentCode ?? "No student code"}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Seat {student.seatCode ?? "Unassigned"}</p>
+                          </div>
+                          <StatusBadge value={stageLabels[stage]} tone={toneOf[stage]} />
+                        </div>
+                        {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
+                        {stage === "notCheckedIn" && checkInLocked(status) && !can.markAbsent ? <p className="mt-2 text-xs text-muted-foreground">Check-in is closed for this student.</p> : null}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {can.checkIn ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("checkIn")}>Check in</Button> : null}
+                          {can.undoCheckIn ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("undoCheckIn")}>Undo check-in</Button> : null}
+                          {can.markAbsent ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("markAbsent")}>Mark absent</Button> : null}
+                          {can.undoAbsence ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("undoAbsence")}>Undo absence</Button> : null}
+                          {can.checkOut ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("checkOut")}>Check out</Button> : null}
+                        </div>
                       </div>
-                      <StatusBadge value={stageLabels[stage]} tone={toneOf[stage]} />
-                    </div>
-                    {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
-                    {stage === "notCheckedIn" && checkInLocked(status) && !can.markAbsent ? <p className="mt-2 text-xs text-muted-foreground">Check-in is closed for this student.</p> : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {can.checkIn ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("checkIn")}>Check in</Button> : null}
-                      {can.undoCheckIn ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("undoCheckIn")}>Undo check-in</Button> : null}
-                      {can.markAbsent ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("markAbsent")}>Mark absent</Button> : null}
-                      {can.undoAbsence ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("undoAbsence")}>Undo absence</Button> : null}
-                      {can.checkOut ? <Button variant="outline" disabled={attendance.isPending} onClick={() => run("checkOut")}>Check out</Button> : null}
                     </div>
                   </article>
                 );
@@ -251,52 +250,38 @@ export function AttendanceRoute() {
           </CardContent>
         </Card>
       </div>
-      <footer className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-end justify-between gap-3 border-t border-border bg-background px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <p className="pb-3 text-sm font-bold">{checkedIn}/{everyone.length} students checked in</p>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-80">
-          {sharedShiftOpenedByExaminer && status !== "Open" && status !== "Closed" ? (
-            <p role="status" className="flex items-center gap-2 text-sm font-semibold"><PackageCheck className="size-4 text-primary" aria-hidden />The examiner opens this exam for every room at once. Keep checking students in until it opens.</p>
-          ) : null}
-          {status !== "Open" && status !== "Closed" && hasPackage && !sharedShiftOpenedByExaminer ? (
-            <p className="flex items-center gap-2 text-sm font-semibold"><PackageCheck className="size-4 text-primary" aria-hidden />A sealed exam package is attached to this exam.</p>
-          ) : null}
-          {status !== "Open" && status !== "Closed" && !hasPackage && attachedPackage.isSuccess ? (
-            <div className="text-sm font-semibold">
-              <span>Published exam paper</span>
-              <Select value={examPaperId} onValueChange={setExamPaperId}>
-                <SelectTrigger aria-label="Published exam paper" className="mt-1"><SelectValue placeholder={papers.isPending ? "Loading published papers…" : "Select the paper for this room"} /></SelectTrigger>
-                <SelectContent>
-                  {publishedPapers.map((paper) => <SelectItem key={paper.examPaperId} value={paper.examPaperId}>{paper.paperCode ?? "Paper"} · {paper.name ?? `Version ${paper.version}`}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {!papers.isPending && publishedPapers.length === 0 ? <p role="alert" className="mt-1 text-sm font-normal text-destructive">No package is attached and no published paper is available. Ask the examiner to attach a package.</p> : null}
-            </div>
-          ) : null}
-          {status === "Open" ? (
-            <>
-              <Button variant="outline" disabled={!shiftEnded || closeRoom.isPending} onClick={() => setConfirmClose(true)}>
-                <DoorClosed aria-hidden />
-                {closeRoom.isPending ? "Ending the exam…" : "End the exam for this room"}
-              </Button>
-              {!shiftEnded ? <p className="text-xs text-muted-foreground">Available once the shift ends at {time(endsAt)}. Only the chief invigilator can end the room.</p> : null}
-            </>
-          ) : sharedShiftOpenedByExaminer && status !== "Closed" ? null : (
-            <Button disabled={openSchedule.isPending || !canOpen} onClick={() => openSchedule.mutate()}>
-              <UnlockKeyhole aria-hidden />
-              {status === "Closed" ? "Exam ended" : openSchedule.isPending ? "Opening exam…" : "Open exam"}
-            </Button>
-          )}
+      <footer className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <p className="text-sm font-bold">{checkedIn}/{everyone.length} students checked in</p>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <p role="status" className="text-sm text-muted-foreground">
+            {status === "Published"
+              ? "Continue attendance until the examiner opens the exam."
+              : status === "Open" && !shiftEnded
+                ? `The room can be ended after ${time(endsAt)}.`
+                : status === "Open" && hasActiveAttempt
+                  ? "Wait until every student has submitted before ending the room."
+                  : status === "Open"
+                    ? "All requirements are met. You can end this exam room."
+                    : status === "Closed"
+                      ? "This exam room is closed."
+                      : "Attendance follows the current exam status."}
+          </p>
+          {status === "Open" ? <Button disabled={!canCloseRoom || closeRoom.isPending} onClick={() => setConfirmClose(true)}>End exam room</Button> : null}
         </div>
       </footer>
-      <AlertDialog open={confirmClose} onOpenChange={(open) => { if (!open && !closeRoom.isPending) setConfirmClose(false); }}>
+      <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End the exam for this room?</AlertDialogTitle>
-            <AlertDialogDescription>Students who have not checked in stay absent and nobody can check in or out afterwards. Every student must have submitted first.</AlertDialogDescription>
+            <AlertDialogTitle>End this exam room?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This closes the room for every student. Attendance can no longer be changed after the room is closed.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={closeRoom.isPending}>Keep the room open</AlertDialogCancel>
-            <AlertDialogAction disabled={closeRoom.isPending} onClick={(event) => { event.preventDefault(); closeRoom.mutate(); }}>{closeRoom.isPending ? "Ending…" : "End the exam"}</AlertDialogAction>
+            <AlertDialogCancel disabled={closeRoom.isPending}>Keep room open</AlertDialogCancel>
+            <AlertDialogAction disabled={closeRoom.isPending} onClick={(event) => { event.preventDefault(); closeRoom.mutate(); }}>
+              {closeRoom.isPending ? "Ending…" : "End exam room"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

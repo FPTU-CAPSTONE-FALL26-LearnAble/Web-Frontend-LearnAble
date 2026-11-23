@@ -95,7 +95,7 @@ export function LecturerDashboardRoute() {
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">
             {greetingFor(now)}, {user.fullName}.
           </h1>
-          <p className="mt-2 text-muted-foreground">{formatLongDate(now)}</p>
+          <p className="mt-2 font-bold text-foreground">{formatLongDate(now)}</p>
           {attentionPending || attentionError ? null : <AttentionJump count={attention.length} targetId="needs-attention" />}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -114,7 +114,7 @@ export function LecturerDashboardRoute() {
         </div>
       </header>
 
-      <StatBand stats={overview} />
+      <StatBand stats={overview} compact />
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">

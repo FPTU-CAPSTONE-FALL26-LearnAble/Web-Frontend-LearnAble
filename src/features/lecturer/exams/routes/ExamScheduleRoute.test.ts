@@ -1,5 +1,5 @@
 import type { MyExamSchedule } from "@/api/exams";
-import { groupLecturerSchedules } from "./ExamScheduleRoute";
+import { canTakeAttendance, groupLecturerSchedules } from "./ExamScheduleRoute";
 
 const assignment = (id: string, startsAt: string, endsAt: string): MyExamSchedule => ({
   schedule: {
@@ -31,5 +31,13 @@ describe("groupLecturerSchedules", () => {
     expect(groups.today.map((item) => item.schedule.examScheduleId)).toEqual(["today"]);
     expect(groups.upcoming.map((item) => item.schedule.examScheduleId)).toEqual(["next"]);
     expect(groups.past.map((item) => item.schedule.examScheduleId)).toEqual(["recent", "oldest"]);
+  });
+
+  it("allows attendance on a published shift once its entry window opens", () => {
+    const item = assignment("today", "2026-11-23T08:45:00Z", "2026-11-23T16:55:00Z");
+    item.schedule.entryOpensAt = "2026-11-23T08:30:00Z";
+
+    expect(canTakeAttendance(item, new Date("2026-11-23T08:40:00Z"))).toBe(true);
+    expect(canTakeAttendance(item, new Date("2026-11-23T08:20:00Z"))).toBe(false);
   });
 });

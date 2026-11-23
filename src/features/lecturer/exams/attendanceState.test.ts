@@ -36,8 +36,8 @@ describe("studentActions", () => {
     expect(studentActions(student(), "Open", endsAt, during).checkIn).toBe(false);
   });
 
-  it("allows marking absent only for a student who did not check in, after the exam opened", () => {
-    expect(studentActions(student(), "Published", endsAt, during).markAbsent).toBe(false);
+  it("allows marking an unchecked student absent during attendance or after the exam opens", () => {
+    expect(studentActions(student(), "Published", endsAt, during).markAbsent).toBe(true);
     expect(studentActions(student(), "Open", endsAt, during).markAbsent).toBe(true);
     expect(studentActions(student({ attendanceStatus: "Present" }), "Open", endsAt, during).markAbsent).toBe(false);
   });

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { SealedPaper } from "@/api/exams";
 import { SealedPackagePreview } from "./SealedPackagePreview";
 
-const exams = vi.hoisted(() => ({ getSealedPaperPreview: vi.fn(), getSealedPaperAudio: vi.fn() }));
+const exams = vi.hoisted(() => ({ getSealedPaperPreview: vi.fn(), getSealedPaperAudio: vi.fn(), getSealedPaperImage: vi.fn() }));
 vi.mock("@/api/exams", () => exams);
 
 const paper = { versionId: "v1", paperId: "p1", name: "CSD201 FE", versionNumber: 2 } as SealedPaper;
@@ -59,6 +59,20 @@ describe("SealedPackagePreview", () => {
     await screen.findByRole("list", { name: "Questions" });
     await user.click(screen.getByRole("button", { name: "Listen to answer A of question 1" }));
     await waitFor(() => expect(exams.getSealedPaperAudio).toHaveBeenCalledWith("p1", "v1", "eq1", "o1"));
+  });
+
+  it("loads images frozen into the sealed question", async () => {
+    exams.getSealedPaperPreview.mockResolvedValue({
+      ...preview,
+      questions: [{
+        ...preview.questions[0],
+        snapshot: { ...preview.questions[0].snapshot, images: [{ imageId: "img1", description: "A stable sorting diagram", displayOrder: 1 }] },
+      }],
+    });
+    exams.getSealedPaperImage.mockResolvedValue({ imageId: "img1", description: "A stable sorting diagram", displayOrder: 1, width: 640, height: 480, contentType: "image/png", url: "https://image.test/img1.png", expiresAt: "2026-11-22T10:00:00Z" });
+    show();
+    expect(await screen.findByRole("img", { name: "A stable sorting diagram" })).toHaveAttribute("src", "https://image.test/img1.png");
+    expect(exams.getSealedPaperImage).toHaveBeenCalledWith("p1", "v1", "eq1", "img1");
   });
 
   it("does nothing while no package is chosen", () => {

@@ -1,7 +1,9 @@
 import {
   approveSlideAudio,
   generateMaterialAudio,
+  getMaterialFileLink,
   getMaterialTtsSlides,
+  getSlideAudioPlayback,
   updateSlideTtsText,
 } from "@/api/materialTts";
 
@@ -44,8 +46,21 @@ describe("material Local TTS API", () => {
     expect(JSON.parse(String(init?.body))).toMatchObject({ voiceId: "voice-en", speed: 1 });
   });
 
+
+
   it("approves an audio version with an empty successful response", async () => {
     respond(null);
     await expect(approveSlideAudio("slide-1", "audio-1")).resolves.toBeUndefined();
+  });
+
+  it("reads the direct playback link returned for lecturer audio", async () => {
+    respond({ success: true, data: { url: "https://audio.test/slide.wav", expiresAt: "2026-11-22T00:00:00Z" } });
+    await expect(getSlideAudioPlayback("slide-1", "audio-1")).resolves.toMatchObject({ url: "https://audio.test/slide.wav" });
+  });
+
+  it("loads the original material file link for the PDF viewer", async () => {
+    respond({ success: true, data: { url: "https://files.test/material.pdf", expiresAt: "2026-11-22T00:10:00Z" } });
+    await expect(getMaterialFileLink("material-1")).resolves.toMatchObject({ url: "https://files.test/material.pdf" });
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/LearningMaterials/material-1/file"), expect.anything());
   });
 });

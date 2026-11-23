@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Hướng dẫn cài đặt và sử dụng LearnAble Local TTS dành cho giảng viên.">
+  <link rel="icon" href="/assets/brand/learnable-logo.png">
+  <title>Hướng dẫn LearnAble Local TTS</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: #14213d;
+      background: #f5f7fb;
+      --ink: #14213d;
+      --muted: #52627a;
+      --line: #d8e0eb;
+      --surface: #fff;
+      --soft: #eef3f8;
+      --orange: #dd4f16;
+      --orange-dark: #b83d0c;
+      --orange-soft: #fff1e9;
+      --green: #16794b;
+      --green-soft: #e9f8ef;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; line-height: 1.65; }
+    ::selection { color: #fff; background: var(--orange); }
+    a { color: inherit; text-underline-offset: .2em; }
+    :focus-visible { outline: 3px solid #f58a52; outline-offset: 3px; }
+
+    .site-header {
+      position: sticky; top: 0; z-index: 10;
+      border-bottom: 1px solid rgba(216, 224, 235, .9);
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      width: min(100% - 2rem, 72rem); min-height: 4.5rem; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: .75rem; font-weight: 850; text-decoration: none; }
+    .brand img { display: block; width: 8.5rem; height: auto; object-fit: contain; }
+    .back-link { color: var(--muted); font-size: .9rem; font-weight: 750; text-decoration: none; }
+    .back-link:hover { color: var(--orange-dark); }
+
+    main { width: min(100% - 2rem, 72rem); margin: 0 auto; padding: 3rem 0 5rem; }
+    .hero {
+      position: relative; overflow: hidden;
+      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(17rem, .75fr);
+      gap: 2.5rem; align-items: center; padding: clamp(2rem, 5vw, 4.25rem);
+      border-radius: 1.5rem; color: #fff; background: var(--ink);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .08);
+    }
+    .hero::after {
+      content: ""; position: absolute; right: -7rem; bottom: -9rem;
+      width: 24rem; height: 24rem; border: 4rem solid rgba(255, 255, 255, .055);
+      border-radius: 50%; pointer-events: none;
+    }
+    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+    h1 { max-width: 12ch; margin: 0; font-size: clamp(2.45rem, 6vw, 4.8rem); letter-spacing: -.035em; }
+    h1 span { color: #ff8b52; }
+    .hero-copy > p { max-width: 62ch; margin: 1.25rem 0 0; color: #d6dfed; font-size: 1.05rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.75rem; }
+    .tag { padding: .35rem .7rem; border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px; color: #edf3fb; font-size: .78rem; font-weight: 750; }
+    .hero-panel { position: relative; z-index: 1; padding: 1.4rem; border-radius: 1rem; background: #fff; color: var(--ink); }
+    .hero-panel > strong { display: block; }
+    .hero-panel > p { margin: .35rem 0 1rem; color: var(--muted); font-size: .88rem; }
+    .ready-list { display: grid; gap: .7rem; margin: 0; padding: 0; list-style: none; }
+    .ready-list li { display: flex; gap: .65rem; align-items: flex-start; font-size: .88rem; font-weight: 650; }
+    .check { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; display: grid; place-items: center; margin-top: .15rem; border-radius: 50%; color: #fff; background: var(--green); font-size: .7rem; }
+
+    .content-layout { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); margin-top: 3.5rem; }
+    .contents { position: sticky; top: 6rem; align-self: start; }
+    .contents strong { display: block; margin-bottom: .9rem; color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
+    .contents ol { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+    .contents a { display: block; padding: .55rem .7rem; border-radius: .55rem; color: var(--muted); font-size: .9rem; font-weight: 700; text-decoration: none; }
+    .contents a:hover { color: var(--orange-dark); background: var(--orange-soft); }
+    .print-link {
+      width: 100%; min-height: 2.75rem; margin-top: 1rem; border: 1px solid var(--line);
+      border-radius: .65rem; color: var(--ink); background: var(--surface);
+      font: inherit; font-size: .85rem; font-weight: 750; cursor: pointer;
+    }
+    .print-link:hover { border-color: #f2a079; color: var(--orange-dark); }
+
+    .guide { min-width: 0; }
+    .guide-section { scroll-margin-top: 6rem; }
+    .guide-section + .guide-section { margin-top: 4.5rem; }
+    .section-heading { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1rem; align-items: start; margin-bottom: 1.75rem; }
+    .section-number { width: 3rem; height: 3rem; display: grid; place-items: center; border-radius: .8rem; color: var(--orange-dark); background: var(--orange-soft); font-size: 1.1rem; font-weight: 850; }
+    .section-heading h2 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.15rem); letter-spacing: -.025em; }
+    .section-heading p { margin: .35rem 0 0; color: var(--muted); }
+
+    .steps { margin: 0; padding: 0; list-style: none; counter-reset: guide-step; }
+    .step { position: relative; display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); gap: 1rem; padding-bottom: 1.55rem; counter-increment: guide-step; }
+    .step:not(:last-child)::before { content: ""; position: absolute; top: 2.6rem; bottom: .25rem; left: 1.3rem; width: 1px; background: var(--line); }
+    .step::after {
+      content: counter(guide-step); width: 2.6rem; height: 2.6rem; display: grid;
+      place-items: center; border: 1px solid #efb18e; border-radius: 50%;
+      color: var(--orange-dark); background: #fff; font-size: .9rem; font-weight: 850;
+    }
+    .step-content { grid-column: 2; grid-row: 1; min-width: 0; padding: .55rem 0 0; }
+    .step::after { grid-column: 1; grid-row: 1; }
+    .step-content h3 { margin: 0; font-size: 1.05rem; }
+    .step-content p { max-width: 66ch; margin: .3rem 0 0; color: var(--muted); }
+    .ui-label { color: var(--ink); font-weight: 800; }
+    .status-demo { display: flex; gap: .85rem; align-items: center; margin-top: 1rem; padding: .9rem 1rem; border-radius: .75rem; color: #105a38; background: var(--green-soft); font-weight: 750; }
+    .status-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 .3rem rgba(22, 121, 75, .13); }
+    .callout { margin-top: 1.5rem; padding: 1.15rem 1.25rem; border: 1px solid #f0dfa0; border-radius: .85rem; color: #684500; background: #fff8dc; }
+    .callout strong { display: block; }
+    .guide-list { margin: .6rem 0 0; padding-left: 1.35rem; color: var(--muted); }
+    .guide-list li + li { margin-top: .45rem; }
+    .guide-section > p { color: var(--muted); }
+    .guide-section h3 { margin: 1.5rem 0 .55rem; }
+    .code-block { max-width: 100%; overflow-x: auto; margin: 0; padding: 1rem 1.15rem; color: #eef3fb; background: #182743; font: .85rem/1.65 Consolas, "Courier New", monospace; }
+    .code-block code { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .command { overflow: hidden; margin: 1rem 0; border: 1px solid var(--line); border-radius: .85rem; }
+    .command-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .45rem .7rem .45rem 1rem; background: var(--soft); font-size: .8rem; font-weight: 750; }
+    .copy-command { min-height: 2.75rem; padding: .45rem .8rem; border: 1px solid var(--line); border-radius: .55rem; color: var(--ink); background: var(--surface); font: inherit; font-weight: 750; cursor: pointer; }
+    .copy-command:hover { border-color: var(--orange); color: var(--orange-dark); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .result { margin: 1rem 0 0; padding: .85rem 1rem; border-radius: .7rem; background: var(--green-soft); color: #105a38; font-weight: 650; }
+    .result strong { display: block; }
+    .stop-note { margin-top: 1rem; padding: 1rem 1.15rem; border: 1px solid #f0dfa0; border-radius: .75rem; background: #fff8dc; color: #684500; }
+    .stop-note strong { display: block; }
+    .definition { margin-top: 1.2rem; color: var(--muted); font-size: .92rem; }
+    .step-content .command { max-width: 100%; }
+    .step-content .result, .step-content .stop-note { max-width: 66ch; }
+    .command-note { color: var(--muted); font-size: .9rem; }
+    .guide-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .guide-table th, .guide-table td { padding: .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .guide-table th { color: var(--ink); background: var(--soft); }
+
+    .troubleshooting { padding-top: .25rem; }
+    details { border-bottom: 1px solid var(--line); }
+    summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 0; font-weight: 800; cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; flex: 0 0 auto; color: var(--orange); font-size: 1.35rem; font-weight: 500; }
+    details[open] summary::after { content: "−"; }
+    details p { max-width: 68ch; margin: -.2rem 0 1.25rem; color: var(--muted); }
+    .safety { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .safety-item { padding: 1.15rem; border-radius: .85rem; background: var(--soft); }
+    .safety-item strong { display: block; margin-bottom: .25rem; }
+    .safety-item p { margin: 0; color: var(--muted); font-size: .9rem; }
+    .final-action { margin-top: 4.5rem; padding: 2rem; border-radius: 1.15rem; color: #fff; background: var(--orange-dark); }
+    .final-action h2 { margin: 0; font-size: 1.65rem; }
+    .final-action p { margin: .45rem 0 1.25rem; color: #fff; }
+    .primary-link { display: inline-flex; min-height: 2.85rem; align-items: center; justify-content: center; padding: .7rem 1rem; border-radius: .65rem; color: var(--orange-dark); background: #fff; font-weight: 850; text-decoration: none; }
+    .primary-link:hover { background: #fff8f4; }
+    footer { margin-top: 2rem; color: var(--muted); font-size: .78rem; text-align: center; }
+
+    @media (max-width: 800px) {
+      main { padding-top: 1.5rem; }
+      .hero { grid-template-columns: 1fr; padding: 2rem 1.4rem; }
+      .hero-panel { max-width: 30rem; }
+      .content-layout { grid-template-columns: 1fr; margin-top: 2.5rem; }
+      .contents { display: none; }
+      .safety { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .header-inner { min-height: 4rem; }
+      .back-link span { display: none; }
+      main { width: min(100% - 1.25rem, 72rem); }
+      .hero { border-radius: 1rem; }
+      h1 { font-size: 2.35rem; }
+      .section-heading { grid-template-columns: 2.5rem minmax(0, 1fr); gap: .8rem; }
+      .section-number { width: 2.5rem; height: 2.5rem; }
+      .final-action { padding: 1.4rem; }
+      .command-head { align-items: flex-start; flex-direction: column; }
+      .copy-command { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      :root { background: #fff; }
+      .site-header, .contents, .final-action, footer { display: none; }
+      main { width: 100%; padding: 0; }
+      .hero { grid-template-columns: 1fr; padding: 1.5rem; color: var(--ink); background: #fff; border: 1px solid var(--line); box-shadow: none; }
+      .hero-copy > p { color: var(--muted); }
+      h1 span { color: var(--orange-dark); }
+      .hero-meta { display: none; }
+      .content-layout { display: block; margin-top: 2rem; }
+      .guide-section + .guide-section { margin-top: 2rem; }
+      details p { display: block; }
+      summary::after { display: none; }
+      .copy-command { display: none; }
+      .code-block { color: var(--ink); background: #fff; border: 1px solid var(--line); white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/lecturer/materials/new" aria-label="LearnAble - quay lại trang tải tài liệu">
+        <img src="/assets/brand/learnable-logo.png" alt="LearnAble">
+      </a>
+      <a class="back-link" href="/lecturer/materials/new">← <span>Quay lại trang tải tài liệu</span></a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <h1 id="page-title">Cài Local TTS <span>từng bước một</span></h1>
+        <p>Làm theo thứ tự từ trên xuống. Mỗi bước đều cho biết cần làm gì và kết quả đúng sẽ trông như thế nào. Bạn chỉ cần cài trên máy muốn dùng để tạo giọng đọc.</p>
+        <div class="hero-meta" aria-label="Thông tin hỗ trợ">
+          <span class="tag">Windows 11 64-bit khuyến nghị</span><span class="tag">Cần NVIDIA CUDA</span><span class="tag">Dành cho Lecturer</span>
+        </div>
+      </div>
+      <aside class="hero-panel" aria-label="Chuẩn bị trước khi cài đặt">
+        <strong>Bạn cần nhận từ trường trước</strong>
+        <p>Nếu thiếu một mục, hãy xin bộ phận kỹ thuật trước khi bắt đầu.</p>
+        <ul class="ready-list">
+          <li><span class="check" aria-hidden="true">✓</span><span>Hai thư mục Backend-LearnAble và VieNue-LoRA đã được chuẩn bị</span></li>
+          <li><span class="check" aria-hidden="true">✓</span><span>Đường dẫn tải model và mã SHA-256 của model</span></li>
+          <li><span class="check" aria-hidden="true">✓</span><span>Địa chỉ API HTTPS và tài khoản Lecturer</span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <div class="content-layout">
+      <nav class="contents" aria-label="Mục lục hướng dẫn">
+        <strong>Trong hướng dẫn này</strong>
+        <ol>
+          <li><a href="#prepare">Trước khi bắt đầu</a></li><li><a href="#install">Cài trên máy lần đầu</a></li>
+          <li><a href="#connect">Kết nối và chạy</a></li><li><a href="#generate">Tạo audio trên web</a></li>
+          <li><a href="#daily">Những lần dùng sau</a></li><li><a href="#help">Nếu gặp lỗi</a></li>
+        </ol>
+        <button class="print-link" type="button" onclick="window.print()">In hoặc lưu PDF</button>
+      </nav>
+
+      <article class="guide">
+        <section class="guide-section" id="prepare">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">1</span><div><h2>Trước khi bắt đầu</h2><p>Kiểm tra những thứ cần có. Chưa đủ thì dừng ở đây, bạn vẫn có thể upload tài liệu trên web.</p></div></div>
+          <p><strong>Local TTS</strong> là chương trình chạy trên máy của bạn để tạo giọng đọc. Các bước bên dưới dùng PowerShell, ứng dụng có sẵn trên Windows. Bạn cũng có thể <a href="/guides/local-tts-model/README.md" download="README-Local-TTS.md">tải README ngắn gọn</a> để làm theo khi không mở trang này.</p>
+          <ul class="guide-list">
+            <li><strong>Máy tính:</strong> nên dùng Windows 11 64-bit, có GPU NVIDIA hỗ trợ CUDA. Cần Internet ổn định, ổ SSD còn khoảng 20 GB và nên có 16 GB RAM. Dung lượng GPU 6–8 GB là mức chuẩn bị đề xuất, không phải cam kết mọi máy sẽ chạy được.</li>
+            <li><strong>Tài khoản:</strong> tài khoản Lecturer đang hoạt động, đã đổi mật khẩu lần đầu nếu hệ thống yêu cầu.</li>
+            <li><strong>Hai thư mục trên máy:</strong> <code>C:\LearnAble\Backend-LearnAble</code> có thư mục con <code>tts-agent</code>; <code>C:\LearnAble\VieNue-LoRA</code> có bộ VieNeu SDK 3.3.0 và môi trường Python <code>.venv</code> đã được kỹ thuật viên cài đúng phiên bản.</li>
+            <li><strong>Ba thông tin từ trường:</strong> URL API bắt đầu bằng <code>https://</code> và kết thúc bằng <code>/api/v1</code>; URL tải gói model đầy đủ (manifest) qua HTTPS; mã kiểm tra SHA-256 của manifest. Hai thông tin model phải được trường xác nhận. File adapter fine-tune riêng không đủ để chạy.</li>
+          </ul>
+          <div class="stop-note"><strong>Chưa có SDK, môi trường Python hoặc gói model?</strong>Hãy gửi bộ phận kỹ thuật: “Tôi cần bộ VieNeu SDK 3.3.0 đã cài môi trường Python tương thích, thư mục Backend-LearnAble có tts-agent, URL API HTTPS, URL manifest model và SHA-256 để dùng Local TTS.” Không tự chọn bản SDK hoặc model mới nhất thay thế.</div>
+          <p class="definition">Bạn không cần cài .NET, PostgreSQL hoặc chạy BE trên máy. Chương trình Local TTS sẽ kết nối tới BE của trường qua Internet.</p>
+        </section>
+
+        <section class="guide-section" id="install">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">2</span><div><h2>Cài trên máy lần đầu</h2><p>Làm lần lượt từng bước. Sau mỗi lệnh, xem kết quả đúng rồi mới sang bước tiếp theo.</p></div></div>
+          <ol class="steps">
+            <li class="step"><div class="step-content"><h3>Mở PowerShell</h3><p>Nhấn phím Windows, gõ <strong>PowerShell</strong> và mở ứng dụng. Để nguyên cửa sổ này cho đến khi tạo audio xong. Không cần chọn “Run as administrator”.</p><p>Ở mỗi khung lệnh bên dưới, bấm <strong>Sao chép</strong>, dán vào PowerShell bằng <kbd>Ctrl+V</kbd>, rồi nhấn <kbd>Enter</kbd>.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Kiểm tra card NVIDIA</h3><p>Chạy lệnh sau. Nếu thấy tên card và thông tin driver, chuyển sang bước kế tiếp. Nếu báo không nhận lệnh hoặc không thấy GPU, nhờ kỹ thuật viên kiểm tra driver.</p>
+              <div class="command"><div class="command-head"><span>Kiểm tra GPU</span><button class="copy-command" type="button" aria-label="Sao chép lệnh kiểm tra GPU">Sao chép</button></div><pre class="code-block"><code>nvidia-smi</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>PowerShell hiện tên GPU NVIDIA và phiên bản driver. Bước này chưa xác nhận Python dùng được CUDA.</p>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Kiểm tra hai thư mục trường đã chuẩn bị</h3><p>Các đường dẫn dưới đây là ví dụ chuẩn của hướng dẫn. Nếu trường đặt ở chỗ khác, hãy xin đúng đường dẫn rồi sửa hai dòng đầu trước khi chạy.</p>
+              <div class="command"><div class="command-head"><span>Đặt đường dẫn và kiểm tra file</span><button class="copy-command" type="button" aria-label="Sao chép lệnh kiểm tra thư mục">Sao chép</button></div><pre class="code-block"><code>$ttsBackendRoot = 'C:\LearnAble\Backend-LearnAble'
+$ttsSdkRoot = 'C:\LearnAble\VieNue-LoRA'
+$ttsPython = Join-Path $ttsSdkRoot '.venv\Scripts\python.exe'
+Test-Path (Join-Path $ttsBackendRoot 'tts-agent')
+Test-Path $ttsPython</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>Hai dòng cuối đều hiện <code>True</code>. Nếu có <code>False</code>, máy chưa có đủ các thành phần; gửi ảnh kết quả cho bộ phận kỹ thuật và dừng tại đây.</p>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Cài agent và kiểm tra CUDA</h3><p>Chạy lệnh này trong cùng cửa sổ PowerShell. Lệnh cài phần kết nối LearnAble vào môi trường Python đã chuẩn bị; nó không tự cài VieNeu, PyTorch hoặc model.</p>
+              <div class="command"><div class="command-head"><span>Cài agent và chạy kiểm tra</span><button class="copy-command" type="button" aria-label="Sao chép lệnh cài agent và kiểm tra CUDA">Sao chép</button></div><pre class="code-block"><code>Set-Location $ttsBackendRoot
+&amp; $ttsPython -m pip install -e ./tts-agent
+$env:LEARNABLE_VIENEU_PATH = $ttsSdkRoot
+&amp; $ttsPython -m learnable_tts_agent.cli doctor</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>Lệnh <code>doctor</code> hiện tên GPU, dung lượng VRAM, phiên bản PyTorch và CUDA. Nó chưa kiểm tra khả năng tạo tiếng thật.</p>
+              <p class="command-note">Nếu báo <code>No module named pip</code>, bộ môi trường có thể dùng <code>uv</code>; nhờ kỹ thuật viên cài agent bằng <code>uv pip install --python $ttsPython -e ./tts-agent</code>. Nếu báo CUDA unavailable, nhờ kiểm tra driver và PyTorch trong đúng môi trường này.</p>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Tải gói giọng đọc do trường cấp</h3><p>Thực hiện từng ô lệnh riêng. Sau ô thứ nhất, dán URL manifest HTTPS và nhấn Enter. Sau ô thứ hai, dán mã SHA-256 và nhấn Enter. Nếu trường chưa cấp hai thông tin này, bạn chưa thể tải model.</p>
+              <div class="command"><div class="command-head"><span>Nhập URL manifest</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập URL manifest">Sao chép</button></div><pre class="code-block"><code>$ttsManifestUrl = Read-Host 'Dan URL manifest HTTPS do truong cap'</code></pre></div>
+              <div class="command"><div class="command-head"><span>Nhập mã SHA-256</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập SHA-256">Sao chép</button></div><pre class="code-block"><code>$ttsManifestSha = Read-Host 'Dan SHA-256 manifest do truong xac nhan'</code></pre></div>
+              <div class="command"><div class="command-head"><span>Bắt đầu tải model</span><button class="copy-command" type="button" aria-label="Sao chép lệnh tải model">Sao chép</button></div><pre class="code-block"><code>&amp; $ttsPython -m learnable_tts_agent.cli download-model --manifest-url $ttsManifestUrl --manifest-sha256 $ttsManifestSha</code></pre></div>
+              <p>Sau khi tải xong, PowerShell in ra đường dẫn thư mục model. Sao chép đường dẫn đó, rồi dùng ô lệnh cuối:</p>
+              <div class="command"><div class="command-head"><span>Nhập đường dẫn model</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập đường dẫn model">Sao chép</button></div><pre class="code-block"><code>$ttsModelDir = Read-Host 'Dan duong dan thu muc model vua tai'</code></pre></div>
+              <div class="command"><div class="command-head"><span>Kiểm tra model đã tải</span><button class="copy-command" type="button" aria-label="Sao chép lệnh kiểm tra model">Sao chép</button></div><pre class="code-block"><code>Test-Path (Join-Path $ttsModelDir 'manifest.json')</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>Lệnh tải hoàn tất và ô cuối hiện <code>True</code>. Nếu thấy <code>False</code>, kiểm tra đường dẫn vừa dán. Không dùng một file adapter đơn lẻ thay cho gói đầy đủ.</p>
+            </div></li>
+          </ol>
+          <div class="stop-note"><strong>Trường đưa checkpoint Kaggle thay vì URL tải model?</strong>Cách đó cần sẵn base model và codec cache trên máy. Nhờ kỹ thuật viên làm theo mục “Máy đã có checkpoint Kaggle và cache” trong tài liệu BE; các bước ở đây dành cho gói model có manifest để tránh thiếu file.</div>
+        </section>
+
+        <section class="guide-section" id="connect">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">3</span><div><h2>Kết nối và chạy</h2><p>Tiếp tục trong cửa sổ PowerShell của phần cài đặt, sau khi model đã tải xong.</p></div></div>
+          <ol class="steps">
+            <li class="step"><div class="step-content"><h3>Nhập địa chỉ API của trường</h3><p>Sao chép ô lệnh, dán vào PowerShell rồi nhấn Enter. Khi được hỏi, dán địa chỉ HTTPS mà trường cung cấp. Địa chỉ phải kết thúc bằng <code>/api/v1</code>; không dùng <code>http://localhost:5080</code>.</p>
+              <div class="command"><div class="command-head"><span>Nhập URL API</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập URL API">Sao chép</button></div><pre class="code-block"><code>$env:LEARNABLE_API_URL = (Read-Host 'Dan URL API HTTPS ket thuc bang /api/v1').TrimEnd('/')</code></pre></div>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Ghép máy với tài khoản Lecturer</h3><p>Nhập tên đăng nhập bằng ô đầu tiên. Sau đó chạy ô thứ hai. PowerShell sẽ hỏi mật khẩu: cứ gõ mật khẩu của bạn rồi nhấn Enter. <strong>Khi gõ mật khẩu, màn hình không hiện ký tự; đây là bình thường.</strong></p>
+              <div class="command"><div class="command-head"><span>Nhập tên đăng nhập</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập tên đăng nhập">Sao chép</button></div><pre class="code-block"><code>$ttsIdentifier = Read-Host 'Nhap ten dang nhap Lecturer'</code></pre></div>
+              <div class="command"><div class="command-head"><span>Ghép máy</span><button class="copy-command" type="button" aria-label="Sao chép lệnh ghép máy">Sao chép</button></div><pre class="code-block"><code>&amp; $ttsPython -m learnable_tts_agent.cli pair --identifier $ttsIdentifier --device-name "$env:COMPUTERNAME-TTS"</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>PowerShell hiện <code>Paired until ...</code> với thời hạn ghép máy. Không gửi mật khẩu hoặc token cho người khác.</p>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Chạy chương trình tạo giọng đọc</h3><p>Chạy lệnh sau. Cửa sổ PowerShell sẽ tiếp tục mở để nhận công việc từ LearnAble. Cắm nguồn laptop và tránh để máy ngủ trong lúc tạo audio. Không cần mở cổng hay public IP.</p>
+              <div class="command"><div class="command-head"><span>Chạy Local TTS</span><button class="copy-command" type="button" aria-label="Sao chép lệnh chạy Local TTS">Sao chép</button></div><pre class="code-block"><code>&amp; $ttsPython -m learnable_tts_agent.cli run --model-dir $ttsModelDir</code></pre></div>
+              <p class="result"><strong>Kết quả đúng</strong>Lệnh tiếp tục chạy và không trở về dòng nhập lệnh ngay. Model có thể cần thời gian nạp lần đầu. Hãy sang phần tiếp theo để thử audio thật.</p>
+            </div></li>
+          </ol>
+          <div class="stop-note"><strong>Đừng đóng cửa sổ PowerShell khi đang tạo audio.</strong>Nhấn <kbd>Ctrl+C</kbd> để dừng sau khi các job hoàn tất. Cờ <code>--smoke</code> chỉ tạo audio im lặng để thử giao thức, không dùng cho tài liệu thật.</div>
+        </section>
+
+        <section class="guide-section" id="generate">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">4</span><div><h2>Thử tạo audio trên web</h2><p>Bước này xác nhận máy thực sự tạo được giọng đọc, thay vì chỉ kiểm tra đã ghép tài khoản.</p></div></div>
+          <ol class="steps">
+            <li class="step"><div class="step-content"><h3>Upload một PDF ngắn để thử</h3><p>Trong LearnAble, vào <span class="ui-label">Learning Materials → Upload new material</span>. Chọn PDF có chữ, điền <span class="ui-label">Course</span> và <span class="ui-label">Topic</span>, rồi bấm <span class="ui-label">Upload material</span>. Chức năng tạo audio theo trang hiện dành cho PDF; trang ảnh không có chữ cần nhập lời đọc thủ công.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Kiểm tra lời đọc</h3><p>Sau khi upload, LearnAble mở <span class="ui-label">Material Audio Studio</span>. Chọn một trang, đọc lại phần văn bản trích xuất và sửa lời đọc nếu cần. Lưu lời đọc trước khi tạo audio.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Tạo audio một trang</h3><p>Bấm <span class="ui-label">Generate audio</span>. Đây là yêu cầu gửi tới BE; agent đang chạy trên máy sẽ tự nhận. Đợi trạng thái hoàn tất. Sau khi trang thử chạy được, có thể dùng <span class="ui-label">Generate all audio</span> cho các trang còn lại.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Nghe thử rồi phê duyệt</h3><p>Bấm <span class="ui-label">Preview</span> để nghe. Nếu rõ tiếng và đọc đúng, bấm <span class="ui-label">Approve</span>. Nếu chưa đúng, sửa lời đọc và dùng <span class="ui-label">Regenerate audio</span>.</p><p class="result"><strong>Hoàn tất kiểm tra</strong>Bạn đã nghe được audio thật từ PDF thử. Trạng thái “thiết bị đã ghép” trên trang upload chỉ cho biết token còn hiệu lực, không thay thế bước nghe thử này.</p></div></li>
+          </ol>
+        </section>
+
+        <section class="guide-section" id="daily">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">5</span><div><h2>Những lần sử dụng sau</h2><p>Mỗi khi muốn tạo audio, mở lại PowerShell và chạy agent trước khi bấm Generate audio trên web.</p></div></div>
+          <ol class="steps">
+            <li class="step"><div class="step-content"><h3>Mở PowerShell và đặt lại đường dẫn</h3><p>Các biến trong PowerShell mất khi đóng cửa sổ. Nếu thư mục của trường khác ví dụ, sửa hai dòng đầu.</p>
+              <div class="command"><div class="command-head"><span>Chuẩn bị cửa sổ mới</span><button class="copy-command" type="button" aria-label="Sao chép lệnh chuẩn bị PowerShell">Sao chép</button></div><pre class="code-block"><code>$ttsSdkRoot = 'C:\LearnAble\VieNue-LoRA'
+$ttsPython = Join-Path $ttsSdkRoot '.venv\Scripts\python.exe'
+$env:LEARNABLE_VIENEU_PATH = $ttsSdkRoot</code></pre></div>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Nhập lại URL API và thư mục model</h3><p>Nhập đúng URL API đã dùng lúc ghép máy và đường dẫn model được in khi tải lần đầu.</p>
+              <div class="command"><div class="command-head"><span>Nhập URL API</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập lại URL API">Sao chép</button></div><pre class="code-block"><code>$env:LEARNABLE_API_URL = (Read-Host 'Dan lai URL API HTTPS ket thuc bang /api/v1').TrimEnd('/')</code></pre></div>
+              <div class="command"><div class="command-head"><span>Nhập đường dẫn model</span><button class="copy-command" type="button" aria-label="Sao chép lệnh nhập lại đường dẫn model">Sao chép</button></div><pre class="code-block"><code>$ttsModelDir = Read-Host 'Dan duong dan thu muc model da tai'</code></pre></div>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Chạy agent rồi tạo audio trên web</h3><p>Dùng lệnh sau và giữ cửa sổ mở. Nếu agent báo cần ghép lại, quay lên bước “Ghép máy với tài khoản Lecturer”; token hiện hết hạn sau 8 giờ.</p>
+              <div class="command"><div class="command-head"><span>Chạy Local TTS</span><button class="copy-command" type="button" aria-label="Sao chép lệnh chạy lại Local TTS">Sao chép</button></div><pre class="code-block"><code>&amp; $ttsPython -m learnable_tts_agent.cli run --model-dir $ttsModelDir</code></pre></div>
+            </div></li>
+            <li class="step"><div class="step-content"><h3>Nếu máy đã cài bằng adapter LoRA</h3><p>Máy thử nghiệm đã cài theo cách này. Mở PowerShell mới, sao chép toàn bộ lệnh dưới đây; không cần cài lại. Nếu đường dẫn cài đặt khác, sửa các đường dẫn trước khi chạy.</p>
+              <div class="command"><div class="command-head"><span>Chạy lại trên máy dùng adapter</span><button class="copy-command" type="button" aria-label="Sao chép lệnh chạy lại Local TTS bằng adapter">Sao chép</button></div><pre class="code-block"><code>$ttsSdkRoot = 'C:\Capstone2026\VieNue-LoRA'
+$ttsPython = Join-Path $ttsSdkRoot '.venv\Scripts\python.exe'
+$ttsAdapter = Join-Path $ttsSdkRoot 'finetune\output\kaggle\vieneu-lora\ngoc_huyen-full-20261108-1234-s42\best_adapter'
+$env:LEARNABLE_VIENEU_PATH = $ttsSdkRoot
+$env:LEARNABLE_API_URL = 'https://backend-learnable.onrender.com/api/v1'
+Set-Location 'C:\Capstone2026\Backend-LearnAble-TTS'
+&amp; $ttsPython -m learnable_tts_agent.cli run --adapter-dir $ttsAdapter --adapter-sha256 'ff93e9d4d599873a2db3636220a31fe7771d884f5fe0583e7314cca9280bd745' --preset-voice ngoc_huyen</code></pre></div>
+              <p>Nếu báo hết hạn ghép máy, dùng lệnh dưới đây trong cùng cửa sổ rồi chạy lại dòng <code>run</code>. Khi nhập mật khẩu, PowerShell không hiện ký tự.</p>
+              <div class="command"><div class="command-head"><span>Ghép lại khi hết hạn</span><button class="copy-command" type="button" aria-label="Sao chép lệnh ghép lại máy">Sao chép</button></div><pre class="code-block"><code>&amp; $ttsPython -m learnable_tts_agent.cli pair --identifier 'LEC0001' --device-name "$env:COMPUTERNAME-TTS"</code></pre></div>
+              <p>Giữ cửa sổ agent mở trong lúc tạo audio; nhấn <code>Ctrl+C</code> để dừng. Agent sẽ lấy job cũ nhất đang chờ của tài khoản Lecturer. Nếu tài liệu cũ còn job, agent xử lý chúng trước tài liệu mới. Hãy hủy job cũ trên hệ thống trước khi chạy lại nếu muốn chuyển tài liệu.</p>
+            </div></li>
+          </ol>
+        </section>
+
+        <section class="guide-section" id="help">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">?</span><div><h2>Nếu gặp lỗi</h2><p>Tìm câu giống tình huống của bạn. Nếu không xử lý được, gửi thông báo lỗi cho bộ phận kỹ thuật.</p></div></div>
+          <div class="troubleshooting">
+            <details><summary>Không có thư mục hoặc một dòng kiểm tra hiện False</summary><p>Chưa đủ file để cài. Gửi bộ phận kỹ thuật đường dẫn đã dùng và ảnh hai dòng <code>Test-Path</code>; cần đúng thư mục <code>tts-agent</code> và file <code>.venv\Scripts\python.exe</code>. Không tự tải một model khác về thay thế.</p></details>
+            <details><summary><code>nvidia-smi</code> không chạy hoặc <code>doctor</code> báo CUDA unavailable</summary><p>Máy cần GPU NVIDIA được PyTorch trong môi trường SDK nhận diện. Nhờ kỹ thuật viên kiểm tra driver và bản PyTorch CUDA đã bàn giao. Máy chỉ có CPU hoặc GPU tích hợp chưa chạy được agent này.</p></details>
+            <details><summary>Tải model lỗi hoặc mã SHA-256 không khớp</summary><p>Kiểm tra URL manifest HTTPS và mã SHA-256 đã nhận từ trường, sau đó thử lại. Nếu vẫn lỗi, xin lại gói model và mã kiểm tra qua kênh tin cậy. Không bỏ qua kiểm tra checksum.</p></details>
+            <details><summary>Ghép máy thất bại</summary><p>Kiểm tra URL API có <code>https://</code> và kết thúc bằng <code>/api/v1</code>, tài khoản Lecturer còn hoạt động và đã đổi mật khẩu bắt buộc. Nếu lỗi chứng chỉ HTTPS, nhờ kỹ thuật viên xử lý; không tắt kiểm tra chứng chỉ. Nếu báo quá nhiều thiết bị, nhờ thu hồi thiết bị cũ.</p></details>
+            <details><summary>Agent yêu cầu ghép lại hoặc web vẫn báo chưa kết nối</summary><p>Token hiện hết hạn sau 8 giờ. Dừng agent, chạy lại bước ghép máy với cùng URL API, rồi chạy agent lại. Nếu web vẫn báo chưa kết nối, kiểm tra máy có Internet và cửa sổ PowerShell còn chạy.</p></details>
+            <details><summary>Audio chờ lâu, upload thất bại hoặc nghe im lặng</summary><p>Kiểm tra agent vẫn chạy và không dùng chế độ <code>--smoke</code> (chỉ tạo âm thanh im lặng). Ghi lại thời điểm lỗi và tên tài liệu để bộ phận kỹ thuật kiểm tra job, model và kết nối lưu audio. Không gửi mật khẩu, token hoặc URL upload có chữ ký.</p></details>
+          </div>
+        </section>
+
+        <section class="guide-section" id="handoff">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">✓</span><div><h2>Khi cần hỗ trợ</h2><p>Gửi thông tin đủ để kỹ thuật viên giúp bạn, nhưng không chia sẻ thông tin đăng nhập.</p></div></div>
+          <div class="safety">
+            <div class="safety-item"><strong>Gửi hiện tượng</strong><p>Ảnh thông báo lỗi, bước đang làm và thời điểm xảy ra.</p></div>
+            <div class="safety-item"><strong>Gửi thông tin máy</strong><p>Tên GPU, RAM, phiên bản agent/model nếu kỹ thuật viên hỏi.</p></div>
+            <div class="safety-item"><strong>Giữ kín tài khoản</strong><p>Không gửi mật khẩu, token thiết bị hoặc URL upload có chữ ký.</p></div>
+          </div>
+        </section>
+
+        <section class="final-action" aria-labelledby="ready-title">
+          <h2 id="ready-title">Đã tạo và nghe thử audio?</h2>
+          <p>Sau khi kiểm tra một PDF ngắn thành công, bạn có thể tiếp tục tạo audio cho tài liệu thật.</p>
+          <a class="primary-link" href="/lecturer/materials/new">Quay lại trang upload →</a>
+        </section>
+      </article>
+    </div>
+    <footer>LearnAble · Hướng dẫn dành cho giảng viên · Local TTS trên Windows</footer>
+  </main>
+  <p id="copy-feedback" class="sr-only" role="status" aria-live="polite"></p>
+  <script>
+    const copyFeedback = document.getElementById('copy-feedback');
+    document.querySelectorAll('.copy-command').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const code = button.closest('.command').querySelector('code');
+        try {
+          await navigator.clipboard.writeText(code.textContent.trim());
+          button.textContent = 'Đã sao chép';
+          copyFeedback.textContent = 'Đã sao chép lệnh. Dán vào PowerShell và nhấn Enter.';
+        } catch {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = 'Đã chọn lệnh';
+          copyFeedback.textContent = 'Lệnh đã được chọn. Nhấn Ctrl+C để sao chép.';
+        }
+        window.setTimeout(() => { button.textContent = 'Sao chép'; }, 2500);
+      });
+    });
+  </script>
+</body>
+</html>

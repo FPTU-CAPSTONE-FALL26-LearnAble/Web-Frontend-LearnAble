@@ -41,7 +41,7 @@ export type CreateQuestionInput = {
   examTypeId: string;
   topicId: string;
   content: string;
-  questionType: "Single" | "Multiple" | "Essay";
+  questionType: "Single" | "Multiple" | "Essay" | "Coding";
   difficulty: "Easy" | "Medium" | "Hard";
   defaultScore: number;
   referenceAnswer?: string | null;
@@ -316,6 +316,8 @@ export const replaceLearningMaterialFile = (materialId: string, file: File) => {
 
 export const publishLearningMaterial = (materialId: string) =>
   command(`/LearningMaterials/${materialId}/publish`, { method: "PATCH" });
+export const getLearningMaterialFileLink = (materialId: string) =>
+  unwrap(`/LearningMaterials/${materialId}/file`, z.object({ url: z.string().url(), expiresAt: z.string() }), { method: "GET" });
 export const archiveLearningMaterial = (materialId: string) =>
   command(`/LearningMaterials/${materialId}/archive`, { method: "PATCH" });
 export const deleteLearningMaterial = (materialId: string) =>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Download, Flag, Search, ShieldCheck, UsersRound } from "lucide-react";
 import { getExamEnrollments, getExamSchedules, updateExamEnrollment } from "@/api/exams";
 import { getExamSubjects } from "@/api/exams";
-import { downloadExamReport, getAttemptActivities, getAttemptIntegrity, getExamReportIncidents, getExamReportOverview, getExamReportStudents, getIntegrityReviews, resolveAttemptIntegrity } from "@/api/examOperations";
+import { downloadExamReport, getAttemptActivities, getAttemptIntegrity, getExamReportIncidents, getExamReportOverview, getExamReportStudents, getIntegrityReviews, getScheduleIntegrityReviews, resolveAttemptIntegrity } from "@/api/examOperations";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
@@ -15,13 +16,18 @@ export { GradeReleaseRoute } from "./GradeReleaseRoute";
 
 function IntegrityWorkspace({ incidentsOnly = false }: { incidentsOnly?: boolean }) {
   const client = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const scheduleId = searchParams.get("scheduleId")?.trim() ?? "";
   const [search, setSearch] = useState("");
   const [selectedAttempt, setSelectedAttempt] = useState("");
   const [decision, setDecision] = useState("Dismissed");
   const [reason, setReason] = useState("");
   const reviews = useQuery({
-    queryKey: ["examiner", "integrity-reviews", incidentsOnly, search],
-    queryFn: () => getIntegrityReviews({ StudentKeyword: search || undefined, IncidentStatus: incidentsOnly ? "Ongoing" : undefined, Page: 1, PageSize: 100, Sort: "-lastFlaggedAt" }),
+    queryKey: ["examiner", "integrity-reviews", scheduleId, incidentsOnly, search],
+    queryFn: () => {
+      const filters = { StudentKeyword: search || undefined, IncidentStatus: incidentsOnly ? "Ongoing" : undefined, Page: 1, PageSize: 100, Sort: "-lastFlaggedAt" };
+      return scheduleId ? getScheduleIntegrityReviews(scheduleId, filters) : getIntegrityReviews(filters);
+    },
   });
   const detail = useQuery({ queryKey: ["examiner", "integrity", selectedAttempt], queryFn: () => getAttemptIntegrity(selectedAttempt), enabled: Boolean(selectedAttempt) });
   const activities = useQuery({ queryKey: ["examiner", "activities", selectedAttempt], queryFn: () => getAttemptActivities(selectedAttempt), enabled: Boolean(selectedAttempt) });
@@ -36,6 +42,7 @@ function IntegrityWorkspace({ incidentsOnly = false }: { incidentsOnly?: boolean
   });
   return <main className="space-y-6">
     <header className="border-b border-border pb-5"><h1 className="text-3xl font-extrabold tracking-tight">{incidentsOnly ? "Flagged sessions" : "Integrity review"}</h1><p className="mt-2 text-muted-foreground">Review integrity reports, signal interruptions and the candidate activity timeline returned by the Backend.</p></header>
+    {scheduleId ? <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-secondary/50 p-4"><p className="text-sm font-semibold">Showing integrity reviews for the selected exam schedule.</p><Button variant="outline" asChild><Link to={incidentsOnly ? "/examiner/flags" : "/examiner/reviews"}>Show all schedules</Link></Button></div> : null}
     <label htmlFor="integrity-student-search" className="block max-w-xl space-y-2 font-semibold">Search students<span className="relative block"><Search className="absolute left-3 top-3 size-5 text-muted-foreground" aria-hidden /><Input id="integrity-student-search" className="pl-10" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Student name or code" /></span></label>
     <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.4fr)]">
       <section className="overflow-hidden rounded-xl border border-border" aria-label="Integrity review queue">
@@ -72,17 +79,18 @@ function AccommodationRow({ scheduleId, enrollment }: { scheduleId: string; enro
   const [notes, setNotes] = useState(enrollment.accommodationNotes ?? "");
   useEffect(() => { setMinutes(String(enrollment.extraTimeMinutes)); setNotes(enrollment.accommodationNotes ?? ""); }, [enrollment.extraTimeMinutes, enrollment.accommodationNotes]);
   const save = useMutation({
-    mutationFn: () => updateExamEnrollment(scheduleId, enrollment.enrollmentId, { extraTimeMinutes: Math.max(0, Number(minutes) || 0), accommodationNotes: notes.trim() || null }),
-    onSuccess: async () => { toast({ title: "Extra time updated", description: `${enrollment.studentName ?? "The candidate"} now has ${Math.max(0, Number(minutes) || 0)} additional minutes.` }); await client.invalidateQueries({ queryKey: ["examiner", "accommodations", scheduleId] }); },
+    mutationFn: () => updateExamEnrollment(scheduleId, enrollment.enrollmentId, { extraTimeMinutes: Number(minutes), accommodationNotes: notes.trim() || null }),
+    onSuccess: async () => { toast({ title: "Extra time updated", description: `${enrollment.studentName ?? "The candidate"} now has ${minutes} additional minutes.` }); await client.invalidateQueries({ queryKey: ["examiner", "accommodations", scheduleId] }); },
     onError: () => toast({ title: "Update unsuccessful", description: "Check the candidate’s enrollment status and try again." }),
   });
   const changed = Number(minutes) !== enrollment.extraTimeMinutes || notes !== (enrollment.accommodationNotes ?? "");
+  const validMinutes = minutes.trim() !== "" && Number.isInteger(Number(minutes)) && Number(minutes) >= 0 && Number(minutes) <= 1440;
   return (
     <article className="grid gap-4 border-b border-border px-5 py-5 last:border-b-0 lg:grid-cols-[minmax(180px,1fr)_160px_minmax(220px,1.5fr)_auto] lg:items-end">
       <div><p className="font-bold">{enrollment.studentName ?? "Candidate"}</p><p className="mt-1 font-mono text-sm text-muted-foreground">{enrollment.studentId}</p><Badge className="mt-2" variant="outline">{enrollment.status}</Badge></div>
-      <label htmlFor={`extra-minutes-${enrollment.enrollmentId}`} className="space-y-2 text-sm font-semibold">Extra minutes<Input id={`extra-minutes-${enrollment.enrollmentId}`} min={0} max={240} type="number" value={minutes} onChange={(event) => setMinutes(event.target.value)} /></label>
+      <label htmlFor={`extra-minutes-${enrollment.enrollmentId}`} className="space-y-2 text-sm font-semibold">Extra minutes<Input id={`extra-minutes-${enrollment.enrollmentId}`} min={0} max={1440} step={1} type="number" value={minutes} onChange={(event) => setMinutes(event.target.value)} />{!validMinutes ? <span className="block text-xs text-destructive">Enter a whole number from 0 to 1440.</span> : null}</label>
       <label htmlFor={`accommodation-notes-${enrollment.enrollmentId}`} className="space-y-2 text-sm font-semibold">Accommodation notes<Textarea id={`accommodation-notes-${enrollment.enrollmentId}`} className="min-h-11 resize-y" rows={1} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Reason or approved accommodation" /></label>
-      <Button disabled={!changed || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save"}</Button>
+      <Button disabled={!changed || !validMinutes || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save"}</Button>
     </article>
   );
 }

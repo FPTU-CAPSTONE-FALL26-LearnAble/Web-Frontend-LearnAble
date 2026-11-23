@@ -244,10 +244,10 @@ const statVisuals: Record<string, { icon: typeof BookOpenText; className: string
 };
 
 /** One band of headline numbers; each cell links to where the numbers can be acted on. */
-export function StatBand({ stats, label = "Overview" }: { stats: Stat[]; label?: string }) {
+export function StatBand({ stats, label = "Overview", compact = false }: { stats: Stat[]; label?: string; compact?: boolean }) {
   return (
     <section aria-label={label} className="overflow-hidden rounded-2xl border border-border bg-border">
-      <ul className="grid grid-cols-2 gap-px xl:grid-cols-4">
+      <ul className={cn("grid gap-px", compact ? "sm:grid-cols-3" : "grid-cols-2 xl:grid-cols-4")}>
         {stats.map((stat) => {
           const visual = statVisuals[stat.key] ?? statVisuals.questions;
           const Icon = visual.icon;
@@ -260,10 +260,10 @@ export function StatBand({ stats, label = "Overview" }: { stats: Stat[]; label?:
                 </span>
               </span>
               <span className="text-2xl font-semibold tabular-nums">{stat.value}</span>
-              <span className="text-sm text-muted-foreground wrap-anywhere">{stat.detail}</span>
+              {!compact ? <span className="text-sm text-muted-foreground wrap-anywhere">{stat.detail}</span> : null}
             </>
           );
-          const cell = "flex h-full min-h-28 flex-col gap-1 p-4 sm:p-5";
+          const cell = cn("flex h-full flex-col gap-1 p-4", compact ? "min-h-20 justify-center" : "min-h-28 sm:p-5");
           return (
             <li key={stat.key} className="bg-card">
               {stat.to ? (

@@ -105,12 +105,16 @@ export function SummaryCard({
   detail,
   icon,
   compact = false,
+  emphasizeLabel = false,
+  labelClassName,
 }: {
   label: string;
   value: ReactNode;
   detail?: string;
   icon?: ReactNode;
   compact?: boolean;
+  emphasizeLabel?: boolean;
+  labelClassName?: string;
 }) {
   const tone = /failed|review|urgent|incident/i.test(label)
     ? "danger"
@@ -159,7 +163,7 @@ export function SummaryCard({
     <Card className="min-w-0 overflow-hidden border-border py-0 shadow-none">
       <CardContent>
         <div className="flex items-start justify-between gap-3 pt-5 text-sm font-semibold text-muted-foreground">
-          <span>{label}</span>
+          <span className={cn(emphasizeLabel && "text-base font-bold text-primary", labelClassName)}>{label}</span>
           {icon && (
             <span
               className={cn(
