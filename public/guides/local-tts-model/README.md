@@ -1,106 +1,52 @@
-# Cài Local TTS trên máy giảng viên
+# Cài LearnAble TTS Agent trên Windows
 
-Tài liệu này đi cùng **gói model LearnAble đã fine-tune**. Làm theo thứ tự bên dưới. Nếu trường chưa cung cấp một mục trong phần chuẩn bị, hãy liên hệ bộ phận kỹ thuật trước khi tiếp tục.
+Ứng dụng dùng GPU NVIDIA trên máy giảng viên để tạo audio cho tài liệu LearnAble. Giảng viên không cần cài Python, CUDA Toolkit, chạy Backend hay huấn luyện model.
 
-## 1. Nhận đủ thông tin từ trường
+## 1. Nhận bộ cài và thông tin từ trường
 
-- Tài khoản Lecturer đang hoạt động và địa chỉ API **HTTPS** kết thúc bằng `/api/v1`.
-- Đường dẫn tải **gói model đầy đủ** (`manifest.json`) và mã SHA-256 của manifest do trường xác nhận. Gói này phải có base model, LoRA adapter đã fine-tune, tokenizer, giọng tham chiếu và codec. **Chỉ tải `adapter_model.safetensors` là chưa đủ.**
-- Hai thư mục đã được nhóm kỹ thuật chuẩn bị trên máy: `C:\LearnAble\Backend-LearnAble` (có `tts-agent`) và `C:\LearnAble\VieNue-LoRA` (SDK 3.3.0 và môi trường Python `.venv` tương thích).
-- Máy Windows có GPU NVIDIA được PyTorch nhận diện. Nên có SSD còn khoảng 20 GB và RAM 16 GB. GPU 6–8 GB VRAM là mức chuẩn bị đề xuất; cần chạy thử trên máy thật.
+Trước khi bắt đầu, hãy xin nhóm triển khai:
 
-Giảng viên **không cần cài hoặc chạy Backend, PostgreSQL hay Docker**. Nếu trường đặt các thư mục ở vị trí khác, thay đường dẫn trong lệnh bên dưới bằng vị trí được cung cấp.
+- `LearnAble-TTS-Setup.exe` và **gói model đầy đủ đã xác minh**. Chỉ file LoRA adapter là chưa đủ.
+- URL HTTPS của API, kết thúc bằng `/api/v1`, và URL HTTPS của trang giảng viên. Hai địa chỉ phải trỏ tới cùng môi trường LearnAble.
+- Tài khoản Lecturer đang hoạt động. Nếu nhóm cấp cách tải model qua ứng dụng, cần thêm URL HTTPS của `manifest.json` và mã SHA-256 được xác nhận.
 
-## 2. Mở PowerShell và kiểm tra máy
+Hiện chưa có link tải công khai đã xác nhận cho bộ cài và model. Nếu chưa nhận đủ, hãy liên hệ nhóm triển khai. Máy cần Windows 10/11 64-bit, GPU NVIDIA có driver hoạt động, kết nối Internet và dung lượng trống đủ cho model; hỏi nhóm về dung lượng của gói được bàn giao.
 
-Nhấn phím Windows, gõ **PowerShell** và mở ứng dụng. Chạy:
+## 2. Cài ứng dụng và model
 
-```powershell
-nvidia-smi
-$ttsBackendRoot = 'C:\LearnAble\Backend-LearnAble'
-$ttsSdkRoot = 'C:\LearnAble\VieNue-LoRA'
-$ttsPython = Join-Path $ttsSdkRoot '.venv\Scripts\python.exe'
-Test-Path (Join-Path $ttsBackendRoot 'tts-agent')
-Test-Path $ttsPython
-```
+1. Mở `LearnAble-TTS-Setup.exe`, làm theo các bước cài đặt rồi mở **LearnAble TTS Agent** từ Start Menu.
+2. Tìm biểu tượng ứng dụng ở khay hệ thống, góc phải thanh taskbar. Có thể biểu tượng nằm trong danh sách ẩn.
+3. Nhấp chuột phải vào biểu tượng, chọn **Settings**. Nhập `API URL (include /api/v1)` và `Web dashboard URL` do nhóm cung cấp. Đặt `Device label` để nhận biết máy. Để trống `Runtime executable (optional)` khi dùng bộ cài đầy đủ.
+4. Nếu nhận bộ model dạng thư mục/file nén: giải nén, chọn thư mục chứa trực tiếp `manifest.json` và `manifest.sha256` tại `Verified model folder`. Giữ nguyên thư mục này sau khi cấu hình.
+5. Nếu nhóm cấp URL tải model: chọn **Check for Updates / Install Package → Model**, dán URL manifest HTTPS và mã SHA-256. Chờ ứng dụng tải và xác minh xong.
 
-Hai dòng `Test-Path` phải hiện `True`. Nếu có `False` hoặc `nvidia-smi` không thấy GPU, gửi ảnh màn hình cho bộ phận kỹ thuật.
+Không thay URL manifest bằng link Kaggle hoặc file adapter riêng. Không tắt kiểm tra checksum.
 
-## 3. Cài agent và tải model
+## 3. Kiểm tra và kết nối máy
 
-```powershell
-Set-Location $ttsBackendRoot
-& $ttsPython -m pip install -e ./tts-agent
-$env:LEARNABLE_VIENEU_PATH = $ttsSdkRoot
-& $ttsPython -m learnable_tts_agent.cli doctor
-```
+1. Trong menu ứng dụng, chọn **Check GPU**. Hộp thoại cần hiện GPU NVIDIA, VRAM, phiên bản PyTorch và CUDA. Bước này chỉ kiểm tra khả năng nhận GPU; chưa chứng minh audio sẽ tạo được.
+2. Đăng nhập trang Lecturer của **cùng môi trường** với API đã nhập. Vào **Learning Materials → Upload new material → Đăng ký máy tạo audio**. Nếu trang này chưa có mục đăng ký, nhóm có thể cấp trang BE `/local-tts/` của cùng môi trường.
+3. Nhập tên máy và chọn **Đăng ký máy**. Giữ cửa sổ ứng dụng ở màn hình **Pair Device**.
+4. Chép `Agent ID` và `Expires at (ISO 8601)` vào ứng dụng; chọn **Sao chép token một lần** rồi dán ngay token vào `Device token`. Thông tin trên web sẽ tự ẩn sau hai phút.
+5. Chọn **OK** trong ứng dụng và chờ thông báo kết nối thành công. Không gửi token hoặc ảnh chụp token cho người khác.
 
-`doctor` phải thấy CUDA. Nếu môi trường Python báo không có `pip`, nhờ kỹ thuật viên cài agent bằng `uv`; đừng tự thay bản PyTorch hoặc SDK.
+Token thiết bị hiện hết hạn sau **8 giờ**. Khi hết hạn, đăng ký thiết bị mới và Pair Device lại. Khi đổi tài khoản, chọn **Unpair Device** trước.
 
-Nhập **URL manifest** và **SHA-256** nhận từ trường khi được hỏi:
+## 4. Tạo audio thử
 
-```powershell
-$ttsManifestUrl = Read-Host 'Dan URL manifest HTTPS'
-$ttsManifestSha = Read-Host 'Dan SHA-256 cua manifest'
-& $ttsPython -m learnable_tts_agent.cli download-model --manifest-url $ttsManifestUrl --manifest-sha256 $ttsManifestSha
-```
+1. Giữ máy có nguồn điện, mạng và không vào Sleep. Mở một PDF ngắn có chữ trong **Material Audio Studio**.
+2. Kiểm tra text đọc, tạo audio cho **một trang** trước. Giữ LearnAble TTS Agent đang chạy.
+3. Khi audio sẵn sàng, nghe thử rồi mới **Approve**. Sau đó mới tạo audio cho cả tài liệu.
 
-Lệnh tải sẽ kiểm tra từng file. Khi hoàn tất, sao chép đường dẫn thư mục model mà PowerShell in ra, rồi nhập:
+Ứng dụng hiển thị trạng thái như `IDLE` (chờ job), `GENERATING` (đang tạo), `UPLOADING` (đang gửi), `PAIRING_REQUIRED` (cần kết nối lại), `MODEL_SETUP_REQUIRED` (cần kiểm tra model) và `ERROR` (xem log). **Pause / Resume** chỉ dừng nhận job mới; job đang chạy vẫn tiếp tục. Lần sau chỉ cần mở ứng dụng từ Start Menu hoặc để ứng dụng tự chạy cùng Windows, kiểm tra trạng thái và kết nối lại nếu token hết hạn.
 
-```powershell
-$ttsModelDir = Read-Host 'Dan duong dan thu muc model vua tai'
-Test-Path (Join-Path $ttsModelDir 'manifest.json')
-```
+## Nếu gặp lỗi
 
-Kết quả cuối phải là `True`. Nếu mã SHA-256 không khớp, dừng lại và xin trường xác nhận lại gói model. Không bỏ qua bước kiểm tra.
+- **Không thấy GPU:** kiểm tra GPU trong Task Manager, cập nhật driver NVIDIA rồi khởi động lại Windows. Gửi tên GPU và lỗi cho nhóm kỹ thuật.
+- **Model không hợp lệ:** kiểm tra thư mục chứa manifest hoặc xin lại URL và SHA-256 từ nhóm.
+- **Ứng dụng chỉ báo IDLE dù đã tạo job:** kiểm tra ứng dụng và web cùng API/môi trường, đúng tài khoản Lecturer và phiên bản model.
+- **Audio chờ lâu hoặc lỗi:** mở **View Logs**, gửi mã lỗi, thời điểm, tên GPU cho nhóm kỹ thuật. Không gửi mật khẩu, token hoặc link upload có chữ ký.
 
-## 4. Ghép máy với LearnAble
+Để gỡ ứng dụng, chọn **Unpair Device** trước rồi gỡ LearnAble TTS Agent trong Windows Settings. Nếu mất mạng, thu hồi thiết bị trên web khi có mạng trở lại.
 
-```powershell
-$env:LEARNABLE_API_URL = (Read-Host 'Dan URL API HTTPS ket thuc bang /api/v1').TrimEnd('/')
-$ttsIdentifier = Read-Host 'Nhap ten dang nhap Lecturer'
-& $ttsPython -m learnable_tts_agent.cli pair --identifier $ttsIdentifier --device-name "$env:COMPUTERNAME-TTS"
-```
-
-Nhập mật khẩu khi PowerShell hỏi. Mật khẩu **không hiện ký tự khi gõ**; đây là bình thường. Kết quả thành công có dòng `Paired until ...`. Không gửi mật khẩu hoặc token cho người khác. Token thiết bị hiện hết hạn sau 8 giờ; khi hết hạn, chạy lại lệnh `pair`.
-
-## 5. Chạy Local TTS và nghe thử
-
-```powershell
-& $ttsPython -m learnable_tts_agent.cli run --model-dir $ttsModelDir
-```
-
-Giữ cửa sổ PowerShell mở. Trên LearnAble, vào **Learning Materials → Upload new material**, tải một PDF ngắn có chữ, mở **Material Audio Studio**, kiểm tra lời đọc rồi chọn **Generate audio** cho một trang. Khi hoàn tất, chọn **Preview** để nghe. Chỉ duyệt khi audio có tiếng và đọc đúng.
-
-Những lần dùng sau, mở PowerShell, đặt lại `$ttsSdkRoot`, `$ttsPython`, `LEARNABLE_VIENEU_PATH`, `LEARNABLE_API_URL` và `$ttsModelDir`, rồi chạy lại lệnh `run`. Các biến PowerShell không được giữ lại sau khi đóng cửa sổ. Nếu agent báo hết hạn ghép máy, chạy lại `pair` trước.
-
-### Chạy lại trên máy đã cài bằng adapter LoRA
-
-Máy thử nghiệm dùng adapter thay cho gói model có `manifest.json`. Mỗi lần mở PowerShell mới, chạy các lệnh sau. Thay đường dẫn nếu bạn đã cài ở nơi khác; không cần cài lại Python hay agent.
-
-```powershell
-$ttsSdkRoot = 'C:\Capstone2026\VieNue-LoRA'
-$ttsPython = Join-Path $ttsSdkRoot '.venv\Scripts\python.exe'
-$ttsAdapter = Join-Path $ttsSdkRoot 'finetune\output\kaggle\vieneu-lora\ngoc_huyen-full-20261108-1234-s42\best_adapter'
-$env:LEARNABLE_VIENEU_PATH = $ttsSdkRoot
-$env:LEARNABLE_API_URL = 'https://backend-learnable.onrender.com/api/v1'
-Set-Location 'C:\Capstone2026\Backend-LearnAble-TTS'
-& $ttsPython -m learnable_tts_agent.cli run --adapter-dir $ttsAdapter --adapter-sha256 'ff93e9d4d599873a2db3636220a31fe7771d884f5fe0583e7314cca9280bd745' --preset-voice ngoc_huyen
-```
-
-Nếu báo hết hạn ghép máy, chạy lệnh sau trong cùng cửa sổ PowerShell, nhập mật khẩu Lecturer (không hiện ký tự khi gõ), rồi chạy lại dòng `run` ở trên:
-
-```powershell
-& $ttsPython -m learnable_tts_agent.cli pair --identifier 'LEC0001' --device-name "$env:COMPUTERNAME-TTS"
-```
-
-Giữ cửa sổ agent mở khi tạo audio; nhấn `Ctrl+C` để dừng. Agent nhận job cũ nhất đang chờ của cùng tài khoản Lecturer. Vì vậy, nếu còn job của tài liệu cũ, chạy lại agent sẽ tiếp tục xử lý chúng trước tài liệu mới. Cần hủy các job cũ trên hệ thống trước khi chạy lại nếu muốn chuyển sang tài liệu khác.
-
-## Khi gặp lỗi
-
-- **Không thấy CUDA:** nhờ kỹ thuật viên kiểm tra GPU, driver và bản PyTorch trong đúng môi trường `.venv`.
-- **Tải model lỗi:** kiểm tra URL manifest và SHA-256 trường đã cấp; không tự tải một model khác thay thế.
-- **Ghép máy lỗi:** kiểm tra tài khoản Lecturer, URL API HTTPS và trạng thái đổi mật khẩu lần đầu.
-- **Audio chờ lâu:** kiểm tra cửa sổ agent còn chạy và máy không ngủ. Gửi ảnh lỗi cùng thời điểm xảy ra cho bộ phận kỹ thuật. Không gửi mật khẩu, token hoặc URL upload có chữ ký.
-
-Hướng dẫn có hình và từng bước: mở trang `/guides/local-tts-lecturer-guide.html` trên website LearnAble.
+> Bộ cài, gói model và luồng web → agent → lưu audio → duyệt cần được nhóm triển khai chạy thử trên máy giảng viên trước khi dùng cho tài liệu dài. Bản thử trên RTX 3050 Ti chỉ xác nhận một audio ngắn; không bảo đảm mọi GPU 4 GB đều xử lý được tài liệu dài.

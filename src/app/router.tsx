@@ -361,7 +361,6 @@ export const router = createBrowserRouter([
                 element: <AccessibilitySettingsRoute />,
               },
               { path: "/home", element: <StudentHomeRoute /> },
-              { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },

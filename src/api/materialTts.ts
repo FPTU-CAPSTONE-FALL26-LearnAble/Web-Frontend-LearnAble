@@ -60,6 +60,11 @@ const agentSchema = z.object({
   modelVersion: z.string().nullable().optional(), capabilities: z.string().nullable().optional(),
   lastSeenAt: z.string(), expiresAt: z.string(), revokedAt: z.string().nullable().optional(),
 });
+const pairingSchema = z.object({
+  agentId: z.string(),
+  token: z.string(),
+  expiresAt: z.string(),
+});
 
 function envelope<T extends z.ZodTypeAny>(schema: T) {
   return z.object({
@@ -135,4 +140,9 @@ export const approveSlideAudio = (slideId: string, audioId: string) =>
 export const getSlideAudioPlayback = (slideId: string, audioId: string) =>
   unwrap(`/lecturer/slides/${slideId}/audio/${audioId}/playback-url`, linkSchema);
 export const getMaterialTtsAgents = () => unwrap("/lecturer/tts-agents", z.array(agentSchema));
+export const registerMaterialTtsAgent = (deviceName: string, modelVersion: string) =>
+  unwrap("/tts-agents/register", pairingSchema, {
+    method: "POST",
+    json: { deviceName, agentVersion: "0.2.0", modelVersion, capabilities: "{}" },
+  });
 export const revokeMaterialTtsAgent = (agentId: string) => emptyCommand(`/lecturer/tts-agents/${agentId}`, { method: "DELETE" });
