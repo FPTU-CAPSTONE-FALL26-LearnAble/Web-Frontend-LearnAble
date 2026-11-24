@@ -6,7 +6,7 @@ vi.mock("@/api/client", async (importOriginal) => {
   return { ...actual, request: client.request };
 });
 
-import { getLecturerGradingAssignments } from "./grading";
+import { assignAttemptGrader, getLecturerGradingAssignments, gradebookSchema, gradeEssayQuestion, updateMarkingCompletion } from "./grading";
 
 describe("grading API", () => {
   beforeEach(() => client.request.mockReset());
@@ -32,5 +32,39 @@ describe("grading API", () => {
 
     await expect(getLecturerGradingAssignments()).resolves.toMatchObject({ items: [assignment] });
     expect(client.request).toHaveBeenCalledWith("/lecturer/grading-assignments?Page=1&PageSize=100", expect.anything(), undefined);
+  });
+
+  it("accepts the current gradebook participation and integrity fields", () => {
+    const currentGradebook = {
+      scheduleId: "schedule-1", revision: "revision-1", registered: 1, absent: 0, active: 0,
+      submitted: 1, ungraded: 0, needsManual: 0, unreviewed: 0, canRelease: false,
+      blockingReasons: null, releasedAt: null, releasedBy: null, unconfirmedMarking: 0,
+      pendingIntegrityReviews: 1, invalidated: 0,
+      results: {
+        items: [{
+          enrollmentId: "enrollment-1", studentId: "student-1", userCode: null, fullName: null,
+          attemptId: "attempt-1", attemptStatus: "Submitted", autoScore: 8, manualScore: null,
+          totalScore: 8, maxScore: 10, gradingStatus: "Graded", lecturerId: null,
+          reviewedAt: null, reviewedBy: null, requiresMarkingConfirmation: false,
+          markingCompletedAt: null, markingCompletedBy: null, attendanceStatus: "Present",
+          participationStatus: "Submitted", participationLabel: "Submitted", integrityStatus: "PendingReview",
+        }],
+        totalCount: 1, pageNumber: 1, pageSize: 100, totalPages: 1, hasNextPage: false, hasPreviousPage: false,
+      },
+    };
+
+    expect(gradebookSchema.parse(currentGradebook)).toMatchObject({
+      pendingIntegrityReviews: 1,
+      blockingReasons: [],
+      results: { items: [{ fullName: "Unknown student", participationLabel: "Submitted", integrityStatus: "PendingReview" }] },
+    });
+  });
+
+  it("accepts the documented empty success responses for grading writes", async () => {
+    client.request.mockResolvedValue(null);
+
+    await expect(assignAttemptGrader("attempt-1", "revision-1", { lecturerId: "lecturer-1" })).resolves.toBeUndefined();
+    await expect(gradeEssayQuestion("attempt-1", "question-1", "revision-1", { score: 4 })).resolves.toBeUndefined();
+    await expect(updateMarkingCompletion("attempt-1", "revision-1", true)).resolves.toBeUndefined();
   });
 });

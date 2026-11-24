@@ -3,7 +3,13 @@
   background: var(--primary);
 }
 
+.lecturer-shell [data-slot="card"],
+.lecturer-shell :where(section, article, aside, fieldset, details, form, dl, ul, ol, div, p, label, li)[class~="border"][class*="rounded"]:not([class~="rounded-full"]) {
+  border-width: 2px;
+}
+
 .lecturer-shell .lecturer-major-card {
+  border-width: 2px;
   border-color: var(--border);
 }
 

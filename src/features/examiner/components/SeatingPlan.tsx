@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Camera, Monitor } from "lucide-react";
 import type { BulkExamSchedulePlan } from "@/api/exams";
 
 type PlanRoom = BulkExamSchedulePlan["rooms"][number];
@@ -62,7 +61,7 @@ export function SeatingPlan({ rooms, seatsByRoom, studentName, roomName }: {
     <section aria-label="Seating plan" className="space-y-4 border-t border-border pt-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold">Seating plan</h3>
+          <h3 className="text-lg font-bold text-primary">Seating plan</h3>
           <p className="text-sm text-muted-foreground">
             {room.students.length} student{room.students.length === 1 ? "" : "s"} seated
             {grid.knowsAllSeats ? ` · ${grid.free} free seat${grid.free === 1 ? "" : "s"}${grid.blocked ? ` · ${grid.blocked} not usable` : ""}` : ""}
@@ -82,7 +81,7 @@ export function SeatingPlan({ rooms, seatsByRoom, studentName, roomName }: {
               </button>
             ))}
           </div>
-        ) : <p className="font-semibold">{roomName(room)}</p>}
+        ) : <p className="font-semibold text-primary">{roomName(room)}</p>}
       </header>
 
       {grid.cells.length ? (
@@ -102,12 +101,6 @@ export function SeatingPlan({ rooms, seatsByRoom, studentName, roomName }: {
                 >
                   <span className="font-bold">{cell.seatCode ?? `${cell.rowNumber}-${cell.columnNumber}`}</span>
                   {state === "taken" ? <span className="w-full truncate font-medium">{shortName(name) || initials(name)}</span> : <span>{state === "free" ? "Free" : "Not usable"}</span>}
-                  {state !== "blocked" && (cell.hasComputer || cell.hasCamera) ? (
-                    <span aria-hidden className="mt-0.5 flex gap-1 opacity-70">
-                      {cell.hasComputer ? <Monitor className="size-3" /> : null}
-                      {cell.hasCamera ? <Camera className="size-3" /> : null}
-                    </span>
-                  ) : null}
                 </li>
               );
             })}

@@ -8,6 +8,7 @@ const envelope = <T extends z.ZodTypeAny>(schema: T) => z.object({
   data: schema.nullable(),
   errors: z.array(z.string()).nullable().optional(),
 });
+const emptySuccessSchema = z.union([z.null(), envelope(z.unknown())]);
 async function unwrap<T extends z.ZodTypeAny>(path: string, schema: T, init?: RequestInit & { json?: unknown }) {
   const response = await request(path, envelope(schema), init);
   if (!response.success || response.data == null) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
@@ -18,26 +19,34 @@ const resultETag = (resourceId: string, revision: string) => `"${compact(resourc
 const revisionHeaders = (resourceId: string, revision: string) => ({ "If-Match": resultETag(resourceId, revision) });
 
 export const gradebookItemSchema = z.object({
-  enrollmentId: z.string(), studentId: z.string(), userCode: z.string(), fullName: z.string(),
+  enrollmentId: z.string(), studentId: z.string(),
+  userCode: z.string().nullish().transform((value) => value ?? "Not available"),
+  fullName: z.string().nullish().transform((value) => value ?? "Unknown student"),
   attemptId: z.string().nullable(), attemptStatus: z.string().nullable(), autoScore: z.number().nullable(),
   manualScore: z.number().nullable(), totalScore: z.number().nullable(), maxScore: z.number().nullable(),
   gradingStatus: z.string().nullable(), lecturerId: z.string().nullable(), reviewedAt: z.string().nullable(), reviewedBy: z.string().nullable(),
   requiresMarkingConfirmation: z.boolean().default(false), markingCompletedAt: z.string().nullable().optional(), markingCompletedBy: z.string().nullable().optional(),
+  attendanceStatus: z.string().nullable().optional(), participationStatus: z.string().nullable().optional(),
+  participationLabel: z.string().nullable().optional(), integrityStatus: z.string().nullable().optional(),
 });
 export const gradebookSchema = z.object({
   scheduleId: z.string(), revision: z.string(), registered: z.number(), absent: z.number(), active: z.number(),
   submitted: z.number(), ungraded: z.number(), needsManual: z.number(), results: pageSchema(gradebookItemSchema),
-  unreviewed: z.number(), canRelease: z.boolean(), blockingReasons: z.array(z.string()), releasedAt: z.string().nullable(), releasedBy: z.string().nullable(),
+  unreviewed: z.number(), canRelease: z.boolean(), blockingReasons: z.array(z.string()).nullish().transform((value) => value ?? []), releasedAt: z.string().nullable(), releasedBy: z.string().nullable(),
   unconfirmedMarking: z.number().default(0),
+  pendingIntegrityReviews: z.number().default(0), invalidated: z.number().default(0),
 });
 export type ExamGradebook = z.infer<typeof gradebookSchema>;
 
 const gradingOptionSchema = z.object({ optionId: z.string(), position: z.number(), content: z.string(), isCorrect: z.boolean() });
 export const questionGradeSchema = z.object({
-  attemptQuestionId: z.string(), position: z.number(), questionType: z.string(), content: z.string(), answerText: z.string().nullable(),
+  attemptQuestionId: z.string(), position: z.number(), questionType: z.string(),
+  content: z.string().nullish().transform((value) => value ?? "Question content unavailable"), answerText: z.string().nullable(),
   referenceAnswer: z.string().nullable(), gradingCriteria: z.string().nullable(), maxScore: z.number(), score: z.number().nullable(),
   gradingMethod: z.string(), gradedBy: z.string().nullable(), gradedAt: z.string().nullable(), feedback: z.string().nullable(),
-  options: z.array(gradingOptionSchema), selectedOptionIds: z.array(z.string()),
+  options: z.array(gradingOptionSchema).nullish().transform((value) => value ?? []),
+  selectedOptionIds: z.array(z.string()).nullish().transform((value) => value ?? []),
+  images: z.array(z.unknown()).nullish().transform((value) => value ?? []), answerFormat: z.string().nullable().optional(),
 });
 export const gradingDetailSchema = z.object({
   attemptId: z.string(), scheduleId: z.string(), studentId: z.string(), studentName: z.string(), attemptStatus: z.string(), gradingStatus: z.string(),
@@ -70,15 +79,19 @@ export const assignScheduleGrader = (scheduleId: string, revision: string, input
  * examiners cannot silently overwrite each other. An attempt already marked complete is refused.
  */
 export async function assignAttemptGrader(attemptId: string, revision: string, input: { lecturerId: string; note?: string | null }) {
-  const response = await request(`/exam-attempts/${attemptId}/grading-assignment`, envelope(z.unknown()), { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
-  if (!response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
+  const response = await request(`/exam-attempts/${attemptId}/grading-assignment`, emptySuccessSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+  if (response && !response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
 }
 export const getAttemptGrading = (attemptId: string) => unwrap(`/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
 export const reviewAttemptResult = (attemptId: string, revision: string, input: { reviewed?: boolean; note?: string | null }) =>
   unwrap(`/exam-attempts/${attemptId}/grading/review`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
 export const getLecturerGradingAssignments = () => unwrap("/lecturer/grading-assignments?Page=1&PageSize=100", pageSchema(gradingAssignmentSchema));
 export const getLecturerAttemptGrading = (attemptId: string) => unwrap(`/lecturer/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
-export const gradeEssayQuestion = (attemptId: string, questionId: string, revision: string, input: { score?: number | null; feedback?: string | null }) =>
-  unwrap(`/lecturer/exam-attempts/${attemptId}/grading/questions/${questionId}`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
-export const updateMarkingCompletion = (attemptId: string, revision: string, completed: boolean, note?: string | null) =>
-  unwrap(`/lecturer/exam-attempts/${attemptId}/grading/completion`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: { completed, note: note?.trim() || null } });
+export const gradeEssayQuestion = async (attemptId: string, questionId: string, revision: string, input: { score?: number | null; feedback?: string | null }) => {
+  const response = await request(`/lecturer/exam-attempts/${attemptId}/grading/questions/${questionId}`, emptySuccessSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+  if (response && !response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
+};
+export const updateMarkingCompletion = async (attemptId: string, revision: string, completed: boolean, note?: string | null) => {
+  const response = await request(`/lecturer/exam-attempts/${attemptId}/grading/completion`, emptySuccessSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: { completed, note: note?.trim() || null } });
+  if (response && !response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
+};

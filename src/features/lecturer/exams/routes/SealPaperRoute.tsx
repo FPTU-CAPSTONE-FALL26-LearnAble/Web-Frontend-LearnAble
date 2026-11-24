@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { getExamPaper, sealExamPaper } from "@/api/exams";
+import { describeQuestionImage, getQuestionImages, type questionImagesSchema } from "@/api/lecturer";
+import type { z } from "zod";
+import { Input } from "@/shared/ui/primitives/input";
 import { describeError } from "@/app/providers";
 import { matchesAudioFilter, useQuestionAudio, type QuestionAudio } from "@/features/lecturer/questions/audioStatus";
 import { operation } from "@/features/examiner/workflow/operationProgress";
@@ -30,6 +33,24 @@ const audioNames: Record<QuestionAudio["state"], string> = {
   unavailable: "Unknown",
 };
 
+type Images = z.infer<typeof questionImagesSchema>;
+
+function ImageDescriptionEditor({ questionId, image, revision }: { questionId: string; image: Images["images"][number]; revision: string }) {
+  const [description, setDescription] = useState(image.description ?? "");
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: () => describeQuestionImage(questionId, image.imageId, description.trim(), revision),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["question-images", questionId] });
+      toast({ title: "Image description saved", variant: "success" });
+    },
+    onError: (error) => toast({ title: "Description could not be saved", description: describeError(error), variant: "error" }),
+  });
+  return <label className="block space-y-2 text-sm font-semibold">Description for {image.originalFileName ?? "image"}
+    <div className="flex flex-wrap gap-2"><Input className="min-w-48 flex-1" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe what the image shows" /><Button disabled={!description.trim() || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save description"}</Button></div>
+  </label>;
+}
+
 /** Every question of a paper must have audio before the paper can be sealed into a locked package. */
 export function SealPaperRoute() {
   const { paperId = "" } = useParams();
@@ -39,8 +60,14 @@ export function SealPaperRoute() {
   const paper = useQuery({ queryKey: ["exam-paper", paperId], queryFn: () => getExamPaper(paperId), enabled: Boolean(paperId) });
   const questions = paper.data?.questions ?? [];
   const audioById = useQuestionAudio(questions.map((question) => question.questionId));
+  const imageQueries = useQueries({ queries: questions.map((question) => ({
+    queryKey: ["question-images", question.questionId], queryFn: () => getQuestionImages(question.questionId), meta: { silent: true },
+  })) });
   const checking = questions.some((question) => audioById.get(question.questionId)?.state === "loading");
   const missing = questions.filter((question) => !matchesAudioFilter(audioById.get(question.questionId), "ready"));
+  const imageChecking = imageQueries.some((query) => query.isPending);
+  const imageErrors = imageQueries.some((query) => query.isError);
+  const missingDescriptions = imageQueries.reduce((count, query) => count + (query.data?.images.filter((image) => !image.description?.trim()).length ?? 0), 0);
   const seal = useMutation({
     mutationFn: () => {
       operation.start("Sealing the paper", ["Checking the paper version and question audio", "Creating the locked package"]);
@@ -87,7 +114,7 @@ export function SealPaperRoute() {
     );
   }
   const notDraft = paper.data.status !== "Draft";
-  const ready = !checking && missing.length === 0 && questions.length > 0 && !notDraft;
+  const ready = !checking && !imageChecking && !imageErrors && missing.length === 0 && missingDescriptions === 0 && questions.length > 0 && !notDraft;
   return (
     <main className="space-y-6">
       <header className="border-b border-border pb-5">
@@ -98,7 +125,7 @@ export function SealPaperRoute() {
             <div className="border-t border-border p-4 sm:border-r sm:border-t-0"><dt className="text-xs font-semibold text-muted-foreground">Questions</dt><dd className="mt-1 text-lg font-bold tabular-nums">{questions.length}</dd></div>
             <div className="border-t border-border p-4 sm:border-t-0"><dt className="text-xs font-semibold text-muted-foreground">Total score</dt><dd className="mt-1 text-lg font-bold tabular-nums">{paper.data.totalScore} points</dd></div>
           </dl>
-          <p className="flex items-start gap-3 border-t border-border bg-muted/40 p-4 text-sm leading-6 text-muted-foreground"><Lock className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden /><span><strong className="text-foreground">What sealing does.</strong> Every question must have audio. Once sealed, the paper becomes a locked package that neither lecturers nor examiners can change.</span></p>
+          <p className="flex items-start gap-3 border-t border-border bg-muted/40 p-4 text-sm leading-6 text-muted-foreground"><Lock className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden /><span><strong className="text-foreground">What sealing does.</strong> Every question needs audio, and every image needs a description. Once sealed, the paper becomes a locked package that neither lecturers nor examiners can change.</span></p>
         </section>
       </header>
       {notDraft ? (
@@ -120,6 +147,11 @@ export function SealPaperRoute() {
         {!ready && !checking && questions.length > 0 ? (
           <p className="mt-1 text-sm">Add audio to these questions, then come back. The paper cannot be sealed until none is missing.</p>
         ) : null}
+      </section>
+      <section aria-label="Image description check" className="rounded-2xl border border-border p-5">
+        <h2 className="font-bold">Image descriptions</h2>
+        {imageChecking ? <p role="status">Checking images…</p> : imageErrors ? <div role="alert" className="mt-2 text-destructive">Images could not be checked. <Button variant="outline" onClick={() => imageQueries.forEach((query) => { if (query.isError) void query.refetch(); })}>Retry</Button></div> : <p className="mt-1 text-sm text-muted-foreground">{missingDescriptions ? `${missingDescriptions} image${missingDescriptions === 1 ? " needs" : "s need"} a description before sealing.` : "Every image has a description."}</p>}
+        <div className="mt-4 space-y-4">{imageQueries.map((query, index) => query.data?.images.filter((image) => !image.description?.trim()).map((image) => <div key={image.imageId} className="rounded-xl bg-muted p-4"><p className="mb-2 font-semibold">Question {index + 1} · {formatQuestionId(questions[index].questionId)}</p><ImageDescriptionEditor questionId={questions[index].questionId} image={image} revision={query.data.revision} /></div>))}</div>
       </section>
       <ul aria-label="Questions" className="divide-y divide-border rounded-2xl border border-border">
         {questions.map((question, index) => {

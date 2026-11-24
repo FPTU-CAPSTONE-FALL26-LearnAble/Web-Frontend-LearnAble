@@ -1,9 +1,9 @@
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- The resizable ARIA separator is keyboard and pointer operated. */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useBlocker, useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Save,
-  Sparkles,
   CircleDot,
   ListChecks,
   FileText,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import "../components/lecturer-studio.css";
 import { Button } from "@/shared/ui/primitives/button";
-import { Card, CardContent, CardHeader } from "@/shared/ui/primitives/card";
+import { CardContent, CardHeader } from "@/shared/ui/primitives/card";
 import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
 import {
@@ -40,6 +40,7 @@ import {
 import { ChoiceField, TextField } from "@/features/lecturer/questions/components/QuestionFields";
 import { QuestionTypeForm } from "@/features/lecturer/questions/components/QuestionTypeForm";
 import { QuestionPreview } from "@/features/lecturer/questions/components/QuestionPreview";
+import { readingOrder } from "@/features/lecturer/questions/components/accessibilityReview";
 import {
   createDraft,
   draftKey,
@@ -54,12 +55,14 @@ import { buildExamTypeOptions } from "@/lib/examTypeLabel";
 import { useAcademicOptions } from "@/features/lecturer/shared/api/useLecturerData";
 import { ReadState, ScrollRegion } from "@/features/lecturer/shared/components/Workbench";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import { describeError } from "@/app/providers";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
-import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
+import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, getQuestionImages, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
 import { getExamTypes } from "@/api/exams";
 import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
 import { QuestionImagesManager } from "@/features/lecturer/questions/components/QuestionImagesManager";
+import { getCodingLanguages, getCodingQuestion, saveCodingQuestion, validateCodingQuestion } from "@/api/coding";
 
 export function CreateQuestionRoute() {
   const studioBodyRef = useRef<HTMLDivElement>(null);
@@ -80,6 +83,13 @@ export function CreateQuestionRoute() {
     () => editingId ? createDraft() : readDraft(userId, purpose) ?? createDraft(),
   );
   const editQuestion = useQuery({ queryKey: ["question", editingId], queryFn: () => getQuestion(editingId), enabled: Boolean(editingId) });
+  const editCoding = useQuery({ queryKey: ["coding-question", editingId], queryFn: () => getCodingQuestion(editingId), enabled: Boolean(editingId) && editQuestion.data?.questionType === "Coding", retry: false, meta: { silent: true } });
+  const editImages = useQuery({ queryKey: ["question-images", editingId], queryFn: () => getQuestionImages(editingId), enabled: Boolean(editingId), retry: false, meta: { silent: true } });
+  const codingLanguages = useQuery({ queryKey: ["coding-languages"], queryFn: getCodingLanguages, enabled: draft.type === "code", retry: false });
+  useEffect(() => {
+    if (draft.type !== "code" || !codingLanguages.data?.length || codingLanguages.data.includes(draft.language)) return;
+    setDraft((current) => current.type === "code" ? { ...current, language: codingLanguages.data![0] } : current);
+  }, [codingLanguages.data, draft]);
   const academic = useAcademicOptions();
   const examTypes = useQuery({
     queryKey: ["exam-types", "active"],
@@ -136,7 +146,7 @@ export function CreateQuestionRoute() {
     JSON.stringify(draft) !== saved || !!files.image || !!files.audio || selectedOptionAudio.current.size > 0;
   const blocker = useBlocker(dirty);
   useEffect(() => {
-    if (!editingId || !editQuestion.data || loadedEditRef.current === editingId) return;
+    if (!editingId || !editQuestion.data || loadedEditRef.current === editingId || (editQuestion.data.questionType === "Coding" && editCoding.isPending)) return;
     const topic = (academic.topics.data?.items ?? []).find((item) => item.topicId === editQuestion.data?.topicId);
     const subject = subjects.find((item) => item.subjectId === topic?.subjectId);
     if (!topic || !subject) return;
@@ -145,19 +155,20 @@ export function CreateQuestionRoute() {
       examTypeId: source.examTypeId,
       course: subject.subjectCode,
       topic: topic.topicName,
-      bloom: "Understand",
+      difficulty: (["Easy", "Medium", "Hard"].includes(source.difficulty) ? source.difficulty : "Medium") as "Easy" | "Medium" | "Hard",
       points: String(source.defaultScore),
       content: source.content,
     };
-    const type: QuestionType = source.questionType === "Multiple" ? "multiple" : source.questionType === "Essay" ? "essay" : "single";
+    const type: QuestionType = source.questionType === "Multiple" ? "multiple" : source.questionType === "Essay" ? "essay" : source.questionType === "Coding" ? "code" : "single";
     const loaded = type === "essay"
       ? { ...createDraft("essay", common), instructions: source.referenceAnswer ?? "" }
+      : type === "code" ? (() => { const base = createDraft("code", common); if (base.type !== "code") return base; const language = Object.keys(editCoding.data?.starterCodes ?? {})[0] ?? base.language; const publicTest = editCoding.data?.testCases?.find((test) => test.isPublic) ?? editCoding.data?.testCases?.[0]; const hiddenTest = editCoding.data?.testCases?.find((test) => !test.isPublic) ?? editCoding.data?.testCases?.[1]; return { ...base, language, starterCode: editCoding.data?.starterCodes?.[language] ?? editCoding.data?.starterCode ?? "", constraints: editCoding.data?.constraints ?? "", testInput: publicTest?.input ?? "", expectedOutput: publicTest?.expectedOutput ?? "", hiddenTestInput: hiddenTest?.input ?? "", hiddenExpectedOutput: hiddenTest?.expectedOutput ?? "" }; })()
       : { ...createDraft(type, common), options: source.options.map((option) => ({ text: option.content, description: "", correct: option.isCorrect })) };
     setDraft(loaded);
     setSaved(JSON.stringify(loaded));
     setRestored(false);
     loadedEditRef.current = editingId;
-  }, [academic.topics.data?.items, editQuestion.data, editingId, subjects]);
+  }, [academic.topics.data?.items, editCoding.data, editCoding.isPending, editQuestion.data, editingId, subjects]);
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
       if (dirty) {
@@ -256,15 +267,15 @@ export function CreateQuestionRoute() {
   const saveQuestion = useMutation({
     mutationFn: async () => {
       if (!selectedTopicId) throw new Error("Topic not found");
-      if (!["single", "multiple", "essay"].includes(draft.type)) {
+      if (!["single", "multiple", "essay", "code"].includes(draft.type)) {
         throw new Error("Unsupported question type");
       }
-      const questionType = draft.type === "single" ? "Single" : draft.type === "multiple" ? "Multiple" : "Essay";
+      const questionType = draft.type === "single" ? "Single" : draft.type === "multiple" ? "Multiple" : draft.type === "essay" ? "Essay" : "Coding";
       const input: Omit<CreateQuestionInput, "topicId" | "sourceType"> = {
           examTypeId: draft.examTypeId,
           content: draft.content.trim(),
           questionType,
-          difficulty: "Medium",
+          difficulty: draft.difficulty,
           defaultScore: Number(draft.points),
           referenceAnswer: draft.type === "essay" ? draft.instructions : null,
           gradingCriteria: null,
@@ -307,6 +318,23 @@ export function CreateQuestionRoute() {
           return file ? uploadQuestionOptionAudio(option.optionId, file) : Promise.resolve();
         }),
       );
+      if (draft.type === "code") {
+        await saveCodingQuestion(question.questionId, {
+          inputDescription: "Input is supplied through standard input.",
+          outputDescription: "Write the expected value to standard output.",
+          constraints: draft.constraints,
+          starterCode: draft.starterCode,
+          starterCodes: { [draft.language]: draft.starterCode },
+          cpuSeconds: 2,
+          wallSeconds: 5,
+          memoryKb: 262144,
+          testCases: [
+            { input: draft.testInput, expectedOutput: draft.expectedOutput, weight: 50, isPublic: true },
+            { input: draft.hiddenTestInput, expectedOutput: draft.hiddenExpectedOutput, weight: 50, isPublic: false },
+          ],
+        });
+        await validateCodingQuestion(question.questionId);
+      }
       // Audio generation is asynchronous on the Backend. A queue failure must
       // never turn a successfully saved question into a failed save.
       try {
@@ -334,11 +362,15 @@ export function CreateQuestionRoute() {
       setMessage(
         error instanceof Error && error.message === "Unsupported question type"
           ? "This question type cannot be submitted yet. Your work remains saved in this browser."
-          : "We couldn’t save this question. Your editor content has been preserved; check your connection and try again.",
+          : `We couldn’t save this question. ${describeError(error)} Your editor content has been preserved.`,
       );
     },
   });
   const submit = () => {
+    if (draft.type === "code" && (!codingLanguages.data?.length || !codingLanguages.data.includes(draft.language))) {
+      setMessage("Choose an available coding runtime before saving. Refresh when the execution service is ready.");
+      return;
+    }
     const problems = validateDraft(draft, !!files.image);
     setErrors(problems);
     if (problems.length) {
@@ -373,12 +405,11 @@ export function CreateQuestionRoute() {
           </span>
         </nav>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => unavailable("Question file import")}
-          >
-            <FileUp aria-hidden />
-            Import question file
+          <Button variant="outline" asChild>
+            <Link to={`/lecturer/questions/import?purpose=${purpose}`}>
+              <FileUp aria-hidden />
+              Import question file
+            </Link>
           </Button>
           <Button variant="outline" asChild>
             <Link to={bankPath}>Cancel</Link>
@@ -429,11 +460,9 @@ export function CreateQuestionRoute() {
           gridTemplateColumns: `minmax(0, ${editorWidth}fr) 0.75rem minmax(0, ${100 - editorWidth}fr)`,
         }}
       >
-        <Card
-          tabIndex={0}
-          role="region"
+        <section
           aria-label="Question authoring canvas"
-          className="studio-pane studio-editor gap-6 rounded-none py-6 shadow-none ring-0"
+          className="studio-pane studio-editor flex flex-col gap-6"
         >
           <CardHeader className="border-b border-border px-0 pb-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -441,14 +470,6 @@ export function CreateQuestionRoute() {
                 <PencilLine aria-hidden className="size-5 text-primary" />
                 {editingId ? "Edit" : "New"} {purposeLabel} Studio
               </h1>
-              <Button
-                variant="ghost"
-                className="text-xs text-primary"
-                onClick={() => unavailable("Bloom templates")}
-              >
-                <Sparkles aria-hidden />
-                Bloom templates
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6 px-0">
@@ -477,17 +498,10 @@ export function CreateQuestionRoute() {
                 onChange={(examTypeId) => update({ ...draft, examTypeId })}
               />
               <ChoiceField
-                label="Bloom level"
-                value={draft.bloom}
-                options={[
-                  "Remember",
-                  "Understand",
-                  "Apply",
-                  "Analyze",
-                  "Evaluate",
-                  "Create",
-                ]}
-                onChange={(bloom) => update({ ...draft, bloom })}
+                label="Difficulty"
+                value={draft.difficulty}
+                options={["Easy", "Medium", "Hard"]}
+                onChange={(difficulty) => update({ ...draft, difficulty: difficulty as "Easy" | "Medium" | "Hard" })}
               />
               <TextField
                 label="Points"
@@ -518,7 +532,7 @@ export function CreateQuestionRoute() {
                     key={type}
                     variant="outline"
                     aria-pressed={draft.type === type}
-                    disabled={!(["single", "multiple", "essay"] as string[]).includes(type)}
+                    disabled={!(["single", "multiple", "essay", "code"] as string[]).includes(type)}
                     className={`h-auto min-h-14 justify-start gap-2 whitespace-normal px-3 text-left text-xs ${draft.type === type ? "border-primary bg-accent text-primary ring-1 ring-primary" : ""}`}
                     onClick={() => {
                       if (draft.type !== type)
@@ -536,13 +550,10 @@ export function CreateQuestionRoute() {
                       }[type as QuestionType];
                       return <Icon aria-hidden className="size-5 shrink-0" />;
                     })()}
-                    <span>{label}{!(["single", "multiple", "essay"] as string[]).includes(type) ? " · unavailable" : ""}</span>
+                    <span>{label}{!(["single", "multiple", "essay", "code"] as string[]).includes(type) ? " · unavailable" : ""}</span>
                   </Button>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Single Choice, Multiple Choice, and Essay can be submitted. Changing type resets its answer fields while keeping the question content.
-              </p>
             </fieldset>
             <div className="space-y-3">
               <div className="flex flex-wrap justify-between gap-2">
@@ -607,7 +618,6 @@ export function CreateQuestionRoute() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <Label htmlFor="question-audio">Question audio</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">LearnAble generates audio after the question is saved, or you can provide a saved MP3.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3 text-sm">
@@ -632,6 +642,10 @@ export function CreateQuestionRoute() {
             </div>
             <QuestionTypeForm
               draft={draft}
+              codingLanguages={codingLanguages.data ?? []}
+              codingLanguagesPending={codingLanguages.isPending}
+              codingLanguagesError={codingLanguages.error ? describeError(codingLanguages.error) : undefined}
+              onRetryCodingLanguages={() => void codingLanguages.refetch()}
               onChange={update}
               onFile={onFile}
               onOptionAudio={onOptionAudio}
@@ -645,12 +659,9 @@ export function CreateQuestionRoute() {
                 value={draft.rationale ?? ""}
                 onChange={(rationale) => update({ ...draft, rationale })}
               />
-              <p className="mt-2 text-xs text-muted-foreground">
-                For student practice feedback, not the exam response.
-              </p>
             </div>
           </CardContent>
-        </Card>
+        </section>
         <div
           role="separator"
           aria-label="Resize question editor and live review"
@@ -690,39 +701,29 @@ export function CreateQuestionRoute() {
           label="Live student review"
           className="studio-pane space-y-6"
         >
-          <QuestionPreview key={draft.type} draft={draft} image={files.image} />
+          <QuestionPreview key={draft.type} draft={draft} image={files.image} images={editImages.data?.images ?? []} reviewUnavailable={Boolean(editingId) && (editImages.isError || editImages.isPending)} />
+          <section aria-label="Screen reader reading order" className="space-y-2 rounded-xl border border-border p-4">
+            <h3 className="text-sm font-bold">How a screen reader reads this</h3>
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+              {readingOrder(draft, editImages.data?.images ?? []).map((line, index) => <li key={index}>{line}</li>)}
+            </ol>
+          </section>
         </ScrollRegion>
       </div>
-      <footer className="z-20 flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-6 py-3">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" asChild>
-            <Link to={bankPath}>Cancel</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              try {
-                localStorage.removeItem(draftKey(userId, purpose));
-                setRestored(false);
-                setMessage(
-                  "Saved local draft deleted. Your open editor has not been cleared.",
-                );
-              } catch {
-                setMessage(
-                  "Unable to delete the local draft. Browser storage is unavailable.",
-                );
-              }
-            }}
-          >
-            Delete saved draft
-          </Button>
-        </div>
+      <footer className="z-20 flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border bg-background px-6 py-3">
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={saveDraft}>
             <Save aria-hidden />
             Save draft
           </Button>
-          <Button disabled={saveQuestion.isPending || (Boolean(editingId) && editQuestion.isPending)} onClick={submit}>
+          <Button
+            disabled={
+              saveQuestion.isPending ||
+              (Boolean(editingId) && editQuestion.isPending) ||
+              (draft.type === "code" && (codingLanguages.isPending || !codingLanguages.data?.length))
+            }
+            onClick={submit}
+          >
             {saveQuestion.isPending ? "Saving…" : editingId ? "Save changes" : "Save to Question Bank"}
           </Button>
         </div>

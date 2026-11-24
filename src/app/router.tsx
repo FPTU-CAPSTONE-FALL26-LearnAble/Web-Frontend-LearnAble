@@ -28,11 +28,13 @@ const CreateQuestionRoute = lazy(() =>
   ),
 );
 import { LearningMaterialsRoute } from "@/features/lecturer/materials/routes/LearningMaterialsRoute";
+import { AccountImportsRoute } from "@/features/staff/routes/AccountImportsRoute";
 import { UploadMaterialRoute } from "@/features/lecturer/materials/routes/UploadMaterialRoute";
 import { MaterialAudioStudioRoute } from "@/features/lecturer/materials/routes/MaterialAudioStudioRoute";
+import { PracticeSessionsRoute } from "@/features/lecturer/practice/routes/PracticeSessionsRoute";
+import { CodingJobsRoute } from "@/features/shared/CodingJobsRoute";
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
 import { SharedShiftRoute } from "@/features/examiner/routes/SharedShiftRoute";
-import { ProctoringPolicyRoute } from "@/features/examiner/routes/ProctoringPolicyRoute";
 import { SealPaperRoute } from "@/features/lecturer/exams/routes/SealPaperRoute";
 import { SealedPapersRoute } from "@/features/lecturer/exams/routes/SealedPapersRoute";
 import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
@@ -69,7 +71,6 @@ import {
   ExaminerDashboardRoute,
   ExamBankRoute,
   ExamOperationsRoute,
-  ExamReadinessRoute,
   ExamScheduleDashboardRoute,
   ExamScheduleDetailRoute,
   ExamSetupRoute,
@@ -177,6 +178,7 @@ export const router = createBrowserRouter([
                 path: "/lecturer/materials/:materialId/audio",
                 element: <MaterialAudioStudioRoute />,
               },
+              { path: "/lecturer/practice-sessions", element: <PracticeSessionsRoute /> },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
               { path: "/lecturer/exam-papers", element: <ExamBankRoute /> },
               { path: "/lecturer/exam-papers/new/setup", element: <ExamSetupRoute /> },
@@ -250,6 +252,7 @@ export const router = createBrowserRouter([
               },
               { path: "/staff/dashboard", element: <StaffDashboardRoute /> },
               { path: "/staff/users", element: <UsersRoute /> },
+              { path: "/staff/account-imports", element: <AccountImportsRoute /> },
               {
                 path: "/staff/student-profiles",
                 element: <StudentProfilesRoute />,
@@ -283,15 +286,8 @@ export const router = createBrowserRouter([
                 path: "/examiner/dashboard",
                 element: <ExaminerDashboardRoute />,
               },
-              { path: "/examiner/exams", element: <ExamBankRoute /> },
               { path: "/examiner/sealed-papers", element: <SealedPapersRoute /> },
-              { path: "/examiner/proctoring-policy", element: <ProctoringPolicyRoute /> },
-              { path: "/examiner/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/examiner/schedule/shared/:shiftId", element: <SharedShiftRoute /> },
-              {
-                path: "/examiner/exams/new/readiness",
-                element: <ExamReadinessRoute />,
-              },
               {
                 path: "/examiner/schedule",
                 element: <ExamScheduleDashboardRoute />,
@@ -324,6 +320,7 @@ export const router = createBrowserRouter([
               { path: "/examiner/reviews", element: <IntegrityReviewRoute /> },
               { path: "/examiner/flags", element: <FlaggedSessionsRoute /> },
               { path: "/examiner/reports", element: <ExamReportsRoute /> },
+              { path: "/examiner/coding-jobs", element: <CodingJobsRoute /> },
               {
                 path: "/examiner/accommodations",
                 element: <AccommodationsRoute />,
@@ -364,7 +361,6 @@ export const router = createBrowserRouter([
                 element: <AccessibilitySettingsRoute />,
               },
               { path: "/home", element: <StudentHomeRoute /> },
-              { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },

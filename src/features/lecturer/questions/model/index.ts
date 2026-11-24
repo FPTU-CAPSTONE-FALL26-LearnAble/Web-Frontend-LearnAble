@@ -53,7 +53,7 @@ type Common = {
   examTypeId: string;
   course: string;
   topic: string;
-  bloom: string;
+  difficulty: "Easy" | "Medium" | "Hard";
   points: string;
   content: string;
   rationale?: string;
@@ -67,7 +67,11 @@ export type QuestionDraft = Common &
         type: "code";
         language: string;
         starterCode: string;
+        constraints: string;
+        testInput: string;
         expectedOutput: string;
+        hiddenTestInput: string;
+        hiddenExpectedOutput: string;
       }
     | {
         type: "math";
@@ -85,7 +89,7 @@ export function createDraft(
     examTypeId: "",
     course: "",
     topic: "",
-    bloom: "Understand",
+    difficulty: "Medium",
     points: "1",
     content: "",
   };
@@ -107,9 +111,13 @@ export function createDraft(
       return {
         ...base,
         type,
-        language: "C#",
+        language: "python3",
         starterCode: "",
+        constraints: "",
+        testInput: "",
         expectedOutput: "",
+        hiddenTestInput: "",
+        hiddenExpectedOutput: "",
       };
     case "math":
       return { ...base, type, format: "LaTeX", formula: "", description: "" };
@@ -147,9 +155,16 @@ export function validateDraft(
     errors.push("Answer instructions are required.");
   if (
     draft.type === "code" &&
-    (!draft.starterCode.trim() || !draft.expectedOutput.trim())
+    (!draft.starterCode.trim() ||
+      !draft.constraints.trim() ||
+      !draft.testInput.trim() ||
+      !draft.expectedOutput.trim() ||
+      !draft.hiddenTestInput.trim() ||
+      !draft.hiddenExpectedOutput.trim())
   )
-    errors.push("Starter code and expected output are required.");
+    errors.push(
+      "Starter code, constraints, and both public and hidden test cases are required.",
+    );
   if (
     draft.type === "math" &&
     (!draft.formula.trim() || !draft.description.trim())
@@ -171,9 +186,19 @@ export function readDraft(
   purpose?: "exam" | "practice",
 ): QuestionDraft | null {
   try {
-    const value = JSON.parse(
+    const stored = JSON.parse(
       localStorage.getItem(draftKey(userId, purpose)) ?? "null",
     );
+    const value = stored && !stored.difficulty && typeof stored.bloom === "string"
+      ? {
+          ...stored,
+          difficulty: ["Remember", "Understand"].includes(stored.bloom)
+            ? "Easy"
+            : ["Evaluate", "Create"].includes(stored.bloom)
+              ? "Hard"
+              : "Medium",
+        }
+      : stored;
     if (!value || !(value.type in questionTypes)) return null;
     const template = createDraft(value.type);
     if (

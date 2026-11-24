@@ -23,11 +23,19 @@ export function groupLecturerSchedules(items: MyExamSchedule[], now = new Date()
   return groups;
 }
 
+export function canTakeAttendance(item: MyExamSchedule, now = new Date()) {
+  const { schedule } = item;
+  const activeStatus = schedule.status === "Published" || schedule.status === "Open";
+  return activeStatus
+    && now.getTime() >= new Date(schedule.entryOpensAt).getTime()
+    && now.getTime() <= new Date(schedule.endsAt).getTime();
+}
+
 function ScheduleCard({ item, timing }: { item: MyExamSchedule; timing: ScheduleTiming }) {
   const { schedule, invigilatorRole } = item;
   const start = new Date(schedule.startsAt);
   const end = new Date(schedule.endsAt);
-  const canOpen = schedule.status === "Open";
+  const canOpen = canTakeAttendance(item);
   const style = scheduleTimingStyle[timing];
   return (
     <article aria-label={`${schedule.examName ?? "Unnamed examination"}, ${style.label}`} className={`rounded-xl border-2 ${style.card}`}>
@@ -49,9 +57,9 @@ function ScheduleCard({ item, timing }: { item: MyExamSchedule; timing: Schedule
         </div>
         <div>
           {canOpen ? (
-            <Button asChild><Link to={`/lecturer/exams/${schedule.examScheduleId}/attendance`}><Users />Open attendance</Link></Button>
+            <Button asChild><Link to={`/lecturer/exams/${schedule.examScheduleId}/attendance`}><Users />Take attendance</Link></Button>
           ) : (
-            <p className="max-w-xs text-sm text-muted-foreground">Attendance becomes available when the examiner opens this schedule.</p>
+            <p className="max-w-xs text-sm text-muted-foreground">Attendance opens at the student entry time and closes when the shift ends.</p>
           )}
         </div>
       </div>

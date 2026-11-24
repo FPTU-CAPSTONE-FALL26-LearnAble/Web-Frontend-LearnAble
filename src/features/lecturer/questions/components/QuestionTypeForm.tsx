@@ -13,6 +13,10 @@ export function QuestionTypeForm({
   onOptionAudio,
   onRemoveOption,
   optionAudioNames,
+  codingLanguages = [],
+  codingLanguagesPending = false,
+  codingLanguagesError,
+  onRetryCodingLanguages,
 }: {
   draft: QuestionDraft;
   onChange: (draft: QuestionDraft) => void;
@@ -20,6 +24,10 @@ export function QuestionTypeForm({
   onOptionAudio: (index: number, file?: File) => void;
   onRemoveOption: (index: number) => void;
   optionAudioNames: Record<number, string>;
+  codingLanguages?: string[];
+  codingLanguagesPending?: boolean;
+  codingLanguagesError?: string;
+  onRetryCodingLanguages?: () => void;
 }) {
   if (draft.type === "single" || draft.type === "multiple") {
     const options = draft.options.map((option, i) => (
@@ -161,9 +169,23 @@ export function QuestionTypeForm({
         <ChoiceField
           label="Programming language"
           value={draft.language}
-          options={["C#", "Java", "JavaScript", "Python", "C++"]}
+          options={codingLanguages}
+          disabled={codingLanguagesPending || !codingLanguages.length}
           onChange={(language) => onChange({ ...draft, language })}
         />
+        {codingLanguagesPending ? <p role="status" className="text-sm text-muted-foreground">Loading available coding runtimes…</p> : null}
+        {!codingLanguagesPending && codingLanguagesError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive p-4 text-sm text-destructive">
+            <span>The coding runtimes could not be loaded. {codingLanguagesError}</span>
+            <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Try again</Button>
+          </div>
+        ) : null}
+        {!codingLanguagesPending && !codingLanguagesError && !codingLanguages.length ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning-border bg-warning p-4 text-sm text-warning-foreground">
+            <span>The Backend returned no coding runtime. Ask the Backend team to configure the code execution service.</span>
+            <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Check again</Button>
+          </div>
+        ) : null}
         <TextField
           label="Starter code"
           multiline
@@ -171,10 +193,34 @@ export function QuestionTypeForm({
           onChange={(starterCode) => onChange({ ...draft, starterCode })}
         />
         <TextField
-          label="Expected output"
+          label="Constraints"
+          multiline
+          value={draft.constraints}
+          onChange={(constraints) => onChange({ ...draft, constraints })}
+        />
+        <TextField
+          label="Public test input"
+          multiline
+          value={draft.testInput}
+          onChange={(testInput) => onChange({ ...draft, testInput })}
+        />
+        <TextField
+          label="Public expected output"
           multiline
           value={draft.expectedOutput}
           onChange={(expectedOutput) => onChange({ ...draft, expectedOutput })}
+        />
+        <TextField
+          label="Hidden test input"
+          multiline
+          value={draft.hiddenTestInput}
+          onChange={(hiddenTestInput) => onChange({ ...draft, hiddenTestInput })}
+        />
+        <TextField
+          label="Hidden expected output"
+          multiline
+          value={draft.hiddenExpectedOutput}
+          onChange={(hiddenExpectedOutput) => onChange({ ...draft, hiddenExpectedOutput })}
         />
       </div>
     );

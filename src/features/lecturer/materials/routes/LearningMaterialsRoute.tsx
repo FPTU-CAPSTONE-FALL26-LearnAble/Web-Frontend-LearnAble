@@ -6,11 +6,14 @@ import {
   Archive,
   CheckCircle2,
   FileText,
+  FileType2,
+  FileImage,
+  FileAudio,
+  File,
+  Presentation,
   Folder,
-  RefreshCw,
   Search,
   Upload,
-  AlertCircle,
   Pencil,
   Trash2,
   Headphones,
@@ -27,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/primitives/table";
-import { archiveLearningMaterial, deleteLearningMaterial, getMaterials, publishLearningMaterial, replaceLearningMaterialFile, updateLearningMaterial } from "@/api/lecturer";
+import { archiveLearningMaterial, deleteLearningMaterial, getLearningMaterialFileLink, getMaterials, publishLearningMaterial, replaceLearningMaterialFile, updateLearningMaterial } from "@/api/lecturer";
 import type { LearningMaterial } from "@/api/catalog";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { ChoiceField } from "@/features/lecturer/questions/components/QuestionFields";
@@ -39,7 +42,6 @@ import {
   Pagination,
   ReadState,
   StatusBadge,
-  SummaryCard,
   unavailable,
 } from "@/features/lecturer/shared/components/Workbench";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
@@ -54,6 +56,18 @@ export const formatFileSize = (bytes: number | null) =>
     : bytes < 1024 * 1024
       ? `${(bytes / 1024).toFixed(1)} KB`
       : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+function MaterialFileIcon({ material }: { material: LearningMaterial }) {
+  const extension = material.fileName?.split(".").pop()?.toLowerCase() ?? material.materialType.toLowerCase();
+  const Icon = extension === "pdf" ? FileText
+    : ["doc", "docx", "txt"].includes(extension) ? FileType2
+      : ["ppt", "pptx"].includes(extension) ? Presentation
+        : ["png", "jpg", "jpeg", "webp"].includes(extension) ? FileImage
+          : ["mp3", "wav"].includes(extension) ? FileAudio : File;
+  const tone = extension === "pdf" ? "text-destructive"
+    : ["doc", "docx", "txt"].includes(extension) ? "text-info-foreground"
+      : "text-primary";
+  return <Icon aria-hidden className={`mt-1 size-6 shrink-0 ${tone}`} />;
+}
 const defaults = { subject: "all", topic: "all", type: "all", status: "all" };
 export function LearningMaterialsRoute() {
   useRouteAnnouncer("Learning Materials", "Learning Materials");
@@ -139,6 +153,24 @@ export function LearningMaterialsRoute() {
     setEditDescription(material.description ?? "");
     setReplacementFile(null);
   };
+  const openFile = async (material: LearningMaterial) => {
+    const tab = window.open("", "_blank");
+    if (!tab) {
+      toast({ title: "Could not open material", description: "Allow pop-ups for this site and try again." });
+      return;
+    }
+    tab.opener = null;
+    try {
+      const url = material.hasManagedFile
+        ? (await getLearningMaterialFileLink(material.materialId)).url
+        : material.fileUrl;
+      if (!url) throw new Error("This material has no file available to open.");
+      tab.location.href = url;
+    } catch (error) {
+      tab.close();
+      toast({ title: "Could not open material", description: error instanceof Error ? error.message : "Please try again." });
+    }
+  };
   const topics = academic.topics.data?.items ?? [];
   const subjects = academic.subjects.data?.items ?? [];
   const update = (key: keyof typeof filters, value: string) => {
@@ -158,18 +190,31 @@ export function LearningMaterialsRoute() {
     setSelected([]);
   };
   const stats = [
-    { label: "Total materials", icon: Folder },
-    { label: "Published", icon: CheckCircle2 },
-    { label: "Needs metadata", icon: FileText },
-    { label: "OCR running", icon: RefreshCw },
-    { label: "Extraction failed", icon: AlertCircle },
-    { label: "Archived", icon: Archive },
+    {
+      label: "Total materials",
+      icon: Folder,
+      iconClassName: "bg-primary/10 text-primary",
+    },
+    {
+      label: "Published",
+      icon: CheckCircle2,
+      iconClassName: "bg-success text-success-foreground",
+    },
+    {
+      label: "Needs metadata",
+      icon: FileText,
+      iconClassName: "bg-secondary text-secondary-foreground",
+    },
+    {
+      label: "Archived",
+      icon: Archive,
+      iconClassName: "bg-warning text-warning-foreground",
+    },
   ];
   return (
     <div className="space-y-6">
       <PageHeading
         title="Learning Materials"
-        description="Manage lecture resources and their processing status."
       >
         <Button asChild>
           <Link to="/lecturer/materials/new">
@@ -180,25 +225,38 @@ export function LearningMaterialsRoute() {
       </PageHeading>
       <section
         aria-label="Learning material summary"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+        className="overflow-hidden rounded-2xl border-2 border-border bg-border"
       >
-        {stats.map((stat, index) => (
-          <SummaryCard
-            key={stat.label}
-            label={stat.label}
-            value={
-              index === 0 ? (data.data?.totalCount ?? unavailable) : unavailable
-            }
-            icon={
-              <stat.icon
-                aria-hidden
-                className="size-5 shrink-0 text-secondary"
-              />
-            }
-          />
-        ))}
+        <div className="grid gap-0.5 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat, index) => {
+            const value =
+              index === 0 ? (data.data?.totalCount ?? unavailable) : unavailable;
+            return (
+              <article
+                key={stat.label}
+                className={`flex min-h-32 flex-col justify-between p-5 ${index === 0 ? "bg-primary/5" : "bg-card"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-bold text-foreground">
+                    {stat.label}
+                  </h2>
+                  <span
+                    className={`grid size-10 shrink-0 place-items-center rounded-xl ${stat.iconClassName}`}
+                  >
+                    <stat.icon aria-hidden className="size-5" />
+                  </span>
+                </div>
+                <p
+                  className={`mt-5 break-words font-extrabold tabular-nums ${value === unavailable ? "text-base text-muted-foreground" : "text-3xl text-primary"}`}
+                >
+                  {value}
+                </p>
+              </article>
+            );
+          })}
+        </div>
       </section>
-      <Card className="lecturer-major-card border shadow-none">
+      <Card className="lecturer-major-card border-2 shadow-none">
         <CardContent className="space-y-5">
           <form
             className="flex flex-wrap gap-2"
@@ -294,7 +352,7 @@ export function LearningMaterialsRoute() {
         </CardContent>
       </Card>
       {selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-secondary p-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-border p-4">
           <p role="status" className="mr-auto text-sm font-bold">
             {selected.length} materials selected
           </p>
@@ -303,7 +361,7 @@ export function LearningMaterialsRoute() {
           <Button variant="outline" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate({ ids: selected, action: "archive" })}>Archive selected</Button>
         </div>
       )}
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-border">
+      <section className="min-w-0 overflow-hidden rounded-2xl border-2 border-border">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <h2 className="text-lg font-bold text-primary">Your learning materials</h2>
           <p role="status" className="text-sm text-muted-foreground">
@@ -342,8 +400,8 @@ export function LearningMaterialsRoute() {
                 </TableHead>
                 <TableHead>Material & format</TableHead>
                 <TableHead>Course / topic</TableHead>
-                <TableHead>Pipeline status</TableHead>
-                <TableHead>Student usage</TableHead>
+                <TableHead>Material status</TableHead>
+                <TableHead>Student activity</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -375,10 +433,7 @@ export function LearningMaterialsRoute() {
                     </TableCell>
                     <TableCell className="min-w-80 max-w-md whitespace-normal">
                       <div className="flex items-start gap-3">
-                        <FileText
-                          aria-hidden
-                          className="mt-1 size-6 shrink-0 text-secondary"
-                        />
+                        <MaterialFileIcon material={m} />
                         <div>
                           <p className="font-bold leading-relaxed">{m.title}</p>
                           <p className="mt-1 break-all text-xs text-muted-foreground">
@@ -401,11 +456,8 @@ export function LearningMaterialsRoute() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge value={m.status} />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        OCR: {m.ocrStatus}
-                      </p>
                     </TableCell>
-                    <TableCell>{unavailable}</TableCell>
+                    <TableCell><span className="text-muted-foreground">Not tracked</span></TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="outline" asChild>
@@ -416,8 +468,8 @@ export function LearningMaterialsRoute() {
                         </Button>
                         <Button
                           variant="outline"
-                          disabled={!m.fileUrl}
-                          onClick={() => m.fileUrl && window.open(m.fileUrl, "_blank", "noopener,noreferrer")}
+                          disabled={!m.hasManagedFile && !m.fileUrl}
+                          onClick={() => void openFile(m)}
                         >
                           Open
                         </Button>

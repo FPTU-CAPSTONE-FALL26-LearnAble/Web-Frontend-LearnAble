@@ -43,6 +43,7 @@ const batchSchema = z.object({
   jobs: z.array(jobSchema).nullable().optional(),
 });
 
+
 const optionsSchema = z.object({
   modelId: z.string().nullable().optional(),
   modelVersion: z.string().nullable().optional(),
@@ -52,6 +53,16 @@ const optionsSchema = z.object({
 
 const linkSchema = z.object({
   url: z.string().nullable().optional(),
+  expiresAt: z.string(),
+});
+const agentSchema = z.object({
+  agentId: z.string(), deviceName: z.string().nullable().optional(), agentVersion: z.string().nullable().optional(),
+  modelVersion: z.string().nullable().optional(), capabilities: z.string().nullable().optional(),
+  lastSeenAt: z.string(), expiresAt: z.string(), revokedAt: z.string().nullable().optional(),
+});
+const pairingSchema = z.object({
+  agentId: z.string(),
+  token: z.string(),
   expiresAt: z.string(),
 });
 
@@ -79,6 +90,20 @@ export type MaterialTtsSlide = z.infer<typeof slideSchema>;
 export type MaterialTtsAudio = z.infer<typeof audioSchema>;
 export type MaterialTtsJob = z.infer<typeof jobSchema>;
 export type MaterialTtsBatch = z.infer<typeof batchSchema>;
+
+const materialInfoSchema = z.object({
+  materialId: z.string(),
+  title: z.string().nullable(),
+  fileName: z.string().nullable(),
+  materialType: z.string().nullable(),
+  status: z.string().optional(),
+});
+
+export const getMaterialAudioInfo = (materialId: string) =>
+  unwrap(`/LearningMaterials/${materialId}`, materialInfoSchema);
+
+export const getMaterialFileLink = (materialId: string) =>
+  unwrap(`/LearningMaterials/${materialId}/file`, linkSchema);
 
 export const getMaterialTtsSlides = (materialId: string) =>
   unwrap(`/lecturer/materials/${materialId}/slides`, z.array(slideSchema));
@@ -114,3 +139,10 @@ export const approveSlideAudio = (slideId: string, audioId: string) =>
   emptyCommand(`/lecturer/slides/${slideId}/audio/${audioId}/approve`, { method: "POST" });
 export const getSlideAudioPlayback = (slideId: string, audioId: string) =>
   unwrap(`/lecturer/slides/${slideId}/audio/${audioId}/playback-url`, linkSchema);
+export const getMaterialTtsAgents = () => unwrap("/lecturer/tts-agents", z.array(agentSchema));
+export const registerMaterialTtsAgent = (deviceName: string, modelVersion: string) =>
+  unwrap("/tts-agents/register", pairingSchema, {
+    method: "POST",
+    json: { deviceName, agentVersion: "0.2.0", modelVersion, capabilities: "{}" },
+  });
+export const revokeMaterialTtsAgent = (agentId: string) => emptyCommand(`/lecturer/tts-agents/${agentId}`, { method: "DELETE" });

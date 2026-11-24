@@ -2,6 +2,7 @@ import {
   Building2,
   ChevronDown,
   DoorOpen,
+  FileSpreadsheet,
   GraduationCap,
   LayoutDashboard,
   LibraryBig,
@@ -41,6 +42,7 @@ const groups: Group[] = [
     icon: Users,
     items: [
       { label: "User Accounts", path: "/staff/users", icon: UserCog },
+      { label: "Import Accounts", path: "/staff/account-imports", icon: FileSpreadsheet },
       {
         label: "Student Records",
         path: "/staff/student-profiles",

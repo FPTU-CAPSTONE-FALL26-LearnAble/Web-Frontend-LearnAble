@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, FileQuestion, PackageCheck, Star, Tag } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, FileQuestion, PackageCheck, Star, Tag } from "lucide-react";
 import { useNavigate } from "react-router";
 import { getScheduleValidation, getSealedExamPapers, getSharedExamShift, getShiftPaperSelection, openSharedExamShift, publishSharedExamShift, releaseShiftPaper, selectShiftPaper } from "@/api/exams";
 import { describeError } from "@/app/providers";
@@ -14,11 +14,22 @@ const when = (value: string) => new Date(value).toLocaleString();
  * The exam package of a shift. Examiners only attach a sealed package; they never edit it.
  * The Backend picks the package, checks that it is intact, and refuses a damaged one.
  */
-export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string; scheduleStatus: string }) {
+export function ShiftPackagePanel({
+  shiftId,
+  scheduleStatus,
+  scheduleLabel,
+  scheduleNote,
+  scheduleProblems = [],
+}: {
+  shiftId: string;
+  scheduleStatus: string;
+  scheduleLabel?: string;
+  scheduleNote?: string;
+  scheduleProblems?: string[];
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const operationId = useRef(crypto.randomUUID());
-  const autoAttachAttempted = useRef(false);
   const key = ["examiner", "shift-package", shiftId];
   const shift = useQuery({ queryKey: [...key, "shift"], queryFn: () => getSharedExamShift(shiftId), meta: { silent: true } });
   const selection = useQuery({ queryKey: [...key, "selection"], queryFn: () => getShiftPaperSelection(shiftId), meta: { silent: true } });
@@ -88,12 +99,6 @@ export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string
           : attached
             ? "Attached to draft"
             : "Waiting for package";
-  useEffect(() => {
-    const packageIsMissingOrUnknown = (selection.isSuccess && !attached) || selection.isError;
-    if (autoAttachAttempted.current || shiftStatus !== "Draft" || loading || !packageIsMissingOrUnknown) return;
-    autoAttachAttempted.current = true;
-    attach.mutate();
-  }, [attached, attach, loading, selection.isError, selection.isSuccess, shiftStatus]);
   return (
     <section aria-label="Exam package" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-5">
@@ -172,6 +177,23 @@ export function ShiftPackagePanel({ shiftId, scheduleStatus }: { shiftId: string
           ) : (
             <Button disabled={attach.isPending || loading || !shift.data} onClick={() => attach.mutate()}>{attach.isPending ? "Checking the package…" : "Attach a package"}</Button>
           )}
+        </div>
+      ) : null}
+      {scheduleStatus !== "Draft" && scheduleLabel ? (
+        <div className="flex items-start gap-3 border-t border-border p-5">
+          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-success-foreground" aria-hidden />
+          <div className="min-w-0">
+            <h3 className="font-bold">{scheduleLabel}</h3>
+            {scheduleNote ? <p className="mt-1 text-sm text-muted-foreground">{scheduleNote}</p> : null}
+            {scheduleProblems.length ? (
+              <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-warning-foreground/30 bg-warning p-3 text-warning-foreground">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+                <ul className="space-y-1 text-sm font-bold">
+                  {scheduleProblems.map((problem) => <li key={problem}>{problem}</li>)}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </section>
