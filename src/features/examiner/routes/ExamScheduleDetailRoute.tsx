@@ -274,27 +274,32 @@ export function ExamScheduleDetailRoute() {
         <StatTile icon={<DoorOpen aria-hidden className="size-5" />} label="Room" value={item.roomName ?? "—"} />
       </dl>
 
-      <ShiftPackagePanel shiftId={item.examShiftId} scheduleStatus={item.status} />
+      <ShiftPackagePanel
+        shiftId={item.examShiftId}
+        scheduleStatus={item.status}
+        scheduleLabel={look.label}
+        scheduleNote={look.note}
+        scheduleProblems={problems}
+      />
 
-      <section aria-label="Readiness" className={`flex flex-wrap items-start gap-4 rounded-2xl border p-5 ${item.status !== "Draft" ? "border-border bg-card" : validation.data?.isValid ? "border-success-border bg-success/40" : "border-warning-foreground/30 bg-warning/40"}`}>
-        {item.status !== "Draft" || validation.data?.isValid ? <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-success-foreground" /> : <AlertTriangle aria-hidden className="mt-0.5 size-6 shrink-0 text-warning-foreground" />}
+      {item.status === "Draft" ? <section aria-label="Readiness" className={`flex flex-wrap items-start gap-4 rounded-2xl border p-5 ${validation.data?.isValid ? "border-success-border bg-success/40" : "border-warning-foreground/30 bg-warning/40"}`}>
+        {validation.data?.isValid ? <CheckCircle2 aria-hidden className="mt-0.5 size-6 shrink-0 text-success-foreground" /> : <AlertTriangle aria-hidden className="mt-0.5 size-6 shrink-0 text-warning-foreground" />}
         <div className="min-w-0 flex-1">
           <h2 className="font-bold">
-            {item.status !== "Draft" ? look.label : validation.isPending ? "Checking the schedule…" : validation.data?.isValid ? "Ready to publish" : "A few things to fix before publishing"}
+            {validation.isPending ? "Checking the schedule…" : validation.data?.isValid ? "Ready to publish" : "A few things to fix before publishing"}
           </h2>
-          {item.status === "Draft" && problems.length ? (
+          {problems.length ? (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{problems.map((message) => <li key={message}>{message}</li>)}</ul>
           ) : (
-            <p className="mt-1 text-sm text-muted-foreground">{item.status === "Draft" && validation.data?.isValid ? "Students, invigilators, seats and times all pass the checks." : look.note}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{validation.data?.isValid ? "Students, invigilators, seats and times all pass the checks." : look.note}</p>
           )}
-          {item.status !== "Draft" && problems.length ? <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-destructive">{problems.map((message) => <li key={message}>{message}</li>)}</ul> : null}
         </div>
-        {item.status === "Draft" ? <Button disabled={!canPublish || publish.isPending} onClick={() => publish.mutate()}>{publish.isPending ? "Publishing…" : "Publish schedule"}</Button> : null}
-      </section>
+        <Button disabled={!canPublish || publish.isPending} onClick={() => publish.mutate()}>{publish.isPending ? "Publishing…" : "Publish schedule"}</Button>
+      </section> : null}
 
       <section aria-label="People" className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={studentFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose student import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importStudents.mutate(file); }} /><Button type="button" variant="outline" disabled={importStudents.isPending} onClick={() => studentFileRef.current?.click()}><Upload aria-hidden />{importStudents.isPending ? "Importing…" : "Import students"}</Button></div> : null}</header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={studentFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose student import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importStudents.mutate(file); }} /><Button type="button" variant="outline" disabled={importStudents.isPending} onClick={() => studentFileRef.current?.click()}><Upload aria-hidden />{importStudents.isPending ? "Importing…" : "Import students"}</Button></div> : null}</header>
           {students.length ? (
             <table className="w-full text-sm">
               <caption className="sr-only">Students of this schedule, with their seat and status</caption>
@@ -315,7 +320,7 @@ export function ExamScheduleDetailRoute() {
           ) : <p className="p-5 text-sm text-muted-foreground">{enrollments.isPending ? "Loading students…" : "No students assigned."}</p>}
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={invigilatorFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose lecturer import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importInvigilators.mutate(file); }} /><Button type="button" variant="outline" disabled={importInvigilators.isPending} onClick={() => invigilatorFileRef.current?.click()}><Upload aria-hidden />{importInvigilators.isPending ? "Importing…" : "Import lecturers"}</Button></div> : null}</header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={invigilatorFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose lecturer import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importInvigilators.mutate(file); }} /><Button type="button" variant="outline" disabled={importInvigilators.isPending} onClick={() => invigilatorFileRef.current?.click()}><Upload aria-hidden />{importInvigilators.isPending ? "Importing…" : "Import lecturers"}</Button></div> : null}</header>
           {(invigilators.data ?? []).length ? (
             <ul className="divide-y divide-border">
               {(invigilators.data ?? []).map((lecturer) => (

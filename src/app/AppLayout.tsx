@@ -19,7 +19,6 @@ const navItems = [
   { to: "/results", label: vi.results.title },
   { to: "/notifications", label: vi.notifications.title },
   { to: "/settings/accessibility", label: vi.a11ySettings.title },
-  { to: "/settings/shortcuts", label: "Keyboard shortcuts" },
 ];
 
 /** Layout chung (trừ màn làm bài — màn đó full-screen qua ExamShell). */

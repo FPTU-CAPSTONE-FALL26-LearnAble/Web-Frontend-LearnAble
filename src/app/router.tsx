@@ -35,7 +35,6 @@ import { PracticeSessionsRoute } from "@/features/lecturer/practice/routes/Pract
 import { CodingJobsRoute } from "@/features/shared/CodingJobsRoute";
 import { ExamScheduleRoute } from "@/features/lecturer/exams/routes/ExamScheduleRoute";
 import { SharedShiftRoute } from "@/features/examiner/routes/SharedShiftRoute";
-import { ProctoringPolicyRoute } from "@/features/examiner/routes/ProctoringPolicyRoute";
 import { SealPaperRoute } from "@/features/lecturer/exams/routes/SealPaperRoute";
 import { SealedPapersRoute } from "@/features/lecturer/exams/routes/SealedPapersRoute";
 import { AttendanceRoute } from "@/features/lecturer/exams/routes/AttendanceRoute";
@@ -72,7 +71,6 @@ import {
   ExaminerDashboardRoute,
   ExamBankRoute,
   ExamOperationsRoute,
-  ExamReadinessRoute,
   ExamScheduleDashboardRoute,
   ExamScheduleDetailRoute,
   ExamSetupRoute,
@@ -181,7 +179,6 @@ export const router = createBrowserRouter([
                 element: <MaterialAudioStudioRoute />,
               },
               { path: "/lecturer/practice-sessions", element: <PracticeSessionsRoute /> },
-              { path: "/lecturer/coding-jobs", element: <CodingJobsRoute /> },
               { path: "/lecturer/exams", element: <ExamScheduleRoute /> },
               { path: "/lecturer/exam-papers", element: <ExamBankRoute /> },
               { path: "/lecturer/exam-papers/new/setup", element: <ExamSetupRoute /> },
@@ -289,15 +286,8 @@ export const router = createBrowserRouter([
                 path: "/examiner/dashboard",
                 element: <ExaminerDashboardRoute />,
               },
-              { path: "/examiner/exams", element: <ExamBankRoute /> },
               { path: "/examiner/sealed-papers", element: <SealedPapersRoute /> },
-              { path: "/examiner/proctoring-policy", element: <ProctoringPolicyRoute /> },
-              { path: "/examiner/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/examiner/schedule/shared/:shiftId", element: <SharedShiftRoute /> },
-              {
-                path: "/examiner/exams/new/readiness",
-                element: <ExamReadinessRoute />,
-              },
               {
                 path: "/examiner/schedule",
                 element: <ExamScheduleDashboardRoute />,
@@ -371,7 +361,6 @@ export const router = createBrowserRouter([
                 element: <AccessibilitySettingsRoute />,
               },
               { path: "/home", element: <StudentHomeRoute /> },
-              { path: "/settings/shortcuts", element: <PersonalShortcutsRoute /> },
               { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
