@@ -35,7 +35,7 @@ const paged = (items: MyExamSchedule[]) => ({
   items, pageNumber: 1, pageSize: 100, totalCount: items.length, totalPages: 1, hasPreviousPage: false, hasNextPage: false,
 });
 const result = (scheduleId: string, overrides: Partial<ExamResult> = {}): ExamResult => ({
-  scheduleId, score: 8, maxScore: 10, status: "graded", submittedAt: null, releasedAt: null, ...overrides,
+  scheduleId, score: 8, maxScore: 10, scoreOnTen: null, passed: null, status: "graded", submittedAt: null, releasedAt: null, ...overrides,
 });
 
 function view(path: string) {
@@ -110,6 +110,16 @@ describe("student exam results", () => {
     expect(screen.getByRole("link", { name: "Back to exam results" })).toHaveAttribute("href", "/results");
     expect(vi.mocked(getMyExamResult).mock.calls[0][0]).toBe("graded");
     await expectNoAxeViolations(container);
+  });
+
+  it("writes out the score out of ten and whether the exam was passed", async () => {
+    vi.mocked(getMyExamSchedules).mockResolvedValue(paged([exam("graded", -10, "Closed")]));
+    vi.mocked(getMyExamResult).mockResolvedValue(result("graded", { score: 7.5, scoreOnTen: 7.5, passed: true }));
+    view("/results/graded");
+    expect(await screen.findByText("7.5/10 points")).toBeInTheDocument();
+    expect(screen.getByText("7.5 out of 10")).toBeInTheDocument();
+    expect(screen.getByText("Passed")).toBeInTheDocument();
+    expect(screen.getByText("Graded")).toBeInTheDocument();
   });
 
   it("explains a result that is not released", async () => {

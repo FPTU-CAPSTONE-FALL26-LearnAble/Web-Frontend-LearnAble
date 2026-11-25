@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { Card, CardContent, CardHeader } from "@/shared/ui/primitives/card";
 import { Button } from "@/shared/ui/primitives/button";
 import {
   Select,
@@ -14,6 +14,10 @@ import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 import { ContrastThemePicker } from "@/features/accessibility/components/ContrastThemePicker";
+import {
+  TextSizeSelect,
+  useSaveStatus,
+} from "@/features/accessibility/components/DisplayControls";
 import { useTtsStore } from "@/features/accessibility/store/ttsStore";
 import { useEnglishVoices, useViVoices } from "@/features/accessibility/hooks/useViVoices";
 import {
@@ -32,6 +36,7 @@ export function AccessibilitySettingsRoute() {
   const { voiceUri, rate, setVoiceUri, setRate } = useTtsStore();
   const profileQuery = useAccessibilityProfile();
   const updateMutation = useUpdateAccessibilityProfile();
+  const textSizeSave = useSaveStatus();
 
   // Đồng bộ hồ sơ server → store cục bộ lần đầu tải
   useEffect(() => {
@@ -68,59 +73,77 @@ export function AccessibilitySettingsRoute() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 tabIndex={-1} className="text-2xl font-bold">
-        {vi.a11ySettings.title}
-      </h1>
-      <p className="max-w-prose text-muted-foreground">{vi.a11ySettings.intro}</p>
+    // One centred reading column: heading, intro and both cards share the same width.
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+      <header className="flex flex-col gap-3 border-b-4 border-foreground pb-6">
+        <h1 tabIndex={-1} className="text-5xl font-extrabold tracking-tight">
+          {vi.a11ySettings.title}
+        </h1>
+        <p className="text-xl">{vi.a11ySettings.intro}</p>
+      </header>
 
-      <Card className="max-w-2xl">
-        <div className="flex flex-col gap-5">
-          <CardTitle>{vi.a11ySettings.themeSection}</CardTitle>
-          <p className="text-muted-foreground">{vi.a11ySettings.themeHint}</p>
-          <ContrastThemePicker />
-        </div>
+      <Card>
+        <CardHeader>
+          <h2 className="text-2xl font-extrabold tracking-tight">{vi.a11ySettings.themeSection}</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-6 text-base">
+            <p className="text-muted-foreground">{vi.a11ySettings.themeHint}</p>
+            <TextSizeSelect idPrefix="settings" onSave={textSizeSave.track} />
+            {textSizeSave.failed ? (
+              <p role="alert" className="text-destructive">
+                {vi.a11ySettings.card.saveFailed}
+              </p>
+            ) : null}
+            <ContrastThemePicker />
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className="flex max-w-2xl flex-col gap-5">
-        <CardTitle>{vi.a11ySettings.ttsSection}</CardTitle>
+      <Card>
+        <CardHeader>
+          <h2 className="text-2xl font-extrabold tracking-tight">{vi.a11ySettings.ttsSection}</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-6 text-base">
+            <p className="text-muted-foreground">{vi.a11ySettings.englishOnly}</p>
+            {voices.length === 0 ? <p className="text-warning-foreground">{vi.a11ySettings.noEnVoice}</p> : null}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tts-voice-select">{vi.a11ySettings.ttsVoice}</Label>
+              <Select value={selectedVoice?.voiceURI} onValueChange={setVoiceUri}>
+                <SelectTrigger id="tts-voice-select"><SelectValue placeholder={vi.a11ySettings.ttsVoice} /></SelectTrigger>
+                <SelectContent>
+                  {voices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</SelectItem>)}
+                  {vietnameseVoices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI} disabled>{voice.name} — {vi.a11ySettings.unavailable}</SelectItem>)}
+                  {vietnameseVoices.length === 0 ? <SelectItem value="vi-unavailable" disabled>{vi.a11ySettings.vietnameseUnavailable}</SelectItem> : null}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <p className="text-muted-foreground">{vi.a11ySettings.englishOnly}</p>
-        {voices.length === 0 ? <p className="text-warning-foreground">{vi.a11ySettings.noEnVoice}</p> : null}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="tts-voice-select">{vi.a11ySettings.ttsVoice}</Label>
-          <Select value={selectedVoice?.voiceURI} onValueChange={setVoiceUri}>
-            <SelectTrigger id="tts-voice-select"><SelectValue placeholder={vi.a11ySettings.ttsVoice} /></SelectTrigger>
-            <SelectContent>
-              {voices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI}>{voice.name}</SelectItem>)}
-              {vietnameseVoices.map((voice) => <SelectItem key={voice.voiceURI} value={voice.voiceURI} disabled>{voice.name} — {vi.a11ySettings.unavailable}</SelectItem>)}
-              {vietnameseVoices.length === 0 ? <SelectItem value="vi-unavailable" disabled>{vi.a11ySettings.vietnameseUnavailable}</SelectItem> : null}
-            </SelectContent>
-          </Select>
-        </div>
+            <fieldset className="flex flex-col gap-3">
+              <legend className="mb-2 font-medium">{vi.a11ySettings.ttsRate}</legend>
+              <RadioGroup value={String(rate)} onValueChange={(v) => setRate(Number(v))}>
+                {RATES.map((r) => (
+                  <div key={r} className="flex min-h-[44px] items-center gap-3">
+                    <RadioGroupItem id={`rate-${r}`} value={r} />
+                    <Label htmlFor={`rate-${r}`} className="cursor-pointer">
+                      {vi.a11ySettings.ttsRateValue(r)}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </fieldset>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-2 font-medium">{vi.a11ySettings.ttsRate}</legend>
-          <RadioGroup value={String(rate)} onValueChange={(v) => setRate(Number(v))}>
-            {RATES.map((r) => (
-              <div key={r} className="flex min-h-[44px] items-center gap-3">
-                <RadioGroupItem id={`rate-${r}`} value={r} />
-                <Label htmlFor={`rate-${r}`} className="cursor-pointer">
-                  {vi.a11ySettings.ttsRateValue(r)}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </fieldset>
-
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={preview} disabled={!selectedVoice}>
-            {vi.a11ySettings.ttsPreview}
-          </Button>
-          <Button onClick={save} disabled={updateMutation.isPending || !selectedVoice}>
-            {vi.common.save}
-          </Button>
-        </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={preview} disabled={!selectedVoice}>
+                {vi.a11ySettings.ttsPreview}
+              </Button>
+              <Button onClick={save} disabled={updateMutation.isPending || !selectedVoice}>
+                {vi.common.save}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

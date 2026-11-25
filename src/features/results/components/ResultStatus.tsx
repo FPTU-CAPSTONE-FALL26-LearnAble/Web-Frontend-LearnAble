@@ -1,21 +1,20 @@
 import { CircleCheck, CircleHelp, Clock } from "lucide-react";
-import { cn } from "@/shared/ui/cn";
 import { vi } from "@/shared/strings/vi";
 
 export type ResultState = "graded" | "pending" | "notReleased";
 
-const config: Record<ResultState, { className: string; Icon: typeof CircleCheck }> = {
-  graded: { className: "text-success-foreground", Icon: CircleCheck },
-  pending: { className: "text-muted-foreground", Icon: CircleHelp },
-  notReleased: { className: "text-muted-foreground", Icon: Clock },
+const icons: Record<ResultState, typeof CircleCheck> = {
+  graded: CircleCheck,
+  pending: CircleHelp,
+  notReleased: Clock,
 };
 
-/** State is an icon plus words, never colour alone (§8.1). */
+/** State is an icon plus words in a bordered tag, never colour alone (§8.1). */
 export function ResultStatus({ status }: { status: ResultState }) {
-  const { className, Icon } = config[status];
+  const Icon = icons[status];
   return (
-    <span className={cn("inline-flex items-center gap-2 font-medium", className)}>
-      <Icon aria-hidden className="size-5" />
+    <span className="inline-flex w-fit items-center gap-2 rounded-md border-2 border-foreground px-3 py-1 text-base font-extrabold tracking-wide uppercase">
+      <Icon aria-hidden className="size-5" strokeWidth={2.5} />
       {vi.results.state[status]}
     </span>
   );

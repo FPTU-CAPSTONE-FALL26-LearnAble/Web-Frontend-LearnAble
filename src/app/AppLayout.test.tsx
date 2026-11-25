@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { getUnreadNotificationCount } from "@/api/notifications";
+import { RequireAuth } from "@/features/auth/components/RequireAuth";
+import { RequireStudent } from "@/features/auth/components/RequireStudent";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import { PageKeys } from "@/lib/a11y/PageKeys";
+import { tokenStore } from "@/lib/auth/tokenStore";
 import { AppLayout } from "./AppLayout";
 
 vi.mock("@/api/notifications", () => ({ getUnreadNotificationCount: vi.fn() }));
@@ -36,12 +40,60 @@ function view() {
   );
 }
 
+describe("AppLayout sign out", () => {
+  afterEach(() => {
+    tokenStore.clear();
+    useAuthStore.setState({ user: null });
+  });
+
+  it("signs the student out and returns to the public home page, not a sign-in page", async () => {
+    vi.mocked(getUnreadNotificationCount).mockResolvedValue({ unreadCount: 0 });
+    tokenStore.set({ accessToken: "a", refreshToken: "r", accessTokenExpiresAt: "2099-01-01T00:00:00Z" }, true);
+    useAuthStore.setState({
+      user: { id: "user-1", fullName: "Test Student", email: "s@fpt.edu.vn", role: "Student" },
+    });
+    const router = createMemoryRouter(
+      [
+        { path: "/", element: <h1>Public home</h1> },
+        { path: "/login", element: <h1>Staff sign in</h1> },
+        { path: "/student/login", element: <h1>Student sign in</h1> },
+        {
+          element: <RequireAuth />,
+          children: [
+            {
+              element: <RequireStudent />,
+              children: [
+                {
+                  element: <AppLayout />,
+                  children: [{ path: "/home", element: <h1>Main menu</h1> }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      { initialEntries: ["/home"] },
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("heading", { name: "Public home" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(tokenStore.get()).toBeNull();
+  });
+});
+
 describe("AppLayout student navigation", () => {
   it("links to the exam schedule and marks the current page", async () => {
     vi.mocked(getUnreadNotificationCount).mockResolvedValue({ unreadCount: 0 });
     view();
     const nav = screen.getByRole("navigation");
-    const schedule = within(nav).getByRole("link", { name: "Exam schedule" });
+    const schedule = within(nav).getByRole("link", { name: "Schedule" });
     expect(schedule).toHaveAttribute("href", "/schedule");
     expect(schedule).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Notifications" })).toHaveAttribute("href", "/notifications");
@@ -56,7 +108,7 @@ describe("AppLayout student navigation", () => {
   it("returns to the main menu with Alt+H from any page", async () => {
     vi.mocked(getUnreadNotificationCount).mockResolvedValue({ unreadCount: 0 });
     view();
-    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/home");
+    expect(within(screen.getByRole("navigation")).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/home");
     await userEvent.keyboard("{Alt>}h{/Alt}");
     expect(await screen.findByRole("heading", { name: "Main menu" })).toBeInTheDocument();
   });
