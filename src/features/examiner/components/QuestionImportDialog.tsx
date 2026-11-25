@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 import { ApiFailure } from "@/api/client";
+import { assertExcelImportFile } from "@/lib/excelImport";
 import {
   downloadQuestionImportTemplate,
   importQuestions,
@@ -19,7 +20,7 @@ function describeFailure(error: unknown, fallback: string) {
   if (error instanceof ApiFailure && error.detail.kind === "server") {
     return [error.detail.message, ...(error.detail.errors ?? [])].filter(Boolean).join(" ") || fallback;
   }
-  return fallback;
+  return error instanceof Error ? error.message : fallback;
 }
 
 function download(blob: Blob, fileName: string) {
@@ -66,7 +67,7 @@ export function QuestionImportDialog({
     onError: (reason) => setError(describeFailure(reason, "The Excel template could not be downloaded. Try again.")),
   });
   const review = useMutation({
-    mutationFn: () => validateQuestionImport(subjectId, file!),
+    mutationFn: () => { assertExcelImportFile(file!); return validateQuestionImport(subjectId, file!); },
     onSuccess: (result) => {
       setValidation(result);
       setWarningsAccepted(false);
@@ -130,6 +131,7 @@ export function QuestionImportDialog({
             </label>
           </div>
 
+          <p className="text-sm text-muted-foreground">Use the downloaded .xlsx template. Keep its sheet names, column headings and column order; do not add columns. Validation lists any incorrect rows before import.</p>
           {file ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"><div className="min-w-0"><p className="truncate font-bold">{file.name}</p><p className="mt-1 text-sm text-muted-foreground">{Math.max(1, Math.round(file.size / 1024))} KB</p></div><Badge variant={validFile ? "default" : "destructive"}>{validFile ? "Ready to validate" : "Unsupported file"}</Badge></div> : null}
 
           <Button type="button" disabled={!validFile || review.isPending} onClick={() => review.mutate()}>

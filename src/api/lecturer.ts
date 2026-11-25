@@ -180,6 +180,20 @@ const audioGenerationRetrySchema = z.object({
   queued: z.number(),
 });
 
+const localQuestionTtsJobSchema = z.object({
+  jobId: z.string(),
+  questionId: z.string(),
+  optionId: z.string().nullable(),
+  status: z.string(),
+});
+
+/** Queue the question and its answer options for the lecturer's paired Local TTS Agent. */
+export const generateLocalQuestionAudio = (questionId: string, input: { includeOptions?: boolean; force?: boolean } = {}) =>
+  unwrap(`/lecturer/questions/${questionId}/audio/generate`, z.array(localQuestionTtsJobSchema), {
+    method: "POST",
+    json: { idempotencyKey: crypto.randomUUID(), includeOptions: input.includeOptions ?? true, force: input.force ?? false },
+  });
+
 /**
  * Ask the Backend worker to (re)create audio for one question. The worker owns
  * synthesis and retries; the browser never talks to the TTS tunnel directly.

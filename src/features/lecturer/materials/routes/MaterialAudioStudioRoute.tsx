@@ -453,7 +453,6 @@ export function MaterialAudioStudioRoute() {
           {wholePlayback && <p role="status" className="text-sm font-semibold">Playing {unit} {wholePlayback.pages[wholePlayback.index].number} · {wholePlayback.index + 1}/{wholePlayback.pages.length}. Player and narration are beside the document below.</p>}
           {batchId && <div className="space-y-3 border-t border-border pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-bold text-primary">Audio generation jobs</p><p role="status" className="font-semibold text-foreground">{finishedJobs}/{jobs.length} finished</p></div>
-            {finishedJobs === 0 && jobs.length > 0 && <p role="status" className="text-sm text-muted-foreground">{processingJobs > 0 ? `The local TTS agent is processing the first ${unit}. The audio bar increases when each ${unit} becomes playable.` : `All ${jobs.length} jobs are waiting. Keep the local TTS agent running and check its connection to the same backend.`}</p>}
             <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
               <p className="rounded-lg bg-muted px-3 py-2">Waiting <strong>{pendingJobs}</strong></p>
               <p className="rounded-lg bg-accent px-3 py-2">Processing <strong>{processingJobs}</strong></p>

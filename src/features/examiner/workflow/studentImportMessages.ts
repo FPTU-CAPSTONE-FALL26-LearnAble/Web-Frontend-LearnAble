@@ -1,4 +1,5 @@
 import { ApiFailure } from "@/api/client";
+import { ExcelImportError } from "@/lib/excelImport";
 
 export type ImportIssue = { rowNumber?: number | null; code?: string | null; message: string };
 export type FriendlyIssue = { where: string; text: string; fix: string };
@@ -8,6 +9,8 @@ const REMOVE_OR_FIX = "Correct this row in the file, then choose the file again.
 /** What went wrong with a row, and what to do about it, in words for the person importing the file. */
 const known: Record<string, (code: string) => { text: string; fix: string }> = {
   STUDENT_NOT_FOUND: (code) => ({ text: `${code || "This code"} is not a student of your university.`, fix: "Check the code for a typo, or remove this row." }),
+  LECTURER_NOT_FOUND: (code) => ({ text: `${code || "This lecturer code"} was not found among the eligible lecturers.`, fix: "Check the lecturer code and university, or ask staff to verify the account." }),
+  DUPLICATE_LECTURER: (code) => ({ text: `${code || "This lecturer"} appears more than once.`, fix: "Keep one row for each lecturer." }),
   DUPLICATE_STUDENT: (code) => ({ text: `${code || "This student"} appears more than once.`, fix: "Keep one row for each student." }),
   AMBIGUOUS_STUDENT_CODE: (code) => ({ text: `More than one account uses the code ${code || "in this row"}.`, fix: "Ask the staff office to correct the accounts, then choose the file again." }),
   NOT_STUDENT: (code) => ({ text: `${code || "This code"} belongs to an account that is not a student.`, fix: "Use a student's code, or remove this row." }),
@@ -20,7 +23,8 @@ const known: Record<string, (code: string) => { text: string; fix: string }> = {
   NOTES_TOO_LONG: () => ({ text: "The accommodation note is too long.", fix: "Keep it under 2,000 characters." }),
   MISSING_SHEET: () => ({ text: "The file has no sheet named Students.", fix: "Download the template again and put the students on its Students sheet." }),
   UNSUPPORTED_LAYOUT: () => ({ text: "The Students sheet has merged cells, or the file has too many sheets.", fix: "Unmerge the cells and keep at most eight sheets." }),
-  UNEXPECTED_COLUMNS: () => ({ text: "The Students sheet has columns that are not in the template.", fix: "Keep only Student Code, Extra Time Minutes and Accommodation Notes." }),
+  UNEXPECTED_COLUMNS: () => ({ text: "The sheet contains extra columns that are not in the template.", fix: "Download the matching template and keep only its columns, in the same order." }),
+  MISSING_COLUMNS: () => ({ text: "Required columns are missing from the file.", fix: "Download the matching template and keep all original column headings." }),
   INVALID_HEADER: () => ({ text: "The column titles in the first row were changed.", fix: "Put the original titles back, in the original order." }),
   NO_STUDENTS: () => ({ text: "The file has no students.", fix: "Add at least one student code under the titles." }),
 };
@@ -34,6 +38,7 @@ export function describeImportIssue(issue: ImportIssue, studentCode?: string | n
 
 /** Why a whole file was turned down, for the message shown when it cannot be checked at all. */
 export function describeImportFailure(error: unknown): string {
+  if (error instanceof ExcelImportError) return error.message;
   if (error instanceof ApiFailure && error.detail.kind === "network") return "The server could not be reached. Check your connection and choose the file again.";
   if (error instanceof ApiFailure && error.detail.kind === "unauthorized") return "Your session has ended. Sign in again, then choose the file again.";
   if (error instanceof ApiFailure && error.detail.kind === "not_found") return "This exam configuration no longer exists on the server. Create a new shift from an available exam, then import the list again.";

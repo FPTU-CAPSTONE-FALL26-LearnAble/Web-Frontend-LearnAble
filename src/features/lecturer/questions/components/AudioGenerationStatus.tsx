@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AudioLines, RotateCcw } from "lucide-react";
 import {
+  generateLocalQuestionAudio,
   getQuestionAudioGeneration,
   getQuestionAudioGenerationSummary,
   queueQuestionAudioGeneration,
@@ -8,6 +9,7 @@ import {
   type AudioGenerationSummary,
   type AudioSegment,
 } from "@/api/lecturer";
+import { ApiFailure } from "@/api/client";
 import { formatQuestionId } from "@/shared/strings/questionId";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
@@ -48,13 +50,13 @@ function reportQueueFailure() {
 function WorkerDisabled() {
   return (
     <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
-      The audio worker is turned off on the server, so audio cannot be created right now. Ask the Backend team to enable it.
+      The server audio worker is off. Local TTS jobs can still run when this Backend supports them and your device is connected.
     </p>
   );
 }
 
 /** How many questions (not audio segments) are in each audio state. */
-export type QuestionProgress = { loading: boolean; total: number; ready: number; waiting: number; failed: number; none: number; checking: number };
+export type QuestionProgress = { loading: boolean; total: number; ready: number; waiting: number; failed: number; none: number; checking: number; unavailable?: number };
 
 type PanelFilters = { subjectId?: string; topicId?: string; examTypeId?: string };
 
@@ -70,9 +72,11 @@ export function AudioGenerationPanel({ filters, subjectIds = [], questionProgres
       queryKey: [...audioGenerationKey, "summary", scope],
       queryFn: () => getQuestionAudioGenerationSummary(scope),
       meta: { silent: true },
+      retry: false,
+      refetchOnWindowFocus: false,
       refetchInterval: (query: { state: { data?: AudioGenerationSummary } }) => {
         const data = query.state.data;
-        return data?.workerEnabled && data.pending + data.processing > 0 ? POLL_MS : false;
+        return data && data.pending + data.processing > 0 ? POLL_MS : false;
       },
     })),
   });
@@ -123,13 +127,13 @@ export function AudioGenerationPanel({ filters, subjectIds = [], questionProgres
             <AudioLines className="size-5" aria-hidden />
             Audio generation
           </h2>
-          {data ? (
+          {data || byQuestion ? (
             <p className="mt-1 text-sm text-muted-foreground">
               {byQuestion
                 ? `${byQuestion.ready} of ${byQuestion.total} questions have all their audio ready`
-                : `${data.ready} of ${data.totalSegments} audio segments ready across ${data.questions} questions`}
+                : data ? `${data.ready} of ${data.totalSegments} audio segments ready across ${data.questions} questions` : ""}
               {byQuestion && byQuestion.checking > 0 ? `, checking ${byQuestion.checking} more` : ""}
-              {data.workerEnabled && active > 0 ? ". Updating automatically." : "."}
+              {active > 0 ? ". Updating automatically." : "."}
             </p>
           ) : null}
         </div>
@@ -142,6 +146,17 @@ export function AudioGenerationPanel({ filters, subjectIds = [], questionProgres
       </div>
       {loading && !data ? <div role="status" aria-label="Checking the audio queue" className="h-16 animate-pulse rounded-lg bg-muted" /> : null}
       {failedToLoad ? <p className="text-sm text-destructive">Some audio status could not be loaded. Refresh this page to check again.</p> : null}
+      {!data && byQuestion && (byQuestion.unavailable ?? 0) > 0 ? <p className="text-sm text-destructive">Audio status is unavailable for {byQuestion.unavailable} {byQuestion.unavailable === 1 ? "question" : "questions"}. The server may be having trouble; try again later.</p> : null}
+      {!data && byQuestion && byQuestion.checking === 0 ? (
+        <dl aria-live="polite" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {counts.map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-border p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {data ? (
         <>
           {!data.workerEnabled ? <WorkerDisabled /> : null}
@@ -191,10 +206,12 @@ export function QuestionAudioStatus({ questionId }: { questionId: string }) {
     queryKey: [...audioGenerationKey, "question", questionId],
     meta: { silent: true },
     queryFn: () => getQuestionAudioGeneration(questionId),
+    retry: false,
+    refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const data = query.state.data;
       const active = data?.segments.some((segment) => segment.generationStatus === "Pending" || segment.generationStatus === "Processing");
-      return data?.workerEnabled && active ? POLL_MS : false;
+      return active ? POLL_MS : false;
     },
   });
   const retry = useMutation({
@@ -205,6 +222,23 @@ export function QuestionAudioStatus({ questionId }: { questionId: string }) {
     },
     onError: reportQueueFailure,
   });
+  const local = useMutation({
+    mutationFn: () => generateLocalQuestionAudio(questionId),
+    onSuccess: async (jobs) => {
+      toast({
+        title: "Local TTS requested",
+        description: `${jobs.filter((job) => job.status === "Pending" || job.status === "Processing").length} audio segments are waiting for or being handled by your paired device.`,
+      });
+      await queryClient.invalidateQueries({ queryKey: audioGenerationKey });
+    },
+    onError: (error) => toast({
+      title: "Local TTS could not start",
+      description: error instanceof ApiFailure && error.detail.kind === "not_found"
+        ? "This Backend does not have the Local TTS question API yet. Use the updated EC2 Backend."
+        : "Check your paired device and question status, then try again.",
+      variant: "error",
+    }),
+  });
   const data = status.data;
   if (status.isPending) return <p className="text-sm text-muted-foreground">Checking the audio for this question…</p>;
   if (!data) return <p className="text-sm text-destructive">The audio status could not be loaded. Refresh this page to check again.</p>;
@@ -213,10 +247,16 @@ export function QuestionAudioStatus({ questionId }: { questionId: string }) {
       {!data.workerEnabled ? <WorkerDisabled /> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold">{data.ready} of {data.totalSegments} audio segments ready</p>
-        <Button type="button" variant="outline" disabled={!data.workerEnabled || retry.isPending} onClick={() => retry.mutate()}>
-          <RotateCcw aria-hidden />
-          {retry.isPending ? "Queueing audio…" : "Retry audio"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" disabled={local.isPending} onClick={() => local.mutate()}>
+            <AudioLines aria-hidden />
+            {local.isPending ? "Queueing Local TTS…" : "Create with Local TTS"}
+          </Button>
+          <Button type="button" variant="outline" disabled={!data.workerEnabled || retry.isPending} onClick={() => retry.mutate()}>
+            <RotateCcw aria-hidden />
+            {retry.isPending ? "Queueing audio…" : "Retry on server"}
+          </Button>
+        </div>
       </div>
       {data.segments.length ? (
         <ul className="divide-y divide-border rounded-lg border border-border">

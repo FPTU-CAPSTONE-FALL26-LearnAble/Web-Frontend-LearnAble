@@ -58,7 +58,8 @@ import { useAuthStore } from "@/features/auth/store/authStore";
 import { describeError } from "@/app/providers";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { toast } from "@/shared/ui/primitives/toast";
-import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, getQuestion, getQuestionImages, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
+import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, generateLocalQuestionAudio, getQuestion, getQuestionImages, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
+import { ApiFailure } from "@/api/client";
 import { getExamTypes } from "@/api/exams";
 import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
 import { QuestionImagesManager } from "@/features/lecturer/questions/components/QuestionImagesManager";
@@ -335,13 +336,21 @@ export function CreateQuestionRoute() {
         });
         await validateCodingQuestion(question.questionId);
       }
-      // Audio generation is asynchronous on the Backend. A queue failure must
-      // never turn a successfully saved question into a failed save.
+      // Audio generation is asynchronous. Older environments still use the server worker.
+      // A queue failure must never turn a successfully saved question into a failed save.
       try {
-        const audioGeneration = await queueQuestionAudioGeneration(question.questionId);
-        return { ...question, audioGenerationQueued: audioGeneration.queued + audioGeneration.requeued };
-      } catch {
-        return { ...question, audioGenerationQueued: null };
+        const jobs = await generateLocalQuestionAudio(question.questionId);
+        return { ...question, audioGenerationQueued: jobs.filter((job) => job.status === "Pending").length };
+      } catch (error) {
+        if (!(error instanceof ApiFailure) || error.detail.kind !== "not_found") {
+          return { ...question, audioGenerationQueued: null };
+        }
+        try {
+          const audioGeneration = await queueQuestionAudioGeneration(question.questionId);
+          return { ...question, audioGenerationQueued: audioGeneration.queued + audioGeneration.requeued };
+        } catch {
+          return { ...question, audioGenerationQueued: null };
+        }
       }
     },
     onSuccess: (question) => {

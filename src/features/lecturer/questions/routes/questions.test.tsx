@@ -30,6 +30,7 @@ const lecturerApi = vi.hoisted(() => ({
   getQuestionAudio: vi.fn(),
   getQuestionOptionAudio: vi.fn(),
   queueQuestionAudioGeneration: vi.fn(async () => ({ queued: 1, requeued: 0 })),
+  generateLocalQuestionAudio: vi.fn(async () => [{ jobId: "job-1", questionId: "created-question", optionId: null, status: "Pending" }]),
   getQuestionAudioGeneration: vi.fn<(id: string) => Promise<unknown>>(async () => ({ questionId: "q", totalSegments: 0, ready: 0, workerEnabled: true, segments: [] })),
   getQuestionAudioGenerationSummary: vi.fn(async () => ({ questions: 0, totalSegments: 0, ready: 0, pending: 0, processing: 0, failed: 0, missing: 0, workerEnabled: true, failedSegments: [] })),
   retryAudioGeneration: vi.fn(async () => ({ queued: 0, requeued: 0 })),
@@ -464,7 +465,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
   });
 
   it("publishes a supported valid question through the backend API", async () => {
-    lecturerApi.queueQuestionAudioGeneration.mockClear();
+    lecturerApi.generateLocalQuestionAudio.mockClear();
     const draft = createDraft("essay");
     if (draft.type === "essay") {
       draft.examTypeId = "exam-type-final";
@@ -489,7 +490,7 @@ describe("Lecturer questions", { timeout: 20000 }, () => {
       expect.objectContaining({ difficulty: "Hard" }),
       [],
     );
-    await waitFor(() => expect(lecturerApi.queueQuestionAudioGeneration).toHaveBeenCalledWith("created-question"));
+    await waitFor(() => expect(lecturerApi.generateLocalQuestionAudio).toHaveBeenCalledWith("created-question"));
     expect(
       screen.queryByRole("button", { name: "Listen to AI reading" }),
     ).not.toBeInTheDocument();

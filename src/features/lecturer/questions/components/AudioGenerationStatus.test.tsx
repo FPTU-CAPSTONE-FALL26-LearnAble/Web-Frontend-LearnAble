@@ -8,6 +8,7 @@ const api = vi.hoisted(() => ({
   getQuestionAudioGeneration: vi.fn(),
   getQuestionAudioGenerationSummary: vi.fn(),
   queueQuestionAudioGeneration: vi.fn(async () => ({ queued: 1, requeued: 0 })),
+  generateLocalQuestionAudio: vi.fn(async () => [{ jobId: "job-1", questionId: "question-1", optionId: null, status: "Pending" }]),
   retryAudioGeneration: vi.fn(async () => ({ queued: 1, requeued: 1 })),
 }));
 vi.mock("@/api/lecturer", () => api);
@@ -21,6 +22,12 @@ function show(element: ReactNode) {
 
 describe("AudioGenerationPanel", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it("shows loaded question progress without requesting every subject summary", () => {
+    show(<AudioGenerationPanel filters={{ examTypeId: "exam-type" }} questionProgress={{ loading: false, total: 1, ready: 0, waiting: 0, failed: 0, none: 0, checking: 1, unavailable: 1 }} />);
+    expect(api.getQuestionAudioGenerationSummary).not.toHaveBeenCalled();
+    expect(screen.getByText(/Audio status is unavailable for 1 question/)).toBeInTheDocument();
+  });
 
   it("retries failed and missing audio in the filtered scope", async () => {
     api.getQuestionAudioGenerationSummary.mockResolvedValue({ ...baseSummary, failedSegments: [failedSegment] });
@@ -56,7 +63,7 @@ describe("AudioGenerationPanel", () => {
   it("explains a disabled worker and blocks the retry", async () => {
     api.getQuestionAudioGenerationSummary.mockResolvedValue({ ...baseSummary, workerEnabled: false });
     show(<AudioGenerationPanel filters={{ subjectId: "subject" }} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("audio worker is turned off");
+    expect(await screen.findByRole("alert")).toHaveTextContent("server audio worker is off");
     expect(screen.getByRole("button", { name: /Retry failed/ })).toBeDisabled();
   });
 
@@ -79,7 +86,9 @@ describe("QuestionAudioStatus", () => {
     expect(await screen.findByText("1 of 2 audio segments ready")).toBeInTheDocument();
     expect(screen.getByText("Question text")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Retry audio" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create with Local TTS" }));
+    await waitFor(() => expect(api.generateLocalQuestionAudio).toHaveBeenCalledWith("question-1"));
+    await userEvent.click(screen.getByRole("button", { name: "Retry on server" }));
     await waitFor(() => expect(api.queueQuestionAudioGeneration).toHaveBeenCalledWith("question-1"));
   });
 });
