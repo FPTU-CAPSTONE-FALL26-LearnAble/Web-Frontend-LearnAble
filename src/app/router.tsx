@@ -5,12 +5,15 @@ import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { RequireStudent } from "@/features/auth/components/RequireStudent";
 import { LoginRoute } from "@/features/auth/routes/LoginRoute";
 import { StudentLoginRoute } from "@/features/auth/routes/StudentLoginRoute";
+import { GuestDisplayScope } from "@/features/auth/components/GuestDisplayScope";
+import { AccessibilityCard } from "@/features/accessibility/components/AccessibilityCard";
 import { ForgotPasswordRoute } from "@/features/auth/routes/ForgotPasswordRoute";
 import { AccessibilitySettingsRoute } from "@/features/accessibility/routes/AccessibilitySettingsRoute";
 import { StudentHomeRoute } from "@/features/home/routes/StudentHomeRoute";
 import { PersonalShortcutsRoute } from "@/features/accessibility/routes/PersonalShortcutsRoute";
 import { PracticeListRoute } from "@/features/practice/routes/PracticeListRoute";
 import { PracticeAttemptRoute } from "@/features/practice/routes/PracticeAttemptRoute";
+import { PracticeResultRoute } from "@/features/practice/routes/PracticeResultRoute";
 import { AssistantRoute } from "@/features/assistant/routes/AssistantRoute";
 import { ProgressRoute } from "@/features/progress/routes/ProgressRoute";
 import { ResultsListRoute } from "@/features/results/routes/ResultsListRoute";
@@ -90,11 +93,32 @@ import {
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { AssessmentPlayerDemoRoute } from "@/features/demo/routes/AssessmentPlayerDemoRoute";
 import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
+import { PublicLayout } from "@/features/landing/components/PublicLayout";
+import { ChallengesRoute } from "@/features/landing/routes/ChallengesRoute";
+import { HowItWorksRoute } from "@/features/landing/routes/HowItWorksRoute";
 import { LandingRoute } from "@/features/landing/routes/LandingRoute";
+import { PublicAccessibilityRoute } from "@/features/landing/routes/PublicAccessibilityRoute";
+import { SolutionRoute } from "@/features/landing/routes/SolutionRoute";
 import { NotificationsRoute } from "@/features/notifications/routes/NotificationsRoute";
 import { StudentNotificationsRoute } from "@/features/notifications/routes/StudentNotificationsRoute";
 import { ScheduleRoute } from "@/features/schedule/routes/ScheduleRoute";
 import { NotificationManagementRoute } from "@/features/notifications/routes/NotificationManagementRoute";
+import { useAuthStore } from "@/features/auth/store/authStore";
+
+/** The practice player shows who is taking the attempt; features do not read the auth store themselves. */
+function PracticeAttemptPage() {
+  const user = useAuthStore((state) => state.user);
+  return (
+    <PracticeAttemptRoute
+      candidate={{ id: user?.email?.split("@")[0] ?? "", name: user?.fullName ?? "" }}
+    />
+  );
+}
+
+/** Students set text size and colours on the sign-in page before typing. */
+function StudentLoginPage() {
+  return <StudentLoginRoute displayControls={<AccessibilityCard />} />;
+}
 
 function LegacyParameterizedRedirect({
   destination,
@@ -114,14 +138,30 @@ function LegacyParameterizedRedirect({
 }
 
 export const router = createBrowserRouter([
-  { path: "/", element: <LandingRoute /> },
+  {
+    // The public site: one page per question, sharing a header and footer.
+    element: <PublicLayout />,
+    children: [
+      { path: "/", element: <LandingRoute /> },
+      { path: "/challenges", element: <ChallengesRoute /> },
+      { path: "/solution", element: <SolutionRoute /> },
+      { path: "/how-it-works", element: <HowItWorksRoute /> },
+      { path: "/accessibility", element: <PublicAccessibilityRoute /> },
+    ],
+  },
   { path: "/demo/components", element: <ComponentDemoRoute /> },
   { path: "/demo/assessment-player", element: <AssessmentPlayerDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
-  { path: "/login", element: <LoginRoute /> },
-  { path: "/student/login", element: <StudentLoginRoute /> },
+  {
+    // Sign-in pages keep the text size and colours a visitor chose as a guest.
+    element: <GuestDisplayScope />,
+    children: [
+      { path: "/login", element: <LoginRoute /> },
+      { path: "/student/login", element: <StudentLoginPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordRoute /> },
+    ],
+  },
   { path: "/register", element: <Navigate to="/login" replace /> },
-  { path: "/forgot-password", element: <ForgotPasswordRoute /> },
   { path: "/dang-nhap", element: <Navigate to="/login" replace /> },
   {
     path: "/quen-mat-khau",
@@ -341,15 +381,15 @@ export const router = createBrowserRouter([
         element: <RequireStudent />,
         children: [
           {
-            path: "/practice/:setId",
-            element: <PracticeAttemptRoute />,
+            path: "/practice/:sessionId",
+            element: <PracticeAttemptPage />,
           },
           {
-            path: "/luyen-tap/:setId",
+            path: "/luyen-tap/:sessionId",
             element: (
               <LegacyParameterizedRedirect
                 destination="/practice"
-                parameter="setId"
+                parameter="sessionId"
               />
             ),
           },
@@ -363,6 +403,7 @@ export const router = createBrowserRouter([
               { path: "/home", element: <StudentHomeRoute /> },
               { path: "/exam-schedules/:scheduleId/recording-consent", element: <RecordingConsentRoute /> },
               { path: "/practice", element: <PracticeListRoute /> },
+              { path: "/practice/:sessionId/result", element: <PracticeResultRoute /> },
               { path: "/assistant", element: <AssistantRoute /> },
               { path: "/progress", element: <ProgressRoute /> },
               { path: "/schedule", element: <ScheduleRoute /> },

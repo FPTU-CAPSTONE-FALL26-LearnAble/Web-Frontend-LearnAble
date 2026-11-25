@@ -14,9 +14,13 @@ import { ApiFailure, envelopeFailure, request } from "@/api/client";
  * names below are the ones the Backend uses for the same data in the examiner
  * gradebook (`ExamGradebookItemResponseModel`); every field is optional so a
  * different shape shows "no score" instead of failing the page.
+ *
+ * Two shapes are read: the fields directly in `data`, or nested in
+ * `data.result` as the practice result (`PracticeStudentResultResponseModel`,
+ * the same grading model) sends them. Nested fields win.
  */
 
-const resultDataSchema = z.object({
+const resultFieldsSchema = z.object({
   attemptId: z.string().nullish(),
   attemptStatus: z.string().nullish(),
   autoScore: z.number().nullish(),
@@ -24,10 +28,16 @@ const resultDataSchema = z.object({
   totalScore: z.number().nullish(),
   score: z.number().nullish(),
   maxScore: z.number().nullish(),
+  scoreOnTen: z.number().nullish(),
+  passed: z.boolean().nullish(),
   gradingStatus: z.string().nullish(),
   submittedAt: z.string().nullish(),
   releasedAt: z.string().nullish(),
 });
+const resultDataSchema = resultFieldsSchema.extend({ result: resultFieldsSchema.nullish() });
+
+/** Grading states the Backend uses for a finished grade. */
+const GRADED = new Set(["complete", "completed", "graded", "released"]);
 
 const envelope = z.object({
   success: z.boolean(),
@@ -41,6 +51,8 @@ export type ExamResult = {
   /** Null while the Backend has not sent a total yet. */
   score: number | null;
   maxScore: number | null;
+  scoreOnTen: number | null;
+  passed: boolean | null;
   /** "graded" once grading is complete; "pending" while it is still being marked. */
   status: "graded" | "pending";
   submittedAt: string | null;
@@ -67,17 +79,27 @@ export async function getMyExamResult(scheduleId: string): Promise<ExamResult | 
     throw error;
   }
   if (!response.success) throw envelopeFailure(response);
-  const data = response.data;
-  if (!data) return null;
+  if (!response.data) return null;
+  const { result: nested, ...flat } = response.data;
+  const data = nested ? { ...flat, ...stripNullish(nested) } : flat;
   const score = data.totalScore ?? data.score ?? null;
   const grading = data.gradingStatus?.toLowerCase();
   return {
     scheduleId,
     score,
     maxScore: data.maxScore ?? null,
+    scoreOnTen: data.scoreOnTen ?? null,
+    passed: data.passed ?? null,
     status:
-      grading === "complete" || (grading === undefined && score !== null) ? "graded" : "pending",
+      (grading !== undefined && GRADED.has(grading)) || (grading === undefined && score !== null)
+        ? "graded"
+        : "pending",
     submittedAt: data.submittedAt ?? null,
     releasedAt: data.releasedAt ?? null,
   };
+}
+
+/** Nested values replace flat ones only where the nested value is present. */
+function stripNullish<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item != null)) as Partial<T>;
 }

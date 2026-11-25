@@ -17,8 +17,11 @@ import {
   setExamInvigilators,
   updateExamSchedule,
   validateInvigilatorImport,
+  downloadInvigilatorImportTemplate,
 } from "@/api/exams";
-import { validateStudentImport } from "@/api/invigilation";
+import { downloadStudentImportTemplate, validateStudentImport } from "@/api/invigilation";
+import { assertExcelImportFile, saveImportTemplate } from "@/lib/excelImport";
+import { importReportMessages } from "@/features/examiner/workflow/importReport";
 import { ApiFailure } from "@/api/client";
 import { describeError } from "@/app/providers";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
@@ -105,6 +108,15 @@ export function ExamScheduleDetailRoute() {
   const [entryClosesAt, setEntryClosesAt] = useState("");
   const studentFileRef = useRef<HTMLInputElement>(null);
   const invigilatorFileRef = useRef<HTMLInputElement>(null);
+  const template = useMutation({
+    mutationFn: async (kind: "students" | "lecturers") => {
+      const result = kind === "students"
+        ? await downloadStudentImportTemplate(schedule.data!.examSubjectId)
+        : await downloadInvigilatorImportTemplate(schedule.data!.examShiftId);
+      saveImportTemplate(result, `exam-${kind}-template.xlsx`);
+    },
+    onError: (reason) => toast({ title: "Template could not be downloaded", description: importErrorText(reason), variant: "error" }),
+  });
   const schedule = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId], queryFn: () => getExamSchedule(scheduleId), enabled: Boolean(scheduleId) });
   const enrollments = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId, "enrollments"], queryFn: () => getExamEnrollments(scheduleId), enabled: Boolean(scheduleId) });
   const invigilators = useQuery({ queryKey: ["examiner", "exam-schedule", scheduleId, "invigilators"], queryFn: () => getExamInvigilators(scheduleId), enabled: Boolean(scheduleId) });
@@ -162,8 +174,9 @@ export function ExamScheduleDetailRoute() {
   });
   const importStudents = useMutation({
     mutationFn: async (file: File) => {
+      assertExcelImportFile(file);
       const report = await validateStudentImport(schedule.data!.examSubjectId, file);
-      if (!report.canContinue || report.invalidRows > 0) throw new Error(`${report.invalidRows} student row(s) need correction before importing.`);
+      if (!report.canContinue || report.invalidRows > 0) throw new Error(importReportMessages(report).join("\n") || "No students were imported. Correct the invalid rows using the student template.");
       const existing = new Set((enrollments.data ?? []).map((student) => student.studentId));
       const students = report.rows.flatMap((row) => row.isValid && row.studentId && !existing.has(row.studentId)
         ? [{ studentId: row.studentId, extraTimeMinutes: row.extraTimeMinutes, accommodationNotes: row.accommodationNotes }]
@@ -190,8 +203,9 @@ export function ExamScheduleDetailRoute() {
   });
   const importInvigilators = useMutation({
     mutationFn: async (file: File) => {
+      assertExcelImportFile(file);
       const report = await validateInvigilatorImport(schedule.data!.examShiftId, file);
-      if (!report.canContinue || report.invalidRows > 0) throw new Error(`${report.invalidRows} lecturer row(s) need correction before importing.`);
+      if (!report.canContinue || report.invalidRows > 0) throw new Error(importReportMessages(report).join("\n") || "No lecturers were imported. Correct the invalid rows using the lecturer template.");
       const lecturerIds = [...new Set(report.rows.flatMap((row) => row.isValid && row.lecturerId ? [row.lecturerId] : []))];
       if (!lecturerIds.length) throw new Error("The file contains no valid lecturer.");
       await setExamInvigilators(scheduleId, lecturerIds.map((lecturerId, index) => ({ lecturerId, assignmentRole: index === 0 ? "Chief" : "Assistant" })));
@@ -299,7 +313,9 @@ export function ExamScheduleDetailRoute() {
 
       <section aria-label="People" className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={studentFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose student import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importStudents.mutate(file); }} /><Button type="button" variant="outline" disabled={importStudents.isPending} onClick={() => studentFileRef.current?.click()}><Upload aria-hidden />{importStudents.isPending ? "Importing…" : "Import students"}</Button></div> : null}</header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Students</h2><span className="text-sm text-muted-foreground">{students.length} in total</span>{item.status === "Draft" ? <div className="ml-auto flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={template.isPending} onClick={() => template.mutate("students")}>Download student template</Button><input ref={studentFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose student import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importStudents.mutate(file); }} /><Button type="button" variant="outline" disabled={importStudents.isPending} onClick={() => studentFileRef.current?.click()}><Upload aria-hidden />{importStudents.isPending ? "Importing…" : "Import students"}</Button></div> : null}</header>
+          <p className="px-5 py-3 text-sm text-muted-foreground">Use the matching .xlsx template. Keep the original sheet and column headings; do not add columns. Codes must belong to active accounts at your university.</p>
+          {importStudents.isError ? <div role="alert" className="max-h-64 overflow-auto whitespace-pre-line border-b border-destructive p-5 text-sm text-destructive">{importErrorText(importStudents.error)}</div> : null}
           {students.length ? (
             <table className="w-full text-sm">
               <caption className="sr-only">Students of this schedule, with their seat and status</caption>
@@ -320,7 +336,9 @@ export function ExamScheduleDetailRoute() {
           ) : <p className="p-5 text-sm text-muted-foreground">{enrollments.isPending ? "Loading students…" : "No students assigned."}</p>}
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span>{item.status === "Draft" ? <div className="ml-auto"><input ref={invigilatorFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose lecturer import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importInvigilators.mutate(file); }} /><Button type="button" variant="outline" disabled={importInvigilators.isPending} onClick={() => invigilatorFileRef.current?.click()}><Upload aria-hidden />{importInvigilators.isPending ? "Importing…" : "Import lecturers"}</Button></div> : null}</header>
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"><h2 className="text-lg font-bold text-primary">Invigilators</h2><span className="text-sm text-muted-foreground">{invigilators.data?.length ?? 0} in total</span>{item.status === "Draft" ? <div className="ml-auto flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={template.isPending} onClick={() => template.mutate("lecturers")}>Download lecturer template</Button><input ref={invigilatorFileRef} className="sr-only" type="file" accept=".xlsx" aria-label="Choose lecturer import file" onChange={(event) => { const file = event.target.files?.[0]; if (file) importInvigilators.mutate(file); }} /><Button type="button" variant="outline" disabled={importInvigilators.isPending} onClick={() => invigilatorFileRef.current?.click()}><Upload aria-hidden />{importInvigilators.isPending ? "Importing…" : "Import lecturers"}</Button></div> : null}</header>
+          <p className="px-5 py-3 text-sm text-muted-foreground">Use the matching .xlsx template. Keep the original sheet and column headings; do not add columns. Codes must belong to active accounts at your university.</p>
+          {importInvigilators.isError ? <div role="alert" className="max-h-64 overflow-auto whitespace-pre-line border-b border-destructive p-5 text-sm text-destructive">{importErrorText(importInvigilators.error)}</div> : null}
           {(invigilators.data ?? []).length ? (
             <ul className="divide-y divide-border">
               {(invigilators.data ?? []).map((lecturer) => (

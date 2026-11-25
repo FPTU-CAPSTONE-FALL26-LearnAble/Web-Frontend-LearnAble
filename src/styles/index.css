@@ -15,6 +15,7 @@
   --text-3xl: calc(1.875rem * var(--text-scale));
   --text-4xl: calc(2.25rem * var(--text-scale));
   --text-5xl: calc(3rem * var(--text-scale));
+  --text-6xl: calc(3.75rem * var(--text-scale));
   --container-player: calc(48rem * (1 + (var(--text-scale) - 1) * 0.5));
 }
 
@@ -197,7 +198,7 @@ pre {
     outline-offset: 2px;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-base text-foreground;
   }
   html {
     @apply font-sans;

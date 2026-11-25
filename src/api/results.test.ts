@@ -15,6 +15,8 @@ describe("student exam result API", () => {
       scheduleId: id,
       score: 8,
       maxScore: 10,
+      scoreOnTen: null,
+      passed: null,
       status: "graded",
       submittedAt: "2026-11-04T02:20:00Z",
       releasedAt: "2026-11-07T03:00:00Z",
@@ -30,7 +32,27 @@ describe("student exam result API", () => {
   it("tolerates a body without the expected fields instead of failing the page", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(reply({ somethingElse: true }));
     expect(await getMyExamResult(id)).toEqual({
-      scheduleId: id, score: null, maxScore: null, status: "pending", submittedAt: null, releasedAt: null,
+      scheduleId: id, score: null, maxScore: null, scoreOnTen: null, passed: null, status: "pending", submittedAt: null, releasedAt: null,
+    });
+  });
+
+  it("reads the score nested in `result`, as the practice result sends it", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      reply({
+        result: { totalScore: 7.5, maxScore: 10, scoreOnTen: 7.5, passed: true, gradingStatus: "Completed", submittedAt: "2026-11-04T02:20:00Z" },
+        review: [],
+        releasedAt: "2026-11-07T03:00:00Z",
+      }),
+    );
+    expect(await getMyExamResult(id)).toEqual({
+      scheduleId: id,
+      score: 7.5,
+      maxScore: 10,
+      scoreOnTen: 7.5,
+      passed: true,
+      status: "graded",
+      submittedAt: "2026-11-04T02:20:00Z",
+      releasedAt: "2026-11-07T03:00:00Z",
     });
   });
 

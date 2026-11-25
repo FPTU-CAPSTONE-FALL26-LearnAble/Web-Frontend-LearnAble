@@ -37,6 +37,8 @@ export function useQuestionAudio(questionIds: string[], options: { priorityIds?:
       enabled: priority.has(id) || options.restEnabled !== false,
       queryKey: [...audioGenerationKey, "question", id],
       queryFn: () => getQuestionAudioGeneration(id),
+      retry: false,
+      refetchOnWindowFocus: false,
       // A question whose audio is complete never changes, so it is not asked again.
       staleTime: (query: { state: { data?: Generation } }) => query.state.data && summariseAudio(query.state.data).state === "ready" ? Infinity : 15_000,
       // Only questions that are still being worked on keep asking; a finished one never changes again.

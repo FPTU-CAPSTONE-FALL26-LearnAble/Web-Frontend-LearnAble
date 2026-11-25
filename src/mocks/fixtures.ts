@@ -1,5 +1,4 @@
 import type { PracticeSet } from "@/api/practice";
-import type { PracticeProgress } from "@/api/progress";
 import type { User } from "@/api/auth";
 
 /**
@@ -70,27 +69,3 @@ export const mockPracticeSets: PracticeSet[] = [
   },
 ];
 
-export const mockProgress: PracticeProgress = {
-  attempts: 7,
-  avgScorePct: 62,
-  weakTopics: [
-    { topic: "Polymorphism", accuracyPct: 41 },
-    { topic: "Abstraction", accuracyPct: 55 },
-  ],
-  history: [
-    {
-      id: "att-7",
-      setTitle: "Object-oriented programming — Chapters 1–3",
-      correct: 4,
-      total: 5,
-      completedAt: "2026-08-09T14:30:00+07:00",
-    },
-    {
-      id: "att-6",
-      setTitle: "Midterm review — 60 questions",
-      correct: 31,
-      total: 60,
-      completedAt: "2026-08-05T09:15:00+07:00",
-    },
-  ],
-};

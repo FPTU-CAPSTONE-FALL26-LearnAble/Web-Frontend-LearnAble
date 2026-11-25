@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { describeError } from "@/app/providers";
 import {
@@ -40,6 +40,7 @@ import { createLearningMaterial } from "@/api/lecturer";
 import { toast } from "@/shared/ui/primitives/toast";
 import { useExpiredSession } from "@/features/auth/hooks/useExpiredSession";
 import { getMaterialTtsAgents, getMaterialTtsOptions, registerMaterialTtsAgent, revokeMaterialTtsAgent } from "@/api/materialTts";
+import { getAgentStatus } from "@/features/lecturer/materials/agentStatus";
 import {
   Dialog,
   DialogContent,
@@ -79,7 +80,9 @@ export function UploadMaterialRoute() {
   const [language, setLanguage] = useState("English");
   const [objectives, setObjectives] = useState(["", "", ""]);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [guideLanguage, setGuideLanguage] = useState<"vi" | "en">("vi");
   const [pairingOpen, setPairingOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [deviceName, setDeviceName] = useState("");
   const [pairing, setPairing] = useState<{ agentId: string; token: string; expiresAt: string } | null>(null);
   const queryClient = useQueryClient();
@@ -123,9 +126,7 @@ export function UploadMaterialRoute() {
     },
     onError: (error) => toast({ title: "Không ngắt được kết nối", description: describeError(error) }),
   });
-  const activeAgents = (agents.data ?? []).filter(
-    (agent) => !agent.revokedAt && new Date(agent.expiresAt) > new Date(),
-  );
+  const { registered: activeAgents, online: agentOnline } = getAgentStatus(agents.data ?? []);
   const upload = useMutation({
     mutationFn: () => {
       if (!file) throw new Error("No file selected");
@@ -204,7 +205,7 @@ export function UploadMaterialRoute() {
           <ArrowRight aria-hidden />
         </Button>
       </PageHeading>
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <Card className="border-border shadow-none">
             <CardHeader>
@@ -220,7 +221,7 @@ export function UploadMaterialRoute() {
                   event.preventDefault();
                   choose(event.dataTransfer.files[0]);
                 }}
-                className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-secondary p-6 text-center"
+                className="flex min-h-48 flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-secondary p-6 text-center"
               >
                 <CloudUpload aria-hidden className="size-12 text-primary" />
                 <Button onClick={() => input.current?.click()}>
@@ -302,93 +303,16 @@ export function UploadMaterialRoute() {
               </dl>
             </section>
           )}
-          <Card className="border-border shadow-none">
-            <CardHeader>
-              <CardTitle className="text-xl font-extrabold text-primary">
-                Academic information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <section className="space-y-4" aria-labelledby="material-placement-title">
-                <div>
-                  <h2 id="material-placement-title" className="font-bold text-foreground">Course placement</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Choose where students will find this material.</p>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <ChoiceField
-                    label="Course (required)"
-                    value={subjectId}
-                    options={(academic.subjects.data?.items ?? []).map((s) => ({
-                      value: s.subjectId,
-                      label: `${s.subjectCode} · ${s.subjectNameEn ?? unavailable}`,
-                    }))}
-                    onChange={(value) => {
-                      setSubjectId(value);
-                      setTopicId("");
-                    }}
-                  />
-                  <ChoiceField
-                    label="Topic (required)"
-                    value={topicId}
-                    options={(academic.topics.data?.items ?? []).map((t) => ({
-                      value: t.topicId,
-                      label: t.topicName,
-                    }))}
-                    onChange={setTopicId}
-                    disabled={!subjectId}
-                  />
-                </div>
-                <ReadState
-                  pending={academic.subjects.isPending || academic.topics.isPending}
-                  error={academic.subjects.error || academic.topics.error}
-                  retry={() => {
-                    void academic.subjects.refetch();
-                    void academic.topics.refetch();
-                  }}
-                />
-              </section>
-              <section className="space-y-4 border-t border-border pt-5" aria-labelledby="material-details-title">
-                <h3 id="material-details-title" className="font-bold text-foreground">Material details</h3>
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                  <TextField label="Material title (required)" value={title} onChange={setTitle} />
-                  <ChoiceField
-                    label="Material language"
-                    value={language}
-                    options={["English", "Vietnamese", "Bilingual"]}
-                    onChange={setLanguage}
-                  />
-                </div>
-              </section>
-              <fieldset className="space-y-4 border-t border-border pt-5">
-                <legend className="text-base font-bold">Learning objectives</legend>
-                <p className="text-sm text-muted-foreground">Optional. Add up to three goals students should achieve.</p>
-                {objectives.map((value, index) => (
-                  <TextField
-                    key={index}
-                    label={`Objective ${index + 1}`}
-                    value={value}
-                    onChange={(next) =>
-                      setObjectives((old) =>
-                        old.map((item, position) =>
-                          position === index ? next : item,
-                        ),
-                      )
-                    }
-                  />
-                ))}
-              </fieldset>
-            </CardContent>
-          </Card>
         </div>
         <aside aria-label="Material processing" className="min-w-0 space-y-5">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MonitorCog aria-hidden className="size-5 text-primary" />
-                Tạo audio bằng máy của bạn
+                Create audio on your computer
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Local TTS dùng GPU NVIDIA trên máy giảng viên để tạo giọng đọc. Việc upload tài liệu vẫn hoạt động khi chưa cài agent.
+                Local TTS uses your NVIDIA GPU to generate speech. You can upload materials even when the agent is not installed.
               </p>
             </CardHeader>
             <CardContent>
@@ -396,93 +320,200 @@ export function UploadMaterialRoute() {
                 {agents.isPending ? (
                   <p role="status" className="flex items-center gap-2 text-sm">
                     <RefreshCw aria-hidden className="size-4 animate-spin text-primary" />
-                    Đang kiểm tra ứng dụng Local TTS…
+                    Checking Local TTS agent…
                   </p>
+                ) : agents.isError ? (
+                  <div role="status" className="rounded-xl bg-warning p-4 text-warning-foreground">
+                    Could not check the audio device status. Refresh the page and try again.
+                  </div>
                 ) : activeAgents.length > 0 ? (
-                  <div role="status" className="rounded-xl bg-success p-4 text-success-foreground">
+                  <div role="status" className={agentOnline ? "rounded-xl bg-success p-4 text-success-foreground" : "rounded-xl bg-warning p-4 text-warning-foreground"}>
                     <p className="flex items-center gap-2 font-bold">
-                      <CheckCircle2 aria-hidden className="size-5" />
-                      Có thiết bị đã đăng ký
+                      {agentOnline ? <CheckCircle2 aria-hidden className="size-5" /> : <WifiOff aria-hidden className="size-5" />}
+                      {agentOnline ? "Audio device is online" : "Device is paired but offline"}
                     </p>
                     <p className="mt-1 text-sm">
-                      {activeAgents[0]?.deviceName || "Thiết bị Local TTS"} có token còn hiệu lực. Đăng ký chưa xác nhận ứng dụng đang chạy; hãy tạo một audio ngắn để kiểm tra.
+                      {activeAgents[0]?.deviceName || "Local TTS device"} is still registered. {agentOnline ? "Generate a short audio sample to test it." : "If you unpaired it in the app, select Pair TTS Device in the sidebar to disconnect the old registration and pair again."}
                     </p>
                   </div>
                 ) : (
                   <div role="status" className="rounded-xl bg-warning p-4 text-warning-foreground">
                     <p className="flex items-center gap-2 font-bold">
                       <WifiOff aria-hidden className="size-5" />
-                      Chưa kết nối Local TTS
+                      Local TTS is not connected
                     </p>
                     <p className="mt-1 text-sm">
-                      Cài ứng dụng Windows và bộ model do trường cung cấp, sau đó đăng ký máy bên dưới. Bạn vẫn có thể upload tài liệu ngay bây giờ.
+                      Install the Windows app and the model supplied by your school, then pair your device from the sidebar. You can still upload materials now.
                     </p>
                   </div>
                 )}
-                {agents.error ? (
-                  <p role="alert" className="text-sm text-destructive">
-                    Không thể kiểm tra kết nối lúc này. Hãy tải lại trang hoặc tiếp tục upload tài liệu.
-                  </p>
-                ) : null}
-                <Button variant="outline" onClick={() => setGuideOpen(true)}>
-                  <CircleHelp aria-hidden />
-                  Hướng dẫn cài đặt
-                </Button>
-                <Button variant="outline" onClick={() => setPairingOpen(true)}>
-                  Đăng ký máy tạo audio
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" onClick={() => setGuideOpen(true)}>
+                    <CircleHelp aria-hidden />
+                    Setup guide
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         </aside>
+          <Card className="border-border shadow-none lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-xl font-extrabold text-primary">
+                Academic information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="min-w-0 space-y-6">
+                  <section className="space-y-4" aria-labelledby="material-placement-title">
+                    <div>
+                      <h2 id="material-placement-title" className="font-bold text-foreground">Course placement</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">Choose where students will find this material.</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <ChoiceField
+                        label="Course (required)"
+                        value={subjectId}
+                        options={(academic.subjects.data?.items ?? []).map((s) => ({
+                          value: s.subjectId,
+                          label: `${s.subjectCode} · ${s.subjectNameEn ?? unavailable}`,
+                        }))}
+                        onChange={(value) => {
+                          setSubjectId(value);
+                          setTopicId("");
+                        }}
+                      />
+                      <ChoiceField
+                        label="Topic (required)"
+                        value={topicId}
+                        options={(academic.topics.data?.items ?? []).map((t) => ({
+                          value: t.topicId,
+                          label: t.topicName,
+                        }))}
+                        onChange={setTopicId}
+                        disabled={!subjectId}
+                      />
+                    </div>
+                    <ReadState
+                      pending={academic.subjects.isPending || academic.topics.isPending}
+                      error={academic.subjects.error || academic.topics.error}
+                      retry={() => {
+                        void academic.subjects.refetch();
+                        void academic.topics.refetch();
+                      }}
+                    />
+                  </section>
+                  <section className="space-y-4 border-t border-border pt-5" aria-labelledby="material-details-title">
+                    <h3 id="material-details-title" className="font-bold text-foreground">Material details</h3>
+                    <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                      <TextField label="Material title (required)" value={title} onChange={setTitle} />
+                      <ChoiceField
+                        label="Material language"
+                        value={language}
+                        options={["English", "Vietnamese", "Bilingual"]}
+                        onChange={setLanguage}
+                      />
+                    </div>
+                  </section>
+                </div>
+                <fieldset className="min-w-0 space-y-4 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                  <legend className="text-base font-bold">Learning objectives</legend>
+                  <p className="text-sm text-muted-foreground">Optional. Add up to three goals students should achieve.</p>
+                  {objectives.map((value, index) => (
+                    <TextField
+                      key={index}
+                      label={`Objective ${index + 1}`}
+                      value={value}
+                      onChange={(next) =>
+                        setObjectives((old) =>
+                          old.map((item, position) =>
+                            position === index ? next : item,
+                          ),
+                        )
+                      }
+                    />
+                  ))}
+                </fieldset>
+              </div>
+            </CardContent>
+          </Card>
       </div>
       <UnsavedChangesDialog dirty={dirty} />
       <Dialog open={guideOpen} onOpenChange={setGuideOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Thiết lập Local TTS trên máy giảng viên</DialogTitle>
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <DialogTitle variant="accent">{guideLanguage === "en" ? "Set up Local TTS on your computer" : "Cài Local TTS trên máy của bạn"}</DialogTitle>
+              <div role="group" aria-label="Guide language" className="flex gap-1">
+                <Button size="sm" variant={guideLanguage === "vi" ? "default" : "outline"} aria-pressed={guideLanguage === "vi"} onClick={() => setGuideLanguage("vi")}>Tiếng Việt</Button>
+                <Button size="sm" variant={guideLanguage === "en" ? "default" : "outline"} aria-pressed={guideLanguage === "en"} onClick={() => setGuideLanguage("en")}>English</Button>
+              </div>
+            </div>
             <DialogDescription>
-              Nhận bộ cài và model từ trường, sau đó kết nối ứng dụng Windows bằng mã đăng ký một lần.
+              {guideLanguage === "en" ? "Install the app once, pair your device, and listen to a short sample before generating audio for a whole document." : "Cài ứng dụng một lần, kết nối thiết bị rồi nghe thử trước khi tạo audio cho cả tài liệu."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5">
-            <ol className="space-y-4">
-              {[
-                ["Kiểm tra máy", "Máy Windows 10/11 64-bit có GPU NVIDIA và Internet."],
-                ["Cài ứng dụng và model", "Nhận LearnAble-TTS-Setup.exe cùng bộ model đầy đủ từ trường. Cài ứng dụng rồi chọn thư mục model trong Settings."],
-                ["Kết nối máy", "Chọn Đăng ký máy tạo audio trên web này, sau đó nhập Agent ID, device token và hạn dùng vào Pair Device trong ứng dụng."],
-                ["Nghe thử", "Tạo audio cho một trang ngắn, nghe thử và duyệt trước khi tạo cả tài liệu."],
-              ].map(([title, description], index) => (
+          <div className="grid gap-5 border-y py-5 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <ol className="space-y-4" aria-label={guideLanguage === "en" ? "Four setup steps" : "Bốn bước cài đặt"}>
+              {(guideLanguage === "en" ? [
+                ["Check your computer", "Windows 10/11 64-bit, an NVIDIA GPU, internet access, and about 15 GB of free space."],
+                ["Install the app and model", "Download the handoff package and run LearnAble-TTS-Setup.exe. In Settings, select the extracted model folder."],
+                ["Pair your device", "Register your computer on this page. Paste the Agent ID, token, and expiry into Pair Device in the app."],
+                ["Listen to a sample", "Generate audio for one short page. Listen and approve it before processing a whole document."],
+              ] : [
+                ["Kiểm tra máy", "Windows 10/11 64-bit, GPU NVIDIA, Internet và khoảng 15 GB dung lượng trống."],
+                ["Cài ứng dụng và model", "Tải gói bàn giao, chạy LearnAble-TTS-Setup.exe. Trong Settings, chọn thư mục model đã giải nén."],
+                ["Kết nối máy", "Đăng ký máy trên trang này. Dán Agent ID, token và hạn dùng vào Pair Device trong ứng dụng."],
+                ["Nghe thử", "Tạo audio cho một trang ngắn, nghe và duyệt trước khi tạo cả tài liệu."],
+              ]).map(([title, description], index) => (
                 <li key={title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
                   <span aria-hidden className="grid size-8 place-items-center rounded-full bg-primary font-bold text-primary-foreground">{index + 1}</span>
-                  <div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>
+                  <div><h3 className="font-bold leading-8">{title}</h3><p className="text-sm text-muted-foreground">{description}</p></div>
                 </li>
               ))}
             </ol>
-            <section aria-labelledby="tts-help-title" className="rounded-xl bg-muted p-4">
-              <h3 id="tts-help-title" className="font-bold">Nếu chưa tạo được audio</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Gửi thông báo lỗi và cấu hình GPU cho bộ phận kỹ thuật. Trạng thái thiết bị đã ghép không đảm bảo agent đang chạy hoặc model đã tạo được tiếng.
-              </p>
-            </section>
+            <aside className="space-y-4 rounded-xl bg-muted p-4" aria-label={guideLanguage === "en" ? "Settings reference" : "Thông tin cần điền trong ứng dụng"}>
+              <div>
+                <h3 className="font-bold">{guideLanguage === "en" ? "Enter in Settings" : "Điền trong Settings"}</h3>
+                <dl className="mt-3 space-y-3 text-sm">
+                  <div><dt className="font-semibold">API URL</dt><dd className="break-all text-muted-foreground">https://api.learnable.site/api/v1</dd></div>
+                  <div><dt className="font-semibold">Verified model folder</dt><dd className="text-muted-foreground">{guideLanguage === "en" ? "Choose the model folder containing manifest.json and manifest.sha256." : "Chọn thư mục model có manifest.json và manifest.sha256."}</dd></div>
+                  <div><dt className="font-semibold">Web dashboard URL</dt><dd className="text-muted-foreground">{guideLanguage === "en" ? "You can leave this blank when testing on localhost." : "Có thể để trống khi thử trên localhost."}</dd></div>
+                </dl>
+              </div>
+              <p className="border-t pt-3 text-sm text-muted-foreground">{guideLanguage === "en" ? "The app runs in the system tray. Click ^ beside the clock to find LearnAble TTS Agent." : "Ứng dụng chạy ở khay hệ thống. Bấm dấu ^ cạnh đồng hồ để mở biểu tượng LearnAble TTS Agent."}</p>
+              <a className="inline-block text-sm font-semibold text-primary underline underline-offset-4" href={guideLanguage === "en" ? "/guides/local-tts-model/README.en.md" : "/guides/local-tts-model/README.md"} download={guideLanguage === "en" ? "README-Local-TTS-English.md" : "README-Local-TTS.md"}>{guideLanguage === "en" ? "Download README for offline use" : "Tải README để xem ngoại tuyến"}</a>
+            </aside>
           </div>
-          <DialogFooter>
+          <p className="text-sm text-muted-foreground">{guideLanguage === "en" ? "If audio is not generated, check that the app is running and uses the same Backend as this website. Send the error and GPU name to support." : "Nếu audio chưa tạo được, kiểm tra ứng dụng đang chạy và dùng cùng Backend với trang này. Sau đó gửi thông báo lỗi và tên GPU cho bộ phận kỹ thuật."}</p>
+          <DialogFooter className="sm:justify-between">
             <Button variant="outline" asChild>
-              <a href="/guides/local-tts-model/README.md" download="README-Local-TTS.md">
-                Tải README
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="/guides/local-tts-lecturer-guide.html" target="_blank" rel="noreferrer">
+              <a href="https://drive.google.com/file/d/1aeYMl55FAF7NPWPkIkz5XkdX0BImHzIE/view?usp=sharing" target="_blank" rel="noopener noreferrer">
                 <ExternalLink aria-hidden />
-                Mở hướng dẫn đầy đủ
+                {guideLanguage === "en" ? "Download installer" : "Tải bộ cài"}
               </a>
             </Button>
-            <Button onClick={() => setGuideOpen(false)}>Đã hiểu</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <a href={guideLanguage === "en" ? "/guides/local-tts-lecturer-guide-en.html" : "/guides/local-tts-lecturer-guide.html"} target="_blank" rel="noreferrer">{guideLanguage === "en" ? "Full guide" : "Hướng dẫn chi tiết"}</a>
+              </Button>
+              <Button onClick={() => { setGuideOpen(false); setPairingOpen(true); }}>{guideLanguage === "en" ? "Pair device" : "Đăng ký máy"}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={pairingOpen} onOpenChange={(open) => { setPairingOpen(open); if (!open) setPairing(null); }}>
+      <Dialog open={pairingOpen || searchParams.get("pair") === "1"} onOpenChange={(open) => {
+        setPairingOpen(open);
+        if (!open) {
+          setPairing(null);
+          if (searchParams.has("pair")) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete("pair");
+            setSearchParams(nextParams, { replace: true });
+          }
+        }
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Kết nối máy tạo audio</DialogTitle>

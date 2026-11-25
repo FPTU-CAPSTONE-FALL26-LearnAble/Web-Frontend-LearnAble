@@ -57,6 +57,24 @@ beforeEach(() => {
 });
 
 describe("exam schedule page", () => {
+  it("offers both templates and blocks invalid students with row details before enrollment", async () => {
+    exams.getExamSchedule.mockResolvedValue(schedule("Draft"));
+    exams.getScheduleValidation.mockResolvedValue({ isValid: false, errors: [] });
+    invigilation.validateStudentImport.mockResolvedValue({ canContinue: false, invalidRows: 1, errors: [], rows: [
+      { rowNumber: 2, studentCode: "SE9999", isValid: false, errors: [{ rowNumber: 2, column: "Student Code", code: "STUDENT_NOT_FOUND", message: "Not found" }] },
+    ] });
+    show();
+    const input = await screen.findByLabelText("Choose student import file");
+    expect(screen.getByRole("button", { name: "Download student template" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Download lecturer template" })).toBeEnabled();
+    fireEvent.change(input, { target: { files: [new File(["data"], "students.csv")] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent(".xlsx");
+    expect(invigilation.validateStudentImport).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { files: [new File(["data"], "students.xlsx")] } });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Row 2 · SE9999 · Student Code"));
+    expect(exams.addExamEnrollments).not.toHaveBeenCalled();
+    expect(exams.autoAssignSeats).not.toHaveBeenCalled();
+  });
   it("shows a published schedule as ready, not as an error", async () => {
     exams.getExamSchedule.mockResolvedValue(schedule("Published"));
     exams.getScheduleValidation.mockResolvedValue({ isValid: false, errors: ["Schedule is not Draft."] });

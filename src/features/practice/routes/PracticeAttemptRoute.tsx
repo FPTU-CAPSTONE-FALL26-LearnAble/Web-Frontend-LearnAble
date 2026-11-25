@@ -1,203 +1,241 @@
-import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
-import { ExamShell } from "@/shared/ui/patterns/exam/ExamShell";
-import { QuestionCard } from "@/shared/ui/patterns/exam/QuestionCard";
-import { AnswerOptionList } from "@/shared/ui/patterns/exam/AnswerOptionList";
-import { Button } from "@/shared/ui/primitives/button";
-import { Card, CardTitle } from "@/shared/ui/primitives/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { describeError } from "@/app/providers";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/shared/ui/primitives/dialog";
+  savePracticeAnswer,
+  submitPracticeAttempt,
+  type PracticeAttempt,
+  type PracticeSession,
+} from "@/api/studentPractice";
+import { practiceKeys, usePracticeAttempt } from "@/features/practice/api/usePracticeSessions";
+import { toPlayerQuestions } from "@/features/practice/attempt/playerMapping";
+import {
+  formatRemaining,
+  useAttemptAnswers,
+  useRemainingSeconds,
+} from "@/features/practice/attempt/useAttemptAnswers";
+import { announce } from "@/shared/a11y/announcer";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { vi } from "@/shared/strings/vi";
-import { usePracticeSet } from "@/features/practice/api/usePracticeSets";
-import type { PracticeSet } from "@/api/practice";
+import { AssessmentPlayer } from "@/shared/ui/patterns/exam/AssessmentPlayer";
+import { SaveStatus } from "@/shared/ui/patterns/exam/SaveStatus";
+import type { PlayerNavigation } from "@/shared/ui/patterns/exam/assessment-player-types";
+import { Button } from "@/shared/ui/primitives/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/primitives/dialog";
+
+const t = vi.practice;
 
 /**
- * SCR-04 (làm bài) — FR-07: cùng ExamShell với SCR-03 bên desktop.
- * Khác biệt là props: không timer, không proctoring, không auto-save server
- * (chấm cục bộ trong lúc chờ quyết định §11 mục 3).
+ * SCR-04 (attempt) — FR-07. A practice attempt runs in the same full-window
+ * `AssessmentPlayer` as an exam and talks to the Backend the same way: the
+ * attempt is started (or resumed) on arrival, every answer is saved as the
+ * student goes, and the submit carries any answer not yet confirmed.
  */
-export function PracticeAttemptRoute() {
-  const { setId } = useParams<"setId">();
-  const setQuery = usePracticeSet(setId!);
+/** Who is taking the attempt, as the player's top bar shows it. */
+export type Candidate = { id: string; name: string };
 
-  useRouteAnnouncer(
-    vi.exam.pageTitle(setQuery.data?.title ?? vi.practice.title),
-    setQuery.data?.title ?? vi.practice.title,
-  );
+export function PracticeAttemptRoute({ candidate = { id: "", name: "" } }: { candidate?: Candidate }) {
+  const { sessionId = "" } = useParams<"sessionId">();
+  const attempt = usePracticeAttempt(sessionId);
+  useRouteAnnouncer(vi.exam.pageTitle(t.title), t.title);
 
-  if (setQuery.isPending) {
+  if (attempt.isPending) {
     return (
-      <main id="main" className="p-6">
-        <p>{vi.common.loading}</p>
+      <main id="main" className="p-8 text-xl">
+        <p role="status">{t.loadingAttempt}</p>
       </main>
     );
   }
-  if (setQuery.isError || !setQuery.data) {
+  if (attempt.isError) {
     return (
-      <main id="main" className="flex flex-col items-start gap-4 p-6">
-        <p role="alert">{vi.errors.notFound}</p>
-        <Button asChild variant="secondary">
-          <Link to="/practice">{vi.practice.backToList}</Link>
-        </Button>
+      <main id="main" className="mx-auto flex max-w-3xl flex-col items-start gap-6 p-8 text-lg">
+        <h1 tabIndex={-1} className="text-4xl font-extrabold">{t.attemptFailed}</h1>
+        <p role="alert">{describeError(attempt.error)}</p>
+        <Link
+          to="/practice"
+          className="inline-flex min-h-14 items-center rounded-md border-4 border-foreground px-6 text-xl font-extrabold underline-offset-4 hover:underline"
+        >
+          {t.backToList}
+        </Link>
       </main>
     );
   }
-  return <PracticeAttempt set={setQuery.data} />;
-}
-
-function PracticeAttempt({ set }: { set: PracticeSet }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [flags, setFlags] = useState<Record<string, boolean>>({});
-  const [finished, setFinished] = useState(false);
-
-  const questions = set.questions;
-  const question = questions[currentIndex];
-  const answeredCount = Object.keys(answers).length;
-
-  const navState = useMemo(
-    () =>
-      questions.map((q) => ({
-        id: q.id,
-        answered: q.id in answers,
-        flagged: Boolean(flags[q.id]),
-      })),
-    [questions, answers, flags],
-  );
-
-  if (finished) {
-    return <PracticeResult set={set} answers={answers} onRetry={() => {
-      setAnswers({});
-      setFlags({});
-      setCurrentIndex(0);
-      setFinished(false);
-    }} />;
+  if (attempt.data.submittedAt || attempt.data.status === "Submitted") {
+    return <Navigate to={`/practice/${encodeURIComponent(sessionId)}/result`} replace />;
   }
-
-  return (
-    <ExamShell
-      title={set.title}
-      questions={navState}
-      currentIndex={currentIndex}
-      onNavigate={setCurrentIndex}
-      submitAction={
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>{vi.practice.finish}</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{vi.exam.submitConfirmTitle}</DialogTitle>
-              <DialogDescription>
-                {vi.exam.submitConfirmBody(answeredCount, questions.length)}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setFinished(true)}>{vi.practice.finish}</Button>
-              <DialogClose asChild>
-                <Button variant="secondary">{vi.exam.submitConfirmNo}</Button>
-              </DialogClose>
-            </div>
-          </DialogContent>
-        </Dialog>
-      }
-    >
-      <QuestionCard
-        index={currentIndex + 1}
-        total={questions.length}
-        stem={question.stem}
-        stemLang={question.stemLang}
-        flagged={Boolean(flags[question.id])}
-        onToggleFlag={() =>
-          setFlags((f) => ({ ...f, [question.id]: !f[question.id] }))
-        }
-      >
-        <AnswerOptionList
-          options={question.options}
-          value={answers[question.id] ?? null}
-          onChange={(optionId) =>
-            setAnswers((a) => ({ ...a, [question.id]: optionId }))
-          }
-        />
-      </QuestionCard>
-    </ExamShell>
-  );
+  return <LiveAttempt sessionId={sessionId} attempt={attempt.data} candidate={candidate} />;
 }
 
-/** SCR-06 (một phần) — kết quả lượt luyện tập, chấm cục bộ kèm giải thích */
-function PracticeResult({
-  set,
-  answers,
-  onRetry,
+/** Remembers where the student was and what they flagged, for a reload of the same attempt. */
+function useSessionState<T>(key: string, initial: T) {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const stored = sessionStorage.getItem(key);
+      return stored ? (JSON.parse(stored) as T) : initial;
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // Without storage a reload simply starts from the contents.
+    }
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
+function LiveAttempt({
+  sessionId,
+  attempt,
+  candidate,
 }: {
-  set: PracticeSet;
-  answers: Record<string, string>;
-  onRetry: () => void;
+  sessionId: string;
+  attempt: PracticeAttempt;
+  candidate: Candidate;
 }) {
-  useRouteAnnouncer(
-    vi.exam.pageTitle(vi.practice.resultTitle),
-    vi.practice.resultTitle,
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  // The attempt carries no name; the session list the student came from does.
+  const sessionName =
+    queryClient
+      .getQueryData<PracticeSession[]>(practiceKeys.sessions)
+      ?.find((session) => session.sessionId === sessionId)
+      ?.name?.trim() || t.untitled;
+  const questions = useMemo(() => toPlayerQuestions(attempt.questions), [attempt.questions]);
+  const kinds = useMemo(
+    () => new Map(attempt.questions.map((q) => [q.attemptQuestionId, q.questionType])),
+    [attempt.questions],
   );
-  const correctCount = set.questions.filter(
-    (q) => answers[q.id] === q.correctOptionId,
-  ).length;
+  const { answers, change, saveState, saveFailed, finalAnswers } = useAttemptAnswers({
+    questions: attempt.questions,
+    stored: attempt.answers,
+    save: (operation) => savePracticeAnswer(sessionId, operation),
+  });
+
+  const storageKey = `learnable.practice.${attempt.attemptId}`;
+  const [navigation, setNavigation] = useSessionState<PlayerNavigation>(`${storageKey}.position`, {
+    questionId: null,
+    view: "contents",
+    filter: "all",
+  });
+  const [flagged, setFlagged] = useSessionState<string[]>(`${storageKey}.flags`, []);
+  const [showTimer, setShowTimer] = useState(true);
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const seconds = useRemainingSeconds(attempt.deadlineAt, attempt.serverNow);
+  const timeUp = seconds === 0;
+
+  const submit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitPracticeAttempt(sessionId, await finalAnswers());
+      announce(t.submitted);
+      try {
+        sessionStorage.removeItem(`${storageKey}.position`);
+        sessionStorage.removeItem(`${storageKey}.flags`);
+      } catch {
+        // Nothing to clean up without storage.
+      }
+      await queryClient.invalidateQueries({ queryKey: practiceKeys.sessions });
+      queryClient.removeQueries({ queryKey: practiceKeys.attempt(sessionId) });
+      navigate(`/practice/${encodeURIComponent(sessionId)}/result`, { replace: true });
+    } catch (error) {
+      setSubmitError(`${t.submitFailed} ${describeError(error)}`);
+      setSubmitting(false);
+    }
+  };
+
+  // When the time runs out the attempt is handed in with what is on screen.
+  const submittedAtDeadline = useRef(false);
+  useEffect(() => {
+    if (!timeUp || submittedAtDeadline.current) return;
+    submittedAtDeadline.current = true;
+    setConfirming(false);
+    announce(t.timeUp);
+    void submit();
+    // `submit` reads the latest answers through refs; running once at the deadline is the intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp]);
+
+  const currentKind = navigation.view === "question" && navigation.questionId ? kinds.get(navigation.questionId) : undefined;
+  const answered = questions.filter((q) => {
+    const value = answers[q.id];
+    return Array.isArray(value) ? value.length > 0 : Boolean(value);
+  }).length;
+
+  const feedback = submitError ? (
+    <p role="alert" className="mx-2 mb-2 rounded border-2 border-destructive px-4 py-3 font-semibold text-destructive">
+      {submitError}
+    </p>
+  ) : timeUp ? (
+    <p role="alert" className="mx-2 mb-2 rounded border-2 border-foreground px-4 py-3 font-semibold">
+      {t.timeUp}
+    </p>
+  ) : saveFailed ? (
+    <p role="alert" className="mx-2 mb-2 rounded border-2 border-destructive px-4 py-3 font-semibold text-destructive">
+      {t.saveFailed}
+    </p>
+  ) : currentKind === "Coding" ? (
+    <p className="mx-2 mb-2 rounded border-2 border-foreground px-4 py-3 font-semibold">{t.codingUnsupported}</p>
+  ) : null;
 
   return (
-    <main id="main" className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <h1 tabIndex={-1} className="text-2xl font-bold">
-        {vi.practice.resultTitle}
-      </h1>
-      <p className="text-xl font-bold">
-        {vi.practice.score(correctCount, set.questions.length)}
-      </p>
-
-      <ol className="flex flex-col gap-4">
-        {set.questions.map((q, i) => {
-          const chosen = q.options.find((o) => o.id === answers[q.id]);
-          const correct = q.options.find((o) => o.id === q.correctOptionId)!;
-          const isCorrect = chosen?.id === correct.id;
-          return (
-            <li key={q.id}>
-              <Card className="flex flex-col gap-3">
-                <CardTitle>
-                  {vi.exam.question(i + 1, set.questions.length)} —{" "}
-                  <span className={isCorrect ? "text-success-foreground" : "text-destructive"}>
-                    {isCorrect ? vi.practice.correct : vi.practice.incorrect}
-                  </span>
-                </CardTitle>
-                <p lang={q.stemLang}>{q.stem}</p>
-                <p>
-                  <strong>{vi.practice.yourAnswer}:</strong>{" "}
-                  {chosen ? `${chosen.letter}. ${chosen.text}` : vi.exam.unanswered}
-                </p>
-                {!isCorrect ? (
-                  <p>
-                    <strong>{vi.practice.correctAnswer}:</strong> {correct.letter}. {correct.text}
-                  </p>
-                ) : null}
-                <p className="text-muted-foreground">
-                  <strong>{vi.practice.explanation}:</strong> {q.explanation}
-                </p>
-              </Card>
-            </li>
-          );
-        })}
-      </ol>
-
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={onRetry}>{vi.practice.tryAgain}</Button>
-        <Button asChild variant="secondary">
-          <Link to="/practice">{vi.practice.backToList}</Link>
-        </Button>
-      </div>
-    </main>
+    <>
+      <AssessmentPlayer
+        title={sessionName}
+        candidate={candidate}
+        questions={questions}
+        answers={answers}
+        flagged={flagged}
+        onAnswerChange={change}
+        onToggleFlag={(questionId) =>
+          setFlagged((items) =>
+            items.includes(questionId) ? items.filter((id) => id !== questionId) : [...items, questionId],
+          )
+        }
+        navigation={navigation}
+        onNavigationChange={setNavigation}
+        timer={showTimer ? <span aria-live="off">{t.remaining(formatRemaining(seconds))}</span> : undefined}
+        saveStatus={<SaveStatus state={saveState} />}
+        interactionLocked={submitting || timeUp}
+        enabledSettings={["remainingTime"]}
+        onSelectSetting={(setting) => {
+          if (setting === "remainingTime") setShowTimer((shown) => !shown);
+        }}
+        onGoToSubmission={() => setConfirming(true)}
+        feedback={feedback}
+        focusOnMount
+      />
+      <Dialog open={confirming} onOpenChange={(open) => !submitting && setConfirming(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.submitTitle}</DialogTitle>
+            <DialogDescription>{t.submitBody(answered, questions.length)}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" size="xl" onClick={() => setConfirming(false)} disabled={submitting}>
+              {t.keepWorking}
+            </Button>
+            <Button size="xl" onClick={() => void submit()} disabled={submitting}>
+              {submitting ? t.submitting : t.submit}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

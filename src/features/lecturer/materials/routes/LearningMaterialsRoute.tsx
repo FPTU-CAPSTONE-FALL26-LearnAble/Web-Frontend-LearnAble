@@ -234,7 +234,7 @@ export function LearningMaterialsRoute() {
             return (
               <article
                 key={stat.label}
-                className={`flex min-h-32 flex-col justify-between p-5 ${index === 0 ? "bg-primary/5" : "bg-card"}`}
+                className="flex min-h-32 flex-col justify-between bg-card p-5"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-base font-bold text-foreground">
@@ -338,9 +338,6 @@ export function LearningMaterialsRoute() {
               onChange={(value) => update("status", value)}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Select a course, then a topic to filter materials.
-          </p>
           <ReadState
             pending={academic.subjects.isPending || academic.topics.isPending}
             error={academic.subjects.error || academic.topics.error}

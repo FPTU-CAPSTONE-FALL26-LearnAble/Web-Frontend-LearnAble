@@ -6,187 +6,7 @@
   <meta name="description" content="Hướng dẫn cài đặt và sử dụng LearnAble Local TTS dành cho giảng viên.">
   <link rel="icon" href="/assets/brand/learnable-logo.png">
   <title>Hướng dẫn LearnAble Local TTS</title>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
-      color: #14213d;
-      background: #f5f7fb;
-      --ink: #14213d;
-      --muted: #52627a;
-      --line: #d8e0eb;
-      --surface: #fff;
-      --soft: #eef3f8;
-      --orange: #dd4f16;
-      --orange-dark: #b83d0c;
-      --orange-soft: #fff1e9;
-      --green: #16794b;
-      --green-soft: #e9f8ef;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { margin: 0; line-height: 1.65; }
-    ::selection { color: #fff; background: var(--orange); }
-    a { color: inherit; text-underline-offset: .2em; }
-    :focus-visible { outline: 3px solid #f58a52; outline-offset: 3px; }
-
-    .site-header {
-      position: sticky; top: 0; z-index: 10;
-      border-bottom: 1px solid rgba(216, 224, 235, .9);
-      background: rgba(255, 255, 255, .94);
-      backdrop-filter: blur(12px);
-    }
-    .header-inner {
-      width: min(100% - 2rem, 72rem); min-height: 4.5rem; margin: 0 auto;
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    }
-    .brand { display: flex; align-items: center; gap: .75rem; font-weight: 850; text-decoration: none; }
-    .brand img { display: block; width: 8.5rem; height: auto; object-fit: contain; }
-    .back-link { color: var(--muted); font-size: .9rem; font-weight: 750; text-decoration: none; }
-    .back-link:hover { color: var(--orange-dark); }
-
-    main { width: min(100% - 2rem, 72rem); margin: 0 auto; padding: 3rem 0 5rem; }
-    .hero {
-      position: relative; overflow: hidden;
-      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(17rem, .75fr);
-      gap: 2.5rem; align-items: center; padding: clamp(2rem, 5vw, 4.25rem);
-      border-radius: 1.5rem; color: #fff; background: var(--ink);
-      box-shadow: 0 18px 50px rgba(0, 0, 0, .08);
-    }
-    .hero::after {
-      content: ""; position: absolute; right: -7rem; bottom: -9rem;
-      width: 24rem; height: 24rem; border: 4rem solid rgba(255, 255, 255, .055);
-      border-radius: 50%; pointer-events: none;
-    }
-    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
-    h1 { max-width: 12ch; margin: 0; font-size: clamp(2.45rem, 6vw, 4.8rem); letter-spacing: -.035em; }
-    h1 span { color: #ff8b52; }
-    .hero-copy > p { max-width: 62ch; margin: 1.25rem 0 0; color: #d6dfed; font-size: 1.05rem; }
-    .hero-meta { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.75rem; }
-    .tag { padding: .35rem .7rem; border: 1px solid rgba(255, 255, 255, .18); border-radius: 999px; color: #edf3fb; font-size: .78rem; font-weight: 750; }
-    .hero-panel { position: relative; z-index: 1; padding: 1.4rem; border-radius: 1rem; background: #fff; color: var(--ink); }
-    .hero-panel > strong { display: block; }
-    .hero-panel > p { margin: .35rem 0 1rem; color: var(--muted); font-size: .88rem; }
-    .ready-list { display: grid; gap: .7rem; margin: 0; padding: 0; list-style: none; }
-    .ready-list li { display: flex; gap: .65rem; align-items: flex-start; font-size: .88rem; font-weight: 650; }
-    .check { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; display: grid; place-items: center; margin-top: .15rem; border-radius: 50%; color: #fff; background: var(--green); font-size: .7rem; }
-
-    .content-layout { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); margin-top: 3.5rem; }
-    .contents { position: sticky; top: 6rem; align-self: start; }
-    .contents strong { display: block; margin-bottom: .9rem; color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
-    .contents ol { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
-    .contents a { display: block; padding: .55rem .7rem; border-radius: .55rem; color: var(--muted); font-size: .9rem; font-weight: 700; text-decoration: none; }
-    .contents a:hover { color: var(--orange-dark); background: var(--orange-soft); }
-    .print-link {
-      width: 100%; min-height: 2.75rem; margin-top: 1rem; border: 1px solid var(--line);
-      border-radius: .65rem; color: var(--ink); background: var(--surface);
-      font: inherit; font-size: .85rem; font-weight: 750; cursor: pointer;
-    }
-    .print-link:hover { border-color: #f2a079; color: var(--orange-dark); }
-
-    .guide { min-width: 0; }
-    .guide-section { scroll-margin-top: 6rem; }
-    .guide-section + .guide-section { margin-top: 4.5rem; }
-    .section-heading { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1rem; align-items: start; margin-bottom: 1.75rem; }
-    .section-number { width: 3rem; height: 3rem; display: grid; place-items: center; border-radius: .8rem; color: var(--orange-dark); background: var(--orange-soft); font-size: 1.1rem; font-weight: 850; }
-    .section-heading h2 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.15rem); letter-spacing: -.025em; }
-    .section-heading p { margin: .35rem 0 0; color: var(--muted); }
-
-    .steps { margin: 0; padding: 0; list-style: none; counter-reset: guide-step; }
-    .step { position: relative; display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); gap: 1rem; padding-bottom: 1.55rem; counter-increment: guide-step; }
-    .step:not(:last-child)::before { content: ""; position: absolute; top: 2.6rem; bottom: .25rem; left: 1.3rem; width: 1px; background: var(--line); }
-    .step::after {
-      content: counter(guide-step); width: 2.6rem; height: 2.6rem; display: grid;
-      place-items: center; border: 1px solid #efb18e; border-radius: 50%;
-      color: var(--orange-dark); background: #fff; font-size: .9rem; font-weight: 850;
-    }
-    .step-content { grid-column: 2; grid-row: 1; min-width: 0; padding: .55rem 0 0; }
-    .step::after { grid-column: 1; grid-row: 1; }
-    .step-content h3 { margin: 0; font-size: 1.05rem; }
-    .step-content p { max-width: 66ch; margin: .3rem 0 0; color: var(--muted); }
-    .ui-label { color: var(--ink); font-weight: 800; }
-    .status-demo { display: flex; gap: .85rem; align-items: center; margin-top: 1rem; padding: .9rem 1rem; border-radius: .75rem; color: #105a38; background: var(--green-soft); font-weight: 750; }
-    .status-dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 .3rem rgba(22, 121, 75, .13); }
-    .callout { margin-top: 1.5rem; padding: 1.15rem 1.25rem; border: 1px solid #f0dfa0; border-radius: .85rem; color: #684500; background: #fff8dc; }
-    .callout strong { display: block; }
-    .guide-list { margin: .6rem 0 0; padding-left: 1.35rem; color: var(--muted); }
-    .guide-list li + li { margin-top: .45rem; }
-    .guide-section > p { color: var(--muted); }
-    .guide-section h3 { margin: 1.5rem 0 .55rem; }
-    .code-block { max-width: 100%; overflow-x: auto; margin: 0; padding: 1rem 1.15rem; color: #eef3fb; background: #182743; font: .85rem/1.65 Consolas, "Courier New", monospace; }
-    .code-block code { white-space: pre-wrap; overflow-wrap: anywhere; }
-    .command { overflow: hidden; margin: 1rem 0; border: 1px solid var(--line); border-radius: .85rem; }
-    .command-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .45rem .7rem .45rem 1rem; background: var(--soft); font-size: .8rem; font-weight: 750; }
-    .copy-command { min-height: 2.75rem; padding: .45rem .8rem; border: 1px solid var(--line); border-radius: .55rem; color: var(--ink); background: var(--surface); font: inherit; font-weight: 750; cursor: pointer; }
-    .copy-command:hover { border-color: var(--orange); color: var(--orange-dark); }
-    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-    .result { margin: 1rem 0 0; padding: .85rem 1rem; border-radius: .7rem; background: var(--green-soft); color: #105a38; font-weight: 650; }
-    .result strong { display: block; }
-    .stop-note { margin-top: 1rem; padding: 1rem 1.15rem; border: 1px solid #f0dfa0; border-radius: .75rem; background: #fff8dc; color: #684500; }
-    .stop-note strong { display: block; }
-    .definition { margin-top: 1.2rem; color: var(--muted); font-size: .92rem; }
-    .step-content .command { max-width: 100%; }
-    .step-content .result, .step-content .stop-note { max-width: 66ch; }
-    .command-note { color: var(--muted); font-size: .9rem; }
-    .guide-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    .guide-table th, .guide-table td { padding: .8rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    .guide-table th { color: var(--ink); background: var(--soft); }
-
-    .troubleshooting { padding-top: .25rem; }
-    details { border-bottom: 1px solid var(--line); }
-    summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 0; font-weight: 800; cursor: pointer; list-style: none; }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; flex: 0 0 auto; color: var(--orange); font-size: 1.35rem; font-weight: 500; }
-    details[open] summary::after { content: "−"; }
-    details p { max-width: 68ch; margin: -.2rem 0 1.25rem; color: var(--muted); }
-    .safety { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    .safety-item { padding: 1.15rem; border-radius: .85rem; background: var(--soft); }
-    .safety-item strong { display: block; margin-bottom: .25rem; }
-    .safety-item p { margin: 0; color: var(--muted); font-size: .9rem; }
-    .final-action { margin-top: 4.5rem; padding: 2rem; border-radius: 1.15rem; color: #fff; background: var(--orange-dark); }
-    .final-action h2 { margin: 0; font-size: 1.65rem; }
-    .final-action p { margin: .45rem 0 1.25rem; color: #fff; }
-    .primary-link { display: inline-flex; min-height: 2.85rem; align-items: center; justify-content: center; padding: .7rem 1rem; border-radius: .65rem; color: var(--orange-dark); background: #fff; font-weight: 850; text-decoration: none; }
-    .primary-link:hover { background: #fff8f4; }
-    footer { margin-top: 2rem; color: var(--muted); font-size: .78rem; text-align: center; }
-
-    @media (max-width: 800px) {
-      main { padding-top: 1.5rem; }
-      .hero { grid-template-columns: 1fr; padding: 2rem 1.4rem; }
-      .hero-panel { max-width: 30rem; }
-      .content-layout { grid-template-columns: 1fr; margin-top: 2.5rem; }
-      .contents { display: none; }
-      .safety { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 520px) {
-      .header-inner { min-height: 4rem; }
-      .back-link span { display: none; }
-      main { width: min(100% - 1.25rem, 72rem); }
-      .hero { border-radius: 1rem; }
-      h1 { font-size: 2.35rem; }
-      .section-heading { grid-template-columns: 2.5rem minmax(0, 1fr); gap: .8rem; }
-      .section-number { width: 2.5rem; height: 2.5rem; }
-      .final-action { padding: 1.4rem; }
-      .command-head { align-items: flex-start; flex-direction: column; }
-      .copy-command { width: 100%; }
-    }
-    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-    @media print {
-      :root { background: #fff; }
-      .site-header, .contents, .final-action, footer { display: none; }
-      main { width: 100%; padding: 0; }
-      .hero { grid-template-columns: 1fr; padding: 1.5rem; color: var(--ink); background: #fff; border: 1px solid var(--line); box-shadow: none; }
-      .hero-copy > p { color: var(--muted); }
-      h1 span { color: var(--orange-dark); }
-      .hero-meta { display: none; }
-      .content-layout { display: block; margin-top: 2rem; }
-      .guide-section + .guide-section { margin-top: 2rem; }
-      details p { display: block; }
-      summary::after { display: none; }
-      .copy-command { display: none; }
-      .code-block { color: var(--ink); background: #fff; border: 1px solid var(--line); white-space: pre-wrap; }
-    }
-  </style>
+  <link rel="stylesheet" href="/guides/local-tts-guide.css">
 </head>
 <body>
   <header class="site-header">
@@ -194,7 +14,7 @@
       <a class="brand" href="/lecturer/materials/new" aria-label="LearnAble - quay lại trang tải tài liệu">
         <img src="/assets/brand/learnable-logo.png" alt="LearnAble">
       </a>
-      <a class="back-link" href="/lecturer/materials/new">← <span>Quay lại trang tải tài liệu</span></a>
+      <div class="header-actions"><nav class="language-switch" aria-label="Ngôn ngữ hướng dẫn"><a href="/guides/local-tts-lecturer-guide.html" aria-current="page">Tiếng Việt</a><a href="/guides/local-tts-lecturer-guide-en.html">English</a></nav><a class="back-link" href="/lecturer/materials/new">← <span>Quay lại trang tải tài liệu</span></a></div>
     </div>
   </header>
 
@@ -203,14 +23,15 @@
       <div class="hero-copy">
         <h1 id="page-title">Cài Local TTS <span>từng bước một</span></h1>
         <p>Ứng dụng Windows dùng GPU NVIDIA trên máy giảng viên để tạo audio. Bạn chỉ cần cài ứng dụng, chọn bộ model do trường cấp và kết nối máy với LearnAble.</p>
+        <a class="download-link" href="https://drive.google.com/file/d/1aeYMl55FAF7NPWPkIkz5XkdX0BImHzIE/view?usp=sharing" target="_blank" rel="noopener noreferrer">Mở Google Drive để tải bộ cài ↗</a>
         <div class="hero-meta"><span class="tag">Windows 10/11 64-bit</span><span class="tag">GPU NVIDIA</span><span class="tag">Tài khoản Lecturer</span></div>
       </div>
       <aside class="hero-panel" aria-label="Những thứ cần nhận từ trường">
         <strong>Nhận đủ trước khi bắt đầu</strong>
         <p>Nhóm triển khai cần gửi trực tiếp cho bạn:</p>
         <ul class="ready-list">
-          <li><span class="check" aria-hidden="true">✓</span><span>LearnAble-TTS-Setup.exe và gói model đầy đủ đã xác minh</span></li>
-          <li><span class="check" aria-hidden="true">✓</span><span>URL HTTPS của API và trang Lecturer cùng môi trường</span></li>
+          <li><span class="check" aria-hidden="true">✓</span><span>Thư mục LearnAble-TTS-Handoff: bộ cài, ZIP model và file .zip.sha256</span></li>
+          <li><span class="check" aria-hidden="true">✓</span><span>API EC2 và URL HTTPS trang Lecturer cùng môi trường</span></li>
           <li><span class="check" aria-hidden="true">✓</span><span>Tài khoản Lecturer đang hoạt động</span></li>
         </ul>
       </aside>
@@ -223,6 +44,7 @@
           <li><a href="#install">Cài ứng dụng và model</a></li>
           <li><a href="#connect">Kết nối thiết bị</a></li>
           <li><a href="#generate">Tạo audio thử</a></li>
+          <li><a href="#questions">Tạo audio câu hỏi</a></li>
           <li><a href="#daily">Dùng lại và xử lý lỗi</a></li>
         </ol>
         <button class="print-link" type="button" onclick="window.print()">In hoặc lưu PDF</button>
@@ -230,17 +52,17 @@
       <article class="guide">
         <section class="guide-section" id="prepare">
           <div class="section-heading"><span class="section-number" aria-hidden="true">1</span><div><h2>Chuẩn bị</h2><p>Đảm bảo máy và thông tin bàn giao đã sẵn sàng.</p></div></div>
-          <p>Máy cần Windows 10/11 64-bit, GPU NVIDIA hoạt động và Internet. Bạn có thể xem tên GPU trong <strong>Task Manager → Performance → GPU</strong>. Hỏi nhóm triển khai về dung lượng trống cần thiết cho gói model thực tế.</p>
-          <div class="callout"><strong>Chưa có link tải công khai đã xác nhận</strong>Bộ cài và model phải do nhóm triển khai bàn giao. Chỉ có file adapter từ Kaggle thì chưa đủ. Bạn không cần tự cài Python, CUDA Toolkit hoặc chạy Backend.</div>
-          <p>Nếu tải model qua ứng dụng, cần thêm URL HTTPS của <code>manifest.json</code> và mã SHA-256 do nhóm xác nhận.</p>
+          <p>Máy cần Windows 10/11 64-bit, GPU NVIDIA hoạt động, Internet và khoảng 15 GB dung lượng trống để cài ứng dụng, giải nén model và lưu file tạm. Bạn có thể xem tên GPU trong <strong>Task Manager → Performance → GPU</strong>.</p>
+          <div class="callout"><strong>Tải một gói từ Google Drive</strong><a href="https://drive.google.com/file/d/1aeYMl55FAF7NPWPkIkz5XkdX0BImHzIE/view?usp=sharing" target="_blank" rel="noopener noreferrer">Mở LearnAble-TTS-Handoff.zip</a>, chọn biểu tượng tải xuống của Google Drive rồi giải nén file vừa tải. Trong thư mục <code>LearnAble-TTS-Handoff</code> có <code>LearnAble-TTS-Setup.exe</code>, <code>model-ngoc-huyen-kaggle-20261108.zip</code> và file <code>.zip.sha256</code> cùng tên. Nhóm triển khai cần kiểm tra ZIP model khớp mã SHA-256 trước khi phát. Bạn không cần tự cài Python, CUDA Toolkit hoặc chạy Backend.</div>
+          <p>Gói này được cài từ thư mục trên máy. URL <code>artifacts.invalid</code> bên trong manifest không phải link tải; bạn không cần tìm URL manifest HTTPS.</p>
           <p><a href="/guides/local-tts-model/README.md" download="README-Local-TTS.md">Tải README để xem khi không mở trang này</a>.</p>
         </section>
         <section class="guide-section" id="install">
           <div class="section-heading"><span class="section-number" aria-hidden="true">2</span><div><h2>Cài ứng dụng và model</h2><p>Làm một lần trên máy dùng để tạo audio.</p></div></div>
           <ol class="steps">
-            <li class="step"><div class="step-content"><h3>Chạy bộ cài</h3><p>Mở <strong>LearnAble-TTS-Setup.exe</strong>, làm theo màn hình cài đặt, rồi mở <strong>LearnAble TTS Agent</strong> từ Start Menu. Tìm biểu tượng trong khay hệ thống ở góc phải taskbar; mở danh sách biểu tượng ẩn nếu cần.</p></div></li>
-            <li class="step"><div class="step-content"><h3>Nhập địa chỉ LearnAble</h3><p>Nhấp chuột phải vào biểu tượng, chọn <strong>Settings</strong>. Điền <strong>API URL (include /api/v1)</strong> và <strong>Web dashboard URL</strong> từ nhóm triển khai. Hai địa chỉ phải dùng HTTPS và cùng môi trường. Đặt <strong>Device label</strong>; để trống <strong>Runtime executable (optional)</strong> với bộ cài đầy đủ.</p></div></li>
-            <li class="step"><div class="step-content"><h3>Chọn gói model</h3><p>Nếu nhận file nén, giải nén và chọn thư mục chứa trực tiếp <code>manifest.json</code> và <code>manifest.sha256</code> tại <strong>Verified model folder</strong>. Giữ nguyên vị trí thư mục. Nếu được cấp URL tải, chọn <strong>Check for Updates / Install Package → Model</strong>, dán URL manifest HTTPS và mã SHA-256, rồi chờ xác minh xong.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Chạy bộ cài</h3><p>Mở <strong>LearnAble-TTS-Setup.exe</strong>, làm theo màn hình cài đặt, rồi mở <strong>LearnAble TTS Agent</strong> từ Start Menu. Ứng dụng chạy nền và không mở cửa sổ chính. Ở góc phải taskbar, bấm dấu <strong>^</strong> để xem các biểu tượng ẩn; tìm biểu tượng hình <strong>chiếc loa</strong> có tên <strong>LearnAble TTS Agent</strong>, rồi nhấp chuột phải để mở menu. Nếu mở lại từ Start Menu và thấy “already running in the system tray”, hãy quay về biểu tượng đang chạy thay vì mở thêm lần nữa.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Nhập địa chỉ LearnAble</h3><p>Nhấp chuột phải vào biểu tượng, chọn <strong>Settings</strong>. Ở <strong>API URL (include /api/v1)</strong>, nhập <code>https://api.learnable.site/api/v1</code>. Ở <strong>Web dashboard URL</strong>, nhập địa chỉ HTTPS trang Lecturer cùng môi trường nếu trường đã cung cấp; có thể để trống khi thử trên <code>localhost</code>. Đặt <strong>Device label</strong> để dễ nhận ra máy; để trống <strong>Runtime executable (optional)</strong>.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Giải nén và chọn đúng thư mục model</h3><p>Giải nén <code>model-ngoc-huyen-kaggle-20261108.zip</code> vào nơi cố định, ví dụ <code>C:\LearnAble-TTS-Model</code>. Mở thư mục <code>model</code> sau khi giải nén; trong đó phải thấy trực tiếp <code>manifest.json</code> và <code>manifest.sha256</code>. Chọn chính thư mục <code>model</code> tại <strong>Verified model folder</strong>, rồi nhấn <strong>OK</strong>. Không chọn file ZIP hoặc thư mục bao ngoài và không di chuyển model sau khi chọn.</p></div></li>
             <li class="step"><div class="step-content"><h3>Kiểm tra GPU</h3><p>Chọn <strong>Check GPU</strong>. Hộp thoại cần thấy GPU NVIDIA, VRAM, PyTorch và CUDA. Kiểm tra này chưa thay thế bước tạo audio thử.</p></div></li>
           </ol>
         </section>
@@ -248,7 +70,7 @@
           <div class="section-heading"><span class="section-number" aria-hidden="true">3</span><div><h2>Kết nối thiết bị</h2><p>Dùng thông tin một lần từ trang Lecturer.</p></div></div>
           <ol class="steps">
             <li class="step"><div class="step-content"><h3>Mở Pair Device</h3><p>Trên ứng dụng Windows, chọn <strong>Pair Device</strong> và để cửa sổ này mở.</p></div></li>
-            <li class="step"><div class="step-content"><h3>Đăng ký máy trên web</h3><p>Đăng nhập trang Lecturer cùng môi trường với API trong Settings. Vào <strong>Learning Materials → Upload new material → Đăng ký máy tạo audio</strong>. Nhập tên máy rồi chọn <strong>Đăng ký máy</strong>.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Đăng ký máy trên web</h3><p>Đăng nhập trang Lecturer cùng môi trường với API trong Settings. Chọn <strong>Pair TTS Device</strong> ở sidebar. Nhập tên máy rồi chọn <strong>Đăng ký máy</strong>.</p></div></li>
             <li class="step"><div class="step-content"><h3>Dán thông tin vào ứng dụng</h3><p>Chép <strong>Agent ID</strong> và <strong>Expires at (ISO 8601)</strong>. Chọn <strong>Sao chép token một lần</strong> rồi dán vào <strong>Device token</strong>. Nhấn <strong>OK</strong> và chờ báo kết nối thành công. Thông tin trên web tự ẩn sau hai phút.</p></div></li>
           </ol>
           <div class="callout"><strong>Giữ kín token</strong>Không gửi token hay ảnh chụp token cho người khác. Token hết hạn sau khoảng tám giờ; khi hết hạn, đăng ký máy mới và Pair Device lại. Khi đổi tài khoản, chọn Unpair Device trước.</div>
@@ -263,12 +85,22 @@
           </ol>
           <div class="result"><strong>Ứng dụng có thể hiện IDLE, GENERATING hoặc UPLOADING</strong>IDLE là đang chờ việc; GENERATING là đang tổng hợp; UPLOADING là đang gửi audio về hệ thống.</div>
         </section>
+        <section class="guide-section" id="questions">
+          <div class="section-heading"><span class="section-number" aria-hidden="true">5</span><div><h2>Tạo audio cho câu hỏi</h2><p>Dùng cùng ứng dụng và thiết bị đã ghép để tạo giọng đọc câu hỏi.</p></div></div>
+          <ol class="steps">
+            <li class="step"><div class="step-content"><h3>Lưu câu hỏi</h3><p>Trên trang Lecturer, mở phần quản lý câu hỏi rồi tạo hoặc chỉnh sửa câu hỏi. FE sẽ gửi yêu cầu tạo audio sau khi lưu thành công khi Backend hỗ trợ Local TTS.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Kiểm tra trạng thái audio</h3><p>Mở câu hỏi đã lưu và xem phần trạng thái audio. Nếu cần tạo các phần còn thiếu, chọn <strong>Create with Local TTS</strong>. Câu trắc nghiệm có audio riêng cho câu hỏi và từng đáp án.</p></div></li>
+            <li class="step"><div class="step-content"><h3>Chờ và nghe thử</h3><p>Giữ ứng dụng Windows đang chạy. Khi các phần audio đã sẵn sàng, nghe thử trước khi dùng trong bài thi hoặc bài luyện tập.</p></div></li>
+          </ol>
+          <div class="callout"><strong>Kiểm tra môi trường</strong>Ứng dụng đang dùng API EC2 nên trang Lecturer cũng phải dùng cùng BE EC2. Nếu web dùng BE khác, thiết bị đã ghép sẽ không nhận được job.</div>
+        </section>
         <section class="guide-section" id="daily">
-          <div class="section-heading"><span class="section-number" aria-hidden="true">5</span><div><h2>Dùng lại và xử lý lỗi</h2><p>Không phải cài lại mỗi lần tạo audio.</p></div></div>
+          <div class="section-heading"><span class="section-number" aria-hidden="true">6</span><div><h2>Dùng lại và xử lý lỗi</h2><p>Không phải cài lại mỗi lần tạo audio.</p></div></div>
           <p>Những lần sau, mở ứng dụng từ Start Menu hoặc để ứng dụng tự chạy cùng Windows. Nếu thấy <code>PAIRING_REQUIRED</code>, đăng ký lại thiết bị trên web. <strong>Pause / Resume</strong> chỉ tạm dừng nhận job mới; job đang chạy vẫn tiếp tục.</p>
           <div class="troubleshooting">
+            <details><summary>Báo “already running” nhưng không thấy biểu tượng</summary><p>Ứng dụng đã chạy nền, không mở cửa sổ chính. Nhấn <strong>Win + B</strong> hoặc bấm dấu <strong>^ cạnh đồng hồ</strong> ở góc phải taskbar; tìm biểu tượng chiếc loa có tên <strong>LearnAble TTS Agent</strong> và nhấp chuột phải. Nếu vẫn không thấy, vào <strong>Windows Settings → Personalization → Taskbar → Other system tray icons</strong> và bật LearnAble TTS Agent nếu có. Nếu không có cả trong danh sách này, mở <strong>Task Manager → Details</strong>, kết thúc <code>LearnAble-TTS-Agent.exe</code> rồi chạy lại từ Start Menu. Nếu vẫn lặp lại, gửi ảnh toàn bộ góc phải taskbar cho nhóm hỗ trợ.</p></details>
             <details><summary>Check GPU không thấy NVIDIA</summary><p>Kiểm tra GPU trong Task Manager và driver NVIDIA. Khởi động lại Windows sau khi cập nhật driver. Gửi tên GPU và lỗi cho nhóm kỹ thuật.</p></details>
-            <details><summary>MODEL_SETUP_REQUIRED hoặc model lỗi</summary><p>Kiểm tra thư mục model có hai file manifest hoặc xin lại URL manifest và mã SHA-256. Không bỏ qua xác minh model.</p></details>
+            <details><summary>MODEL_SETUP_REQUIRED hoặc model lỗi</summary><p>Kiểm tra đã chọn đúng thư mục <code>model</code> chứa trực tiếp hai file manifest. Nhờ nhóm triển khai đối chiếu mã SHA-256 của ZIP với file <code>.zip.sha256</code> hoặc gửi lại gói nếu cần.</p></details>
             <details><summary>Ứng dụng báo IDLE nhưng web đang chờ audio</summary><p>Kiểm tra web và ứng dụng dùng cùng API/môi trường, cùng tài khoản Lecturer và model tương thích. Gửi thời điểm và mã lỗi cho nhóm kỹ thuật.</p></details>
             <details><summary>Audio chờ lâu hoặc thất bại</summary><p>Chọn View Logs trong menu ứng dụng. Gửi mã lỗi, thời điểm, tên GPU; không gửi token, mật khẩu hoặc URL upload có chữ ký.</p></details>
           </div>
@@ -276,6 +108,16 @@
         </section>
         <section class="final-action" aria-labelledby="ready-title"><h2 id="ready-title">Đã nghe thử một trang?</h2><p>Khi audio đúng, bạn có thể tiếp tục với toàn bộ tài liệu.</p><a class="primary-link" href="/lecturer/materials/new">Quay lại trang upload →</a></section>
       </article>
+      <aside class="quick-reference" aria-label="Thông tin cài đặt tra nhanh">
+        <h2>Thông tin tra nhanh</h2>
+        <dl>
+          <dt>API URL</dt><dd><code>https://api.learnable.site/api/v1</code></dd>
+          <dt>Web dashboard URL</dt><dd>Địa chỉ HTTPS trang Lecturer; để trống nếu đang thử trên localhost</dd>
+          <dt>Verified model folder</dt><dd>Thư mục <code>model</code> chứa <code>manifest.json</code> và <code>manifest.sha256</code></dd>
+          <dt>Runtime executable</dt><dd>Để trống</dd>
+        </dl>
+        <p>Ứng dụng chạy ở khay hệ thống. Bấm dấu ^ cạnh đồng hồ để tìm biểu tượng chiếc loa và mở Settings.</p>
+      </aside>
     </div>
     <footer>LearnAble · Hướng dẫn Local TTS trên Windows</footer>
   </main>

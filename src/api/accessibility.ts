@@ -8,10 +8,10 @@ import { envelopeFailure, request } from "@/api/client";
  *   GET /StudentProfiles/me/preferences
  *   PUT /StudentProfiles/me/preferences   body: `StudentPreferencesRequestModel`
  *
- * This screen edits only the TTS voice and rate (FR-02). They are personal
- * fine-tuning, never a condition for access (RULE-17). The PUT replaces the
- * whole preference set, so the other fields are read first and sent back
- * unchanged.
+ * Two parts of the set are edited here: the TTS voice and rate (FR-02) and the
+ * colour theme. They are personal fine-tuning, never a condition for access
+ * (RULE-17). The PUT replaces the whole preference set, so each save reads the
+ * other fields first and sends them back unchanged.
  */
 
 export const accessibilityProfileSchema = z.object({
@@ -55,6 +55,39 @@ const toProfile = (preferences: Preferences): AccessibilityProfile => ({
 
 export async function getAccessibilityProfile(): Promise<AccessibilityProfile> {
   return toProfile(await call());
+}
+
+/** The Backend's `ContrastTheme` enum, as the OpenAPI document publishes it. */
+export const BACKEND_CONTRAST_THEMES = ["Default", "HighContrast", "Light", "Dark"] as const;
+export type BackendContrastTheme = (typeof BACKEND_CONTRAST_THEMES)[number];
+
+const isBackendTheme = (value: unknown): value is BackendContrastTheme =>
+  BACKEND_CONTRAST_THEMES.includes(value as BackendContrastTheme);
+
+/**
+ * How the pages look for this account: the colour theme and the base text
+ * size in CSS pixels (`fontSize`; 16 is 100 %). A value the Backend does not
+ * send, or sends outside what the screens offer, is null.
+ */
+export type DisplayPreferences = {
+  contrastTheme: BackendContrastTheme | null;
+  fontSize: number | null;
+};
+
+export async function getDisplayPreferences(): Promise<DisplayPreferences> {
+  const { contrastTheme, fontSize } = await call();
+  return {
+    contrastTheme: isBackendTheme(contrastTheme) ? contrastTheme : null,
+    fontSize: typeof fontSize === "number" && fontSize > 0 ? fontSize : null,
+  };
+}
+
+/** Saves the given display fields and keeps every other preference as it is. */
+export async function updateDisplayPreferences(
+  changes: Partial<{ contrastTheme: BackendContrastTheme; fontSize: number }>,
+): Promise<void> {
+  const current = await call();
+  await call({ method: "PUT", json: { ...current, ...changes } });
 }
 
 export async function updateAccessibilityProfile(
