@@ -126,12 +126,13 @@ function DialogFooter({
 
 function DialogTitle({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+}: React.ComponentProps<typeof DialogPrimitive.Title> & { variant?: "default" | "accent" }) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("font-heading leading-none font-medium", className)}
+      className={cn("font-heading leading-none font-medium", variant === "accent" && "font-bold text-primary", className)}
       {...props}
     />
   )

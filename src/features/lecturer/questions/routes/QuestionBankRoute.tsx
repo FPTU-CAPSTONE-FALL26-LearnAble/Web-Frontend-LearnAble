@@ -140,11 +140,15 @@ export function QuestionBankRoute({
     failed: 0,
     none: 0,
     checking: 0,
+    unavailable: 0,
   };
   for (const question of everyItems ?? []) {
     const state = audioById.get(question.questionId)?.state;
     if (state === "ready" || state === "waiting" || state === "failed" || state === "none") questionProgress[state] += 1;
-    else questionProgress.checking += 1;
+    else {
+      questionProgress.checking += 1;
+      if (state === "unavailable") questionProgress.unavailable = (questionProgress.unavailable ?? 0) + 1;
+    }
   }
   const matched = audioFiltering ? data.filter((question) => matchesAudioFilter(audioById.get(question.id), audioFilter)) : data;
   const checkingAudio = audioFiltering && data.some((question) => audioById.get(question.id)?.state === "loading");
@@ -249,7 +253,7 @@ export function QuestionBankRoute({
   ] as const;
   return (
     <div className="space-y-6">
-      <PageHeading title={view.title} description={view.description}>
+      <PageHeading title={view.title} description={purpose === "exam" ? undefined : view.description}>
         <Button variant="outline" asChild>
           <Link to={`/lecturer/questions/import?purpose=${purpose}`}>
             <Upload aria-hidden />
@@ -296,7 +300,6 @@ export function QuestionBankRoute({
             subjectId: filters.subject === "all" ? undefined : filters.subject,
             topicId: filters.topic === "all" ? undefined : filters.topic,
           }}
-          subjectIds={subjects.map((subject) => subject.subjectId)}
         />
       ) : null}
       <Card className="lecturer-major-card border shadow-none">

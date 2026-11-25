@@ -2,6 +2,7 @@ import {
   BookOpenText,
   CalendarDays,
   ChevronDown,
+  CircleHelp,
   ClipboardCheck,
   FileQuestion,
   FileStack,
@@ -11,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   FlaskConical,
+  MonitorCog,
 } from "lucide-react";
 import type { User } from "@/api/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { NavLink } from "react-router";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "@/api/notifications";
+import { getMaterialTtsAgents } from "@/api/materialTts";
+import { getAgentStatus } from "@/features/lecturer/materials/agentStatus";
 
 interface LecturerSidebarProps {
   activePath: string;
@@ -109,6 +113,23 @@ export function LecturerSidebar({
     queryFn: getUnreadNotificationCount,
     staleTime: 30_000,
   });
+  const ttsAgents = useQuery({
+    queryKey: ["material-tts", "agents"],
+    queryFn: getMaterialTtsAgents,
+    retry: 1,
+    refetchInterval: 30_000,
+    meta: { silent: true },
+  });
+  const agentState = ttsAgents.data ? getAgentStatus(ttsAgents.data) : null;
+  const agentStatusLabel = ttsAgents.isPending
+    ? "Checking status"
+    : ttsAgents.isError
+      ? "Status unavailable"
+      : agentState?.online
+        ? "Online"
+        : agentState?.registered.length
+          ? "Paired · offline"
+          : "Not paired";
   const [questionsOpen, setQuestionsOpen] = useState(questionActive);
   const [examsOpen, setExamsOpen] = useState(examActive);
   useEffect(() => {
@@ -169,6 +190,23 @@ export function LecturerSidebar({
           ))}
         </nav>
         <div className="flex shrink-0 flex-col items-center gap-2 border-t border-border pt-3">
+          <NavLink
+            to="/lecturer/materials/new?pair=1"
+            aria-label="Pair TTS Device"
+            title="Pair TTS Device"
+            className="grid size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <MonitorCog aria-hidden className="size-5" />
+          </NavLink>
+          <span role="status" aria-label={`TTS device: ${agentStatusLabel}`} title={agentStatusLabel} className={cn("size-2 rounded-full", agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
+          <a
+            href="/guides/local-tts-lecturer-guide.html"
+            aria-label="Local TTS Setup Guide"
+            title="Local TTS Setup Guide"
+            className="grid size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <CircleHelp aria-hidden className="size-5" />
+          </a>
           <NavLink
             to="/lecturer/profile"
             title={`${user.fullName}'s profile`}
@@ -364,7 +402,28 @@ export function LecturerSidebar({
         })}
       </nav>
       <div className="mt-auto pt-4">
-        <Separator className="mb-3" />
+        <NavLink
+          to="/lecturer/materials/new?pair=1"
+          onClick={onNavigate}
+          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <MonitorCog aria-hidden className="size-5 shrink-0" />
+          <span className="whitespace-nowrap">Pair TTS Device</span>
+        </NavLink>
+        <div role="status" aria-label={`TTS device: ${agentStatusLabel}`} className="flex items-center gap-2 px-3 pb-2 pl-10 text-xs font-medium">
+          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
+          <span className={cn(agentState?.online ? "text-success-foreground" : agentState?.registered.length ? "text-warning-foreground" : "text-muted-foreground")}>{agentStatusLabel}</span>
+        </div>
+        <a
+          href="/guides/local-tts-lecturer-guide.html"
+          onClick={onNavigate}
+          aria-label="Local TTS Setup Guide"
+          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <CircleHelp aria-hidden className="size-5 shrink-0" />
+          <span className="whitespace-nowrap">Local TTS Guide</span>
+        </a>
+        <Separator className="mb-3 mt-3" />
         <div className="flex items-center gap-2 px-1">
           <NavLink
             to="/lecturer/profile"

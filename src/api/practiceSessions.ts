@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { envelopeFailure, request, requestBlob } from "@/api/client";
+import { questionGradeSchema } from "@/api/grading";
 
 const nullableString = z.string().nullable().optional();
 const sessionSchema = z.object({
@@ -35,4 +36,19 @@ export const transitionPracticeSession = (id: string, expectedRevision: string, 
 export const releasePracticeResults = (id: string, expectedRevision: string, showAnswers: boolean) =>
   unwrap(`/lecturer/practice-sessions/${id}/results/release`, sessionSchema, { method: "POST", json: { expectedRevision, showAnswers } });
 export const exportPracticeResults = (id: string) => requestBlob(`/lecturer/practice-sessions/${id}/results/export`);
+
+const practiceGradingSchema = z.object({
+  attemptId: z.string(),
+  revision: z.string(),
+  questions: z.array(questionGradeSchema).nullable().transform((value) => value ?? []),
+});
+export type PracticeGrading = z.infer<typeof practiceGradingSchema>;
+export const getPracticeGrading = (sessionId: string, attemptId: string) =>
+  unwrap(`/lecturer/practice-sessions/${sessionId}/attempts/${attemptId}/grading`, practiceGradingSchema);
+export const gradePracticeQuestion = (
+  sessionId: string,
+  attemptId: string,
+  questionId: string,
+  input: { expectedRevision: string; score: number; feedback: string | null },
+) => unwrap(`/lecturer/practice-sessions/${sessionId}/attempts/${attemptId}/grading/${questionId}`, practiceGradingSchema, { method: "PUT", json: input });
 

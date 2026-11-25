@@ -28,6 +28,8 @@ import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import { Input } from "@/shared/ui/primitives/input";
 import { toast } from "@/shared/ui/primitives/toast";
 import { describeImportFailure, describeImportIssue } from "@/features/examiner/workflow/studentImportMessages";
+import { importReportMessages } from "@/features/examiner/workflow/importReport";
+import { assertExcelImportFile, saveImportTemplate } from "@/lib/excelImport";
 import { matchesStudentSearch, studentLabel } from "@/features/examiner/workflow/studentLabel";
 import { loadStudentAccounts, readStudentNames, rememberStudentNames } from "@/features/examiner/workflow/studentNames";
 
@@ -40,6 +42,7 @@ export function ScheduleCandidatesRoute() {
   const { draft, setDraft } = useSchedulePreparationDraft();
   const [invigilatorsPerRoom, setInvigilatorsPerRoom] = useState(1);
   const [importReport, setImportReport] = useState<StudentImportValidation | null>(null);
+  const [listError, setListError] = useState("");
   const [allocationPlan, setAllocationPlan] = useState<ExamShiftAllocationPlan | null>(null);
 
   const studentFileRef = useRef<HTMLInputElement>(null);
@@ -168,7 +171,10 @@ export function ScheduleCandidatesRoute() {
     try {
       // A new file starts from a clean report, so an error from the last file never outlives its cause.
       setImportReport(null);
+      setListError("");
+      assertExcelImportFile(file);
       const report = await validateStudentImport(authoritativeExamSubjectId, file);
+      report.errors = [...new Map([...report.errors, ...report.rows.flatMap((row) => row.errors)].map((issue) => [JSON.stringify(issue), issue])).values()];
       setKnownNames(rememberStudentNames(report.rows));
       const matched = report.rows.flatMap((row) => row.isValid && row.studentId ? [row.studentId] : []);
       setImportReport(report);
@@ -176,33 +182,36 @@ export function ScheduleCandidatesRoute() {
      
       toast({ title: `${report.validRows} students validated`, description: report.invalidRows ? `${report.invalidRows} row(s) need correction before they can be added.` : "The list is ready for allocation." });
     } catch (error) {
+      setListError(describeImportFailure(error));
       toast({ title: "This student file cannot be imported", description: describeImportFailure(error), variant: "error" });
     } finally {
       if (studentFileRef.current) studentFileRef.current.value = "";
     }
   };
   const downloadTemplate = async () => {
-    const { blob, fileName } = await downloadStudentImportTemplate(authoritativeExamSubjectId);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName ?? "exam-student-import.xlsx";
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      saveImportTemplate(await downloadStudentImportTemplate(authoritativeExamSubjectId), "exam-student-import.xlsx");
+    } catch (error) {
+      setListError(`Template could not be downloaded. ${describeError(error)}`);
+    }
   };
   const downloadInvigilatorTemplate = async () => {
-    const { blob, fileName } = await downloadInvigilatorImportTemplate(sharedShiftId);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName ?? "exam-invigilator-import.xlsx";
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      saveImportTemplate(await downloadInvigilatorImportTemplate(sharedShiftId), "exam-invigilator-import.xlsx");
+    } catch (error) {
+      setListError(`Template could not be downloaded. ${describeError(error)}`);
+    }
   };
   const importInvigilators = async (file?: File) => {
     if (!file) return;
     try {
+      setListError("");
+      assertExcelImportFile(file);
       const report = await validateInvigilatorImport(sharedShiftId, file);
+      if (!report.canContinue || report.invalidRows > 0) {
+        setListError(importReportMessages(report).join("\n") || "Correct the invalid lecturer rows using the downloaded template.");
+        return;
+      }
       const lecturerIds = report.rows.flatMap((row) => row.isValid && row.lecturerId ? [row.lecturerId] : []);
       setAllocationPlan(null);
       setDraft((current) => ({ ...current, lecturerIds: [...new Set([...current.lecturerIds, ...lecturerIds])] }));
@@ -211,6 +220,7 @@ export function ScheduleCandidatesRoute() {
         description: report.invalidRows ? `${report.invalidRows} row(s) need correction.` : "The invigilators were added to this allocation.",
       });
     } catch (error) {
+      setListError(describeImportFailure(error));
       toast({ title: "The invigilator list could not be checked", description: describeError(error), variant: "error" });
     } finally {
       if (invigilatorFileRef.current) invigilatorFileRef.current.value = "";
@@ -218,6 +228,8 @@ export function ScheduleCandidatesRoute() {
   };
   if (!sharedShiftId) return <ApiNotice tone="error">Create the exam shift first, then add the people. <Link className="font-semibold underline" to="/examiner/schedule/new/details">Go to shift setup</Link>.</ApiNotice>;
   return <main className="space-y-6">
+    <p className="rounded-xl border-2 border-border p-4 text-sm text-muted-foreground">Download the matching .xlsx template beside each import button. Keep its sheet name and columns unchanged. Student and lecturer codes must belong to active accounts at your university.</p>
+    {listError ? <div role="alert" className="max-h-64 overflow-auto whitespace-pre-line rounded-xl border-2 border-destructive p-4 text-sm text-destructive">{listError}</div> : null}
     <PreparationHeader title="Add students and lecturers" description="Select one shared pool. The students and invigilators are spread over the rooms of the shift, and each room gets its seats." />
     <PreparationSteps steps={steps} current={1} />
     <section className="examiner-panel flex flex-wrap items-end justify-between gap-4 p-5"><div><p className="text-sm font-semibold text-muted-foreground">Allocation</p><h2 className="mt-1 text-xl font-semibold">{sharedRooms.length || draft.examRoomIds.length} rooms · {draft.studentIds.length} students · {draft.lecturerIds.length} lecturers</h2></div><label className="w-52 text-sm font-semibold">Invigilators per room<Input className="mt-2" type="number" min={1} max={10} value={invigilatorsPerRoom} onChange={(event) => { setAllocationPlan(null); setInvigilatorsPerRoom(Math.max(1, Number(event.target.value) || 1)); }} /></label></section>
