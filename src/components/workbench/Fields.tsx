@@ -62,6 +62,7 @@ export function TextField({
   onChange,
   multiline = false,
   error,
+  placeholder,
   visuallyHiddenLabel = false,
   disabled = false,
   ...props
@@ -94,6 +95,7 @@ export function TextField({
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-error` : undefined}
           className="min-h-28"
+          placeholder={placeholder}
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
@@ -105,6 +107,7 @@ export function TextField({
           aria-describedby={error ? `${id}-error` : undefined}
           value={value}
           disabled={disabled}
+          placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
           {...props}
         />

@@ -63,6 +63,7 @@ describe("grading schedule queue", () => {
 
   it("shows unfinished grading and hides released or empty gradebooks", () => {
     expect(needsGrading(gradebook())).toBe(true);
+    expect(needsGrading(gradebook({ ungraded: 0, needsManual: 0, unreviewed: 0, canRelease: true }))).toBe(true);
     expect(needsGrading(gradebook({ releasedAt: now.toISOString() }))).toBe(
       false,
     );

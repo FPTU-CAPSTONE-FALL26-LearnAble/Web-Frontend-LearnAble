@@ -61,9 +61,10 @@ import { toast } from "@/shared/ui/primitives/toast";
 import { createQuestionOption, createQuestionWithOptions, deleteQuestionOption, generateLocalQuestionAudio, getQuestion, getQuestionImages, queueQuestionAudioGeneration, updateQuestion, updateQuestionOption, uploadQuestionAudio, uploadQuestionOptionAudio, type CreateQuestionInput } from "@/api/lecturer";
 import { ApiFailure } from "@/api/client";
 import { getExamTypes } from "@/api/exams";
-import { QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
+import { QuestionAudioActions, QuestionAudioStatus } from "@/features/lecturer/questions/components/AudioGenerationStatus";
 import { QuestionImagesManager } from "@/features/lecturer/questions/components/QuestionImagesManager";
 import { getCodingLanguages, getCodingQuestion, saveCodingQuestion, validateCodingQuestion } from "@/api/coding";
+import { codingSpokenContent, questionPromptWithoutGeneratedDetails } from "@/features/lecturer/questions/model/codingSpokenContent";
 
 export function CreateQuestionRoute() {
   const studioBodyRef = useRef<HTMLDivElement>(null);
@@ -143,9 +144,10 @@ export function CreateQuestionRoute() {
   const [optionAudioNames, setOptionAudioNames] = useState<Record<number, string>>({});
   const errorRef = useRef<HTMLDivElement>(null);
   const loadedEditRef = useRef("");
+  const savedNavigation = useRef(false);
   const dirty =
     JSON.stringify(draft) !== saved || !!files.image || !!files.audio || selectedOptionAudio.current.size > 0;
-  const blocker = useBlocker(dirty);
+  const blocker = useBlocker(() => dirty && !savedNavigation.current);
   useEffect(() => {
     if (!editingId || !editQuestion.data || loadedEditRef.current === editingId || (editQuestion.data.questionType === "Coding" && editCoding.isPending)) return;
     const topic = (academic.topics.data?.items ?? []).find((item) => item.topicId === editQuestion.data?.topicId);
@@ -163,7 +165,7 @@ export function CreateQuestionRoute() {
     const type: QuestionType = source.questionType === "Multiple" ? "multiple" : source.questionType === "Essay" ? "essay" : source.questionType === "Coding" ? "code" : "single";
     const loaded = type === "essay"
       ? { ...createDraft("essay", common), instructions: source.referenceAnswer ?? "" }
-      : type === "code" ? (() => { const base = createDraft("code", common); if (base.type !== "code") return base; const language = Object.keys(editCoding.data?.starterCodes ?? {})[0] ?? base.language; const publicTest = editCoding.data?.testCases?.find((test) => test.isPublic) ?? editCoding.data?.testCases?.[0]; const hiddenTest = editCoding.data?.testCases?.find((test) => !test.isPublic) ?? editCoding.data?.testCases?.[1]; return { ...base, language, starterCode: editCoding.data?.starterCodes?.[language] ?? editCoding.data?.starterCode ?? "", constraints: editCoding.data?.constraints ?? "", testInput: publicTest?.input ?? "", expectedOutput: publicTest?.expectedOutput ?? "", hiddenTestInput: hiddenTest?.input ?? "", hiddenExpectedOutput: hiddenTest?.expectedOutput ?? "" }; })()
+      : type === "code" ? (() => { const base = createDraft("code", common); if (base.type !== "code") return base; const language = Object.keys(editCoding.data?.starterCodes ?? {})[0] ?? base.language; const publicTest = editCoding.data?.testCases?.find((test) => test.isPublic) ?? editCoding.data?.testCases?.[0]; const hiddenTest = editCoding.data?.testCases?.find((test) => !test.isPublic) ?? editCoding.data?.testCases?.[1]; return { ...base, content: questionPromptWithoutGeneratedDetails(source.content), language, starterCode: editCoding.data?.starterCodes?.[language] ?? editCoding.data?.starterCode ?? "", constraints: editCoding.data?.constraints ?? "", testInput: publicTest?.input ?? "", expectedOutput: publicTest?.expectedOutput ?? "", hiddenTestInput: hiddenTest?.input ?? "", hiddenExpectedOutput: hiddenTest?.expectedOutput ?? "" }; })()
       : { ...createDraft(type, common), options: source.options.map((option) => ({ text: option.content, description: "", correct: option.isCorrect })) };
     setDraft(loaded);
     setSaved(JSON.stringify(loaded));
@@ -189,6 +191,7 @@ export function CreateQuestionRoute() {
     [],
   );
   const update = (value: QuestionDraft) => {
+    savedNavigation.current = false;
     setDraft(value);
     setErrors([]);
     setMessage("");
@@ -274,7 +277,7 @@ export function CreateQuestionRoute() {
       const questionType = draft.type === "single" ? "Single" : draft.type === "multiple" ? "Multiple" : draft.type === "essay" ? "Essay" : "Coding";
       const input: Omit<CreateQuestionInput, "topicId" | "sourceType"> = {
           examTypeId: draft.examTypeId,
-          content: draft.content.trim(),
+          content: draft.type === "code" ? codingSpokenContent(draft) : draft.content.trim(),
           questionType,
           difficulty: draft.difficulty,
           defaultScore: Number(draft.points),
@@ -320,21 +323,25 @@ export function CreateQuestionRoute() {
         }),
       );
       if (draft.type === "code") {
-        await saveCodingQuestion(question.questionId, {
-          inputDescription: "Input is supplied through standard input.",
-          outputDescription: "Write the expected value to standard output.",
-          constraints: draft.constraints,
-          starterCode: draft.starterCode,
-          starterCodes: { [draft.language]: draft.starterCode },
-          cpuSeconds: 2,
-          wallSeconds: 5,
-          memoryKb: 262144,
-          testCases: [
-            { input: draft.testInput, expectedOutput: draft.expectedOutput, weight: 50, isPublic: true },
-            { input: draft.hiddenTestInput, expectedOutput: draft.hiddenExpectedOutput, weight: 50, isPublic: false },
-          ],
-        });
-        await validateCodingQuestion(question.questionId);
+        try {
+          await saveCodingQuestion(question.questionId, {
+            inputDescription: "Input is supplied through standard input.",
+            outputDescription: "Write the expected value to standard output.",
+            constraints: draft.constraints,
+            starterCode: draft.starterCode,
+            starterCodes: { [draft.language]: draft.starterCode },
+            cpuSeconds: 2,
+            wallSeconds: 5,
+            memoryKb: 128000,
+            testCases: [
+              { input: draft.testInput, expectedOutput: draft.expectedOutput, weight: 50, isPublic: true },
+              { input: draft.hiddenTestInput, expectedOutput: draft.hiddenExpectedOutput, weight: 50, isPublic: false },
+            ],
+          });
+          await validateCodingQuestion(question.questionId);
+        } catch (error) {
+          throw new Error(`The question was saved, but its Coding setup needs attention. ${describeError(error)}`);
+        }
       }
       // Audio generation is asynchronous. Older environments still use the server worker.
       // A queue failure must never turn a successfully saved question into a failed save.
@@ -355,6 +362,7 @@ export function CreateQuestionRoute() {
     },
     onSuccess: (question) => {
       localStorage.removeItem(draftKey(userId, purpose));
+      savedNavigation.current = true;
       setSaved(JSON.stringify(draft));
       const audioMessage = question.audioGenerationQueued == null
         ? "The question was saved, but automatic audio could not be queued. You can save again to retry."
@@ -368,11 +376,15 @@ export function CreateQuestionRoute() {
       void navigate(bankPath);
     },
     onError: (error) => {
-      setMessage(
-        error instanceof Error && error.message === "Unsupported question type"
+      toast({
+        title: "Question needs attention",
+        description: error instanceof Error && error.message === "Unsupported question type"
           ? "This question type cannot be submitted yet. Your work remains saved in this browser."
-          : `We couldn’t save this question. ${describeError(error)} Your editor content has been preserved.`,
-      );
+          : error instanceof Error && error.message.startsWith("The question was saved,")
+            ? error.message
+            : `We couldn’t save this question. ${describeError(error)} Your editor content has been preserved.`,
+        variant: "error",
+      });
     },
   });
   const submit = () => {
@@ -564,7 +576,7 @@ export function CreateQuestionRoute() {
                 ))}
               </div>
             </fieldset>
-            <div className="space-y-3">
+            <div className="space-y-3 rounded-xl border border-border p-4">
               <div className="flex flex-wrap justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
                   <PencilLine aria-hidden className="size-5 stroke-[2.5] text-primary" />
@@ -623,32 +635,22 @@ export function CreateQuestionRoute() {
               <p className="text-right text-xs text-muted-foreground">
                 {draft.content.length} characters
               </p>
-              <div className="space-y-2 rounded-xl border border-border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <Label htmlFor="question-audio">Question audio</Label>
+              <div className="space-y-3 border-t border-border pt-4">
+                <div className="flex items-center gap-2">
+                  <AudioLines className="size-4 text-primary" aria-hidden />
+                  <h3 className="text-sm font-bold">Question audio</h3>
+                </div>
+                {editingId ? <QuestionAudioStatus questionId={editingId} showActions={false} /> : null}
+                {draft.type !== "code" ? (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <Label htmlFor="question-audio">Or upload MP3</Label>
+                    <Input id="question-audio" type="file" accept="audio/mpeg,.mp3" onChange={(event) => onFile("audio", event.target.files?.[0])} />
+                    {selectedFiles.current.audio ? <p className="text-xs text-muted-foreground">{selectedFiles.current.audio.name} selected for upload.</p> : null}
                   </div>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-3 text-sm">
-                  <AudioLines className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-                  <p><strong>Automatic audio</strong><span className="mt-1 block text-xs text-muted-foreground">When you save, LearnAble sends this question to the Backend audio queue. Generation continues in the background; saving your question is not delayed.</span></p>
-                </div>
-                {editingId ? <QuestionAudioStatus questionId={editingId} /> : null}
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Or upload MP3</p>
-                <Input
-                  id="question-audio"
-                  type="file"
-                  accept="audio/mpeg,.mp3"
-                  onChange={(event) => onFile("audio", event.target.files?.[0])}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {selectedFiles.current.audio
-                    ? `${selectedFiles.current.audio.name} selected for upload.`
-                    : "Optional. Upload an MP3 only if you want to provide your own recording."}
-                </p>
+                ) : null}
               </div>
-              {editingId ? <QuestionImagesManager questionId={editingId} /> : <p className="rounded-xl border border-border bg-secondary p-4 text-sm text-muted-foreground">Save the question first, then reopen it to add images and accessible descriptions.</p>}
             </div>
+            {editingId ? <QuestionImagesManager questionId={editingId} /> : <p className="rounded-xl border border-border bg-secondary p-4 text-sm text-muted-foreground">Save the question first, then reopen it to add images and accessible descriptions.</p>}
             <QuestionTypeForm
               draft={draft}
               codingLanguages={codingLanguages.data ?? []}
@@ -720,6 +722,7 @@ export function CreateQuestionRoute() {
         </ScrollRegion>
       </div>
       <footer className="z-20 flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border bg-background px-6 py-3">
+        {editingId ? <QuestionAudioActions questionId={editingId} /> : null}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={saveDraft}>
             <Save aria-hidden />
