@@ -1,10 +1,11 @@
 import { HttpResponse, delay, http } from "msw";
-import { mockPracticeSets, mockProgress, mockUser } from "@/mocks/fixtures";
+import { mockPracticeSets, mockUser } from "@/mocks/fixtures";
 import { adminSystemHandlers } from "@/mocks/adminSystem";
 import { gestureConfigHandlers } from "@/mocks/gestureConfig";
 import { shortcutHandlers } from "@/mocks/shortcuts";
 import { studentScheduleHandlers } from "@/mocks/studentSchedule";
 import { learningAssistantHandlers } from "@/mocks/learningAssistant";
+import { studentPracticeHandlers } from "@/mocks/studentPractice";
 
 /**
  * Handlers viết bám SRS §9 — file này đồng thời là bản hợp đồng đưa cho
@@ -117,12 +118,6 @@ export const handlers = [
       : HttpResponse.json({ message: "Not found" }, { status: 404 });
   }),
 
-  // API-11 — tiến độ luyện tập
-  http.get(`${BASE}/students/me/practice-progress`, async () => {
-    await delay(300);
-    return HttpResponse.json(mockProgress);
-  }),
-
   // Admin system configuration — proposed contract, not yet in the backend.
   ...adminSystemHandlers,
 
@@ -133,6 +128,7 @@ export const handlers = [
 
   // Student exam schedule and inbox (FFCB-106, FFCB-279) — mirrors the deployed API.
   ...studentScheduleHandlers,
+  ...studentPracticeHandlers,
 
   // Learning assistant (FFCB-139) — mirrors the deployed LearningAssistant API.
   ...learningAssistantHandlers,

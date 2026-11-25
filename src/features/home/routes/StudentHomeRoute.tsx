@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { getUnreadNotificationCount } from "@/api/notifications";
 import { PageKeys } from "@/lib/a11y/PageKeys";
@@ -122,12 +123,12 @@ export function StudentHomeRoute() {
   };
 
   return (
-    <div className="flex flex-col gap-6 text-lg">
-      <header>
-        <h1 id="home-menu-title" tabIndex={-1} className="text-3xl font-bold">
+    <div className="flex flex-col gap-8 text-lg">
+      <header className="border-b-4 border-foreground pb-6">
+        <h1 id="home-menu-title" tabIndex={-1} className="text-5xl font-extrabold tracking-tight">
           {t.title}
         </h1>
-        <p id="home-menu-hint" className="mt-2">
+        <p id="home-menu-hint" className="mt-3 max-w-prose text-xl">
           {t.hint(ITEMS.length)}
         </p>
       </header>
@@ -150,25 +151,27 @@ export function StudentHomeRoute() {
           // Wherever the student is — keyboard focus or pointer — that item stands out.
           const highlighted = (current && focused) || hovered === index;
           const showUnread = item.id === "notifications" && unreadCount > 0;
+          // The highlighted item turns inside out (ink becomes the fill), so it reads as
+          // chosen in every theme and without relying on a particular colour.
           const className = cn(
-            "flex min-h-16 w-full items-center gap-4 rounded-xl border-4 p-4 text-start",
-            "focus:outline-4 focus:outline-offset-2 focus:outline-ring",
-            highlighted ? "border-primary bg-accent text-accent-foreground" : "border-border bg-card",
+            "flex min-h-20 w-full items-center gap-5 rounded-lg border-4 border-foreground p-5 text-start",
+            "focus:outline-4 focus:outline-offset-4 focus:outline-ring",
+            highlighted ? "bg-foreground text-background" : "bg-card text-card-foreground",
           );
           const content = (
             <>
               <kbd
                 aria-hidden
                 className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-md font-mono text-xl font-bold",
-                  highlighted ? "bg-primary text-primary-foreground" : "bg-muted",
+                  "flex size-12 shrink-0 items-center justify-center rounded-md border-2 font-mono text-2xl font-extrabold",
+                  highlighted ? "border-background bg-background text-foreground" : "border-foreground bg-foreground text-background",
                 )}
               >
                 {item.key}
               </kbd>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-xl font-bold">{copy.label}</span>
-                <span className="text-muted-foreground">
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="text-2xl font-extrabold tracking-tight">{copy.label}</span>
+                <span className={highlighted ? undefined : "text-muted-foreground"}>
                   {showUnread ? `${t.unread(unreadCount)} · ` : null}
                   {copy.description}
                 </span>
@@ -183,6 +186,7 @@ export function StudentHomeRoute() {
                   {t.focus(index + 1, ITEMS.length)}
                 </span>
               ) : null}
+              <ChevronRight aria-hidden className="size-7 shrink-0" strokeWidth={3} />
             </>
           );
           const shared = {

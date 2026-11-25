@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Check } from "lucide-react";
 import {
   CONTRAST_THEMES,
   setContrastTheme,
   useContrastTheme,
   type ContrastTheme,
-} from "@/lib/a11y/contrastTheme";
+} from "@/lib/a11y/displayPreferences";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
 import { cn } from "@/shared/ui/cn";
@@ -14,13 +15,17 @@ const t = vi.a11ySettings;
 /**
  * Colour themes as one radio group: arrow keys move between themes and the
  * page changes at once, so a student judges each by reading with it. Each
- * option previews itself in its own colours and is named in words.
+ * option previews itself in its own colours and is named in words. The choice
+ * is saved to the account; a failed save says so in words and keeps the theme.
  */
 export function ContrastThemePicker() {
   const theme = useContrastTheme();
+  const [saveFailed, setSaveFailed] = useState(false);
   const choose = (next: ContrastTheme) => {
-    setContrastTheme(next);
+    const saved = setContrastTheme(next);
     announce(t.themeChanged(t.themes[next].name));
+    setSaveFailed(false);
+    saved.catch(() => setSaveFailed(true));
   };
   return (
     <fieldset className="flex flex-col gap-3">
@@ -63,6 +68,11 @@ export function ContrastThemePicker() {
           );
         })}
       </div>
+      {saveFailed ? (
+        <p role="alert" className="text-destructive">
+          {t.themeSaveFailed}
+        </p>
+      ) : null}
     </fieldset>
   );
 }
