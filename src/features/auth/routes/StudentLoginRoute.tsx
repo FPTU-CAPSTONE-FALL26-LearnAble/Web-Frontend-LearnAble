@@ -23,6 +23,12 @@ const studentLoginSchema = z.object({
 
 type StudentLoginForm = z.infer<typeof studentLoginSchema>;
 
+/** Alt chords, so they work while the cursor is in a field. */
+const keyActions = [
+  { shortcut: "Alt+H", label: "Home page", to: "/" },
+  { shortcut: "Alt+S", label: "Staff sign-in", to: "/login" },
+];
+
 const afterSignIn = [
   "Practise with the same player used in real exams",
   "See your exam schedule, results and notifications",
@@ -101,6 +107,7 @@ export function StudentLoginRoute({
   return (
     <SignInFrame
       displayControls={displayControls}
+      keyActions={keyActions}
       titleId="student-login-title"
       eyebrow="For students"
       title="Student sign in"

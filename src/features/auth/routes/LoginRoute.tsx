@@ -20,6 +20,7 @@ import { en } from "@/shared/strings/en";
 import { GoogleIcon } from "@/features/auth/components/AuthShell";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import { SkipLink } from "@/shared/a11y/SkipLink";
+import { KeyNavBar } from "@/lib/a11y/KeyNavBar";
 import { useLogin } from "@/features/auth/api/useLogin";
 import { getRoleDestination } from "@/features/auth/roleRouting";
 import { useAuthStore } from "@/features/auth/store/authStore";
@@ -32,6 +33,12 @@ const loginFormSchema = z.object({
 type LoginForm = z.infer<typeof loginFormSchema>;
 
 const UNSUPPORTED_ROLE = "This account role is not supported by this web application.";
+
+/** Alt chords, so they work while the cursor is in a field. */
+const keyActions = [
+  { shortcut: "Alt+H", label: "Home page", to: "/" },
+  { shortcut: "Alt+S", label: "Student sign-in", to: "/student/login" },
+];
 
 /** What staff do here, in one line each: no figures, nothing the product does not do. */
 const highlights = [
@@ -274,6 +281,8 @@ export function LoginRoute() {
           Built for lecturers, examiners, university staff and administrators.
         </p>
       </aside>
+
+      <KeyNavBar actions={keyActions} className="lg:col-span-2" />
     </div>
   );
 }

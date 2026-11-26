@@ -4,9 +4,10 @@ import { BrandIdentity } from "@/components/BrandIdentity";
 import { AccessibilityCard } from "@/features/accessibility/components/AccessibilityCard";
 import { normalizeSupportedRole } from "@/features/auth/roleRouting";
 import { useAuthStore } from "@/features/auth/store/authStore";
-import { publicPages, site } from "@/features/landing/content";
+import { publicKeyActions, publicPages, site } from "@/features/landing/content";
 import { cta } from "@/features/landing/components/publicStyles";
 import { GUEST, useDisplayPreferenceScope } from "@/lib/a11y/displayPreferences";
+import { KeyNavBar } from "@/lib/a11y/KeyNavBar";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { cn } from "@/shared/ui/cn";
 
@@ -72,22 +73,11 @@ export function PublicLayout() {
               <p className="text-3xl font-extrabold tracking-tight">{site.name}</p>
               <p className="max-w-md text-lg">{site.tagline}</p>
             </div>
-            <nav aria-label={site.footerNavLabel}>
-              <ul className="flex flex-wrap gap-x-6 gap-y-1">
-                {publicPages.map((page) => (
-                  <li key={page.to}>
-                    <Link
-                      to={page.to}
-                      className="inline-flex min-h-11 items-center text-lg font-bold underline decoration-2 underline-offset-4 hover:decoration-4"
-                    >
-                      {page.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
           </div>
         </footer>
+
+        {/* Every page is one button away, each with its own key. */}
+        <KeyNavBar actions={publicKeyActions} />
       </div>
     </>
   );

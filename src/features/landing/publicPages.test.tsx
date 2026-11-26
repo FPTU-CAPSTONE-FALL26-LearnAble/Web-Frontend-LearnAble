@@ -104,6 +104,19 @@ describe("public site", () => {
     expect(localStorage.getItem("learnable.textScale.guest")).toBe("150");
   });
 
+  it("puts every page and sign-in on numbered buttons in the bottom bar", async () => {
+    const user = userEvent.setup();
+    const { router } = view("/");
+    const bar = screen.getByRole("navigation", { name: "Keyboard keys" });
+    expect(within(bar).getAllByRole("link").map((link) => link.getAttribute("aria-keyshortcuts"))).toEqual([
+      "1", "2", "3", "4", "5", "0",
+    ]);
+    await user.keyboard("3");
+    expect(router.state.location.pathname).toBe("/solution");
+    await user.keyboard("0");
+    expect(router.state.location.pathname).toBe("/student/login");
+  });
+
   it("offers sign-in from every page", () => {
     view("/how-it-works");
     const signIn = screen.getAllByRole("link", { name: /Sign in/ })[0];

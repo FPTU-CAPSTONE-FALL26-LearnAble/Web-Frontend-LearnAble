@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { CircleAlert, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router";
 import { BrandIdentity } from "@/components/BrandIdentity";
+import { KeyNavBar, type KeyNavAction } from "@/lib/a11y/KeyNavBar";
 import { SkipLink } from "@/shared/a11y/SkipLink";
 import { cn } from "@/shared/ui/cn";
 
@@ -20,6 +21,8 @@ type SignInFrameProps = {
   /** The form and anything that belongs with it. */
   children: ReactNode;
   aside: { titleId: string; title: string; image?: string; children: ReactNode };
+  /** The buttons and keys in the bottom bar. */
+  keyActions: readonly KeyNavAction[];
 };
 
 /**
@@ -27,7 +30,16 @@ type SignInFrameProps = {
  * form in a bordered panel, and a quieter side panel after it. The form comes
  * first in reading and Tab order, and stacks above the side panel on phones.
  */
-export function SignInFrame({ displayControls, titleId, eyebrow, title, intro, children, aside }: SignInFrameProps) {
+export function SignInFrame({
+  displayControls,
+  titleId,
+  eyebrow,
+  title,
+  intro,
+  children,
+  aside,
+  keyActions,
+}: SignInFrameProps) {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <SkipLink />
@@ -64,6 +76,7 @@ export function SignInFrame({ displayControls, titleId, eyebrow, title, intro, c
           {aside.children}
         </aside>
       </main>
+      <KeyNavBar actions={keyActions} />
     </div>
   );
 }

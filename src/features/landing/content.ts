@@ -12,13 +12,18 @@ export const publicPages = [
   { to: "/accessibility", label: "Accessibility" },
 ] as const;
 
+/** The bottom key bar: one number per page, in menu order, and 0 to sign in. */
+export const publicKeyActions = [
+  ...publicPages.map((page, index) => ({ shortcut: String(index + 1), label: page.label, to: page.to })),
+  { shortcut: "0", label: "Sign in", to: "/student/login" },
+];
+
 export const site = {
   name: "LearnAble",
   tagline: "Accessible learning and assessment for visually impaired university students.",
   signIn: "Sign in",
   homeLabel: "LearnAble home",
   navLabel: "Site pages",
-  footerNavLabel: "Site pages (footer)",
   next: "Next",
   titleSuffix: " — LearnAble",
 };
