@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiFailure, request } from "@/api/client";
 import { pageSchema } from "@/api/catalog";
+import { fetchAllPages } from "@/api/pagination";
 
 const envelope = <T extends z.ZodTypeAny>(schema: T) => z.object({
   success: z.boolean(),
@@ -69,9 +70,9 @@ export const autoGradeExamSchedule = (scheduleId: string, revision: string) =>
 export const releaseExamResults = (scheduleId: string, revision: string) =>
   unwrap(`/examschedules/${scheduleId}/results/release`, z.object({ scheduleId: z.string(), revision: z.string(), releasedAt: z.string(), releasedBy: z.string(), submittedResults: z.number() }), { method: "POST", headers: revisionHeaders(scheduleId, revision) });
 export const getGraderCandidates = (scheduleId: string, search = "") =>
-  unwrap(`/examschedules/${scheduleId}/grading-candidates?Page=1&PageSize=100${search ? `&search=${encodeURIComponent(search)}` : ""}`, pageSchema(graderCandidateSchema));
+  fetchAllPages((page, pageSize) => unwrap(`/examschedules/${scheduleId}/grading-candidates?Page=${page}&PageSize=${pageSize}${search ? `&search=${encodeURIComponent(search)}` : ""}`, pageSchema(graderCandidateSchema)));
 export const getScheduleGradingAssignments = (scheduleId: string) =>
-  unwrap(`/examschedules/${scheduleId}/grading-assignments?Page=1&PageSize=100`, pageSchema(gradingAssignmentSchema));
+  fetchAllPages((page, pageSize) => unwrap(`/examschedules/${scheduleId}/grading-assignments?Page=${page}&PageSize=${pageSize}`, pageSchema(gradingAssignmentSchema)));
 export const assignScheduleGrader = (scheduleId: string, revision: string, input: { lecturerId: string; overwriteExisting: boolean; note?: string | null }) =>
   unwrap(`/examschedules/${scheduleId}/grading-assignments`, z.object({ scheduleId: z.string(), revision: z.string(), lecturerId: z.string(), eligibleAttempts: z.number(), assignedCount: z.number(), reassignedCount: z.number(), unchangedCount: z.number(), reviewResetCount: z.number() }), { method: "PUT", headers: revisionHeaders(scheduleId, revision), json: input });
 /**
@@ -83,8 +84,10 @@ export async function assignAttemptGrader(attemptId: string, revision: string, i
   if (response && !response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
 }
 export const getAttemptGrading = (attemptId: string) => unwrap(`/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
-export const reviewAttemptResult = (attemptId: string, revision: string, input: { reviewed?: boolean; note?: string | null }) =>
-  unwrap(`/exam-attempts/${attemptId}/grading/review`, gradingDetailSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+export async function reviewAttemptResult(attemptId: string, revision: string, input: { reviewed?: boolean; note?: string | null }) {
+  const response = await request(`/exam-attempts/${attemptId}/grading/review`, emptySuccessSchema, { method: "PUT", headers: revisionHeaders(attemptId, revision), json: input });
+  if (response && !response.success) throw new ApiFailure({ kind: "server", status: 200, message: response.message ?? undefined, errors: response.errors ?? undefined });
+}
 export const getLecturerGradingAssignments = () => unwrap("/lecturer/grading-assignments?Page=1&PageSize=100", pageSchema(gradingAssignmentSchema));
 export const getLecturerAttemptGrading = (attemptId: string) => unwrap(`/lecturer/exam-attempts/${attemptId}/grading`, gradingDetailSchema);
 export const gradeEssayQuestion = async (attemptId: string, questionId: string, revision: string, input: { score?: number | null; feedback?: string | null }) => {

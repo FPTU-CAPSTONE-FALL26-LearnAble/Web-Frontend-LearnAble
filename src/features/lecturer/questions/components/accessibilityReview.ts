@@ -1,4 +1,5 @@
 import type { QuestionDraft } from "@/features/lecturer/questions/model";
+import { codingSpokenContent } from "@/features/lecturer/questions/model/codingSpokenContent";
 
 export type PreviewImage = { imageId: string; url: string | null; description: string | null };
 
@@ -30,7 +31,7 @@ export function questionWarnings(draft: QuestionDraft, images: PreviewImage[] = 
 }
 
 export function readingOrder(draft: QuestionDraft, images: PreviewImage[] = []): string[] {
-  const spoken = [`Question, ${draft.points || "0"} ${Number(draft.points) === 1 ? "point" : "points"}.`, draft.content.trim() || "The question text is empty."];
+  const spoken = [`Question, ${draft.points || "0"} ${Number(draft.points) === 1 ? "point" : "points"}.`, draft.type === "code" ? codingSpokenContent(draft) : draft.content.trim() || "The question text is empty."];
   images.forEach((image, index) => spoken.push(`Image ${index + 1}. ${image.description?.trim() || "No accessible description."}`));
   if (draft.type === "single" || draft.type === "multiple") {
     spoken.push(`${draft.options.length} answer options. ${draft.type === "single" ? "Select one answer." : "Select all answers that apply."}`);

@@ -127,12 +127,9 @@ export function AudioGenerationPanel({ filters, subjectIds = [], questionProgres
             <AudioLines className="size-5" aria-hidden />
             Audio generation
           </h2>
-          {data || byQuestion ? (
+          {data && !byQuestion ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              {byQuestion
-                ? `${byQuestion.ready} of ${byQuestion.total} questions have all their audio ready`
-                : data ? `${data.ready} of ${data.totalSegments} audio segments ready across ${data.questions} questions` : ""}
-              {byQuestion && byQuestion.checking > 0 ? `, checking ${byQuestion.checking} more` : ""}
+              {`${data.ready} of ${data.totalSegments} audio segments ready across ${data.questions} questions`}
               {active > 0 ? ". Updating automatically." : "."}
             </p>
           ) : null}
@@ -200,8 +197,7 @@ export function AudioGenerationPanel({ filters, subjectIds = [], questionProgres
 }
 
 /** Audio progress of one saved question, listed per question text and answer option. */
-export function QuestionAudioStatus({ questionId }: { questionId: string }) {
-  const queryClient = useQueryClient();
+export function QuestionAudioStatus({ questionId, showActions = true }: { questionId: string; showActions?: boolean }) {
   const status = useQuery({
     queryKey: [...audioGenerationKey, "question", questionId],
     meta: { silent: true },
@@ -213,6 +209,40 @@ export function QuestionAudioStatus({ questionId }: { questionId: string }) {
       const active = data?.segments.some((segment) => segment.generationStatus === "Pending" || segment.generationStatus === "Processing");
       return active ? POLL_MS : false;
     },
+  });
+  const data = status.data;
+  if (status.isPending) return <p className="text-sm text-muted-foreground">Checking the audio for this question…</p>;
+  if (!data) return <p className="text-sm text-destructive">The audio status could not be loaded. Refresh this page to check again.</p>;
+  return (
+    <div className="space-y-2" aria-live="polite">
+      {!data.workerEnabled ? <WorkerDisabled /> : null}
+      <p className="text-sm font-semibold">{data.ready} of {data.totalSegments} audio segments ready</p>
+      {showActions ? <QuestionAudioActions questionId={questionId} /> : null}
+      {data.segments.length ? (
+        <ul className="divide-y divide-border rounded-lg border border-border">
+          {data.segments.map((segment) => (
+            <li key={segment.optionId ?? "question"} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+              <span className="min-w-0">
+                <span className="font-semibold">{segmentName(segment)}</span>
+                {segment.generationStatus === "Failed" && segment.lastError ? <span className="mt-1 block text-xs text-muted-foreground">{segment.lastError}</span> : null}
+              </span>
+              <Badge variant={segment.generationStatus === "Failed" ? "destructive" : "outline"}>{statusNames[segment.generationStatus]}</Badge>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+export function QuestionAudioActions({ questionId }: { questionId: string }) {
+  const queryClient = useQueryClient();
+  const status = useQuery({
+    queryKey: [...audioGenerationKey, "question", questionId],
+    queryFn: () => getQuestionAudioGeneration(questionId),
+    staleTime: POLL_MS,
+    retry: false,
+    meta: { silent: true },
   });
   const retry = useMutation({
     mutationFn: () => queueQuestionAudioGeneration(questionId),
@@ -239,38 +269,16 @@ export function QuestionAudioStatus({ questionId }: { questionId: string }) {
       variant: "error",
     }),
   });
-  const data = status.data;
-  if (status.isPending) return <p className="text-sm text-muted-foreground">Checking the audio for this question…</p>;
-  if (!data) return <p className="text-sm text-destructive">The audio status could not be loaded. Refresh this page to check again.</p>;
   return (
-    <div className="space-y-2" aria-live="polite">
-      {!data.workerEnabled ? <WorkerDisabled /> : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-semibold">{data.ready} of {data.totalSegments} audio segments ready</p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={local.isPending} onClick={() => local.mutate()}>
-            <AudioLines aria-hidden />
-            {local.isPending ? "Queueing Local TTS…" : "Create with Local TTS"}
-          </Button>
-          <Button type="button" variant="outline" disabled={!data.workerEnabled || retry.isPending} onClick={() => retry.mutate()}>
-            <RotateCcw aria-hidden />
-            {retry.isPending ? "Queueing audio…" : "Retry on server"}
-          </Button>
-        </div>
-      </div>
-      {data.segments.length ? (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {data.segments.map((segment) => (
-            <li key={segment.optionId ?? "question"} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
-              <span className="min-w-0">
-                <span className="font-semibold">{segmentName(segment)}</span>
-                {segment.generationStatus === "Failed" && segment.lastError ? <span className="mt-1 block text-xs text-muted-foreground">{segment.lastError}</span> : null}
-              </span>
-              <Badge variant={segment.generationStatus === "Failed" ? "destructive" : "outline"}>{statusNames[segment.generationStatus]}</Badge>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" disabled={local.isPending || !status.data} onClick={() => local.mutate()}>
+        <AudioLines aria-hidden />
+        {local.isPending ? "Queueing Local TTS…" : "Create with Local TTS"}
+      </Button>
+      <Button type="button" variant="outline" disabled={!status.data?.workerEnabled || retry.isPending} onClick={() => retry.mutate()}>
+        <RotateCcw aria-hidden />
+        {retry.isPending ? "Queueing audio…" : "Retry on server"}
+      </Button>
     </div>
   );
 }

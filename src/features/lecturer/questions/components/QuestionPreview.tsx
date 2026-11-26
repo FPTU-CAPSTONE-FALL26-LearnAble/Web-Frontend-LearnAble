@@ -100,9 +100,20 @@ export function QuestionPreview({ draft, image, images = [], audio, compact = fa
     if (draft.type === "code") {
       return <div className="space-y-3">
         {audio?.question}<Badge variant="outline">{draft.language}</Badge>
-        <pre className="overflow-auto rounded-lg border border-border p-4 text-sm"><code>{draft.starterCode || "// Starter code"}</code></pre>
-        <p className="font-bold">Expected output</p>
-        <pre className="overflow-auto whitespace-pre-wrap break-words text-sm">{draft.expectedOutput || "Expected output will appear here."}</pre>
+        <div className="space-y-2">
+          <p className="font-bold">Constraints</p>
+          <p className="whitespace-pre-wrap">{draft.constraints || "Constraints will appear here."}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="font-bold">Starter code</p>
+          <pre className="overflow-auto rounded-lg border border-border p-4 text-sm"><code>{draft.starterCode || "// Starter code"}</code></pre>
+        </div>
+        <div className="space-y-2">
+          <p className="font-bold">Sample input</p>
+          <pre className="overflow-auto whitespace-pre-wrap break-words text-sm">{draft.testInput || "Sample input will appear here."}</pre>
+          <p className="font-bold">Expected output</p>
+          <pre className="overflow-auto whitespace-pre-wrap break-words text-sm">{draft.expectedOutput || "Expected output will appear here."}</pre>
+        </div>
       </div>;
     }
     if (draft.type === "math") {
@@ -170,7 +181,7 @@ export function QuestionPreview({ draft, image, images = [], audio, compact = fa
               </div>
               <div className="space-y-2 pt-1">
                 <CardTitle id="preview-question-heading">{draft.content || "Your question content will appear here."}</CardTitle>
-                <CardDescription>Accessibility hint: use number keys 1–4 to choose the corresponding answer.</CardDescription>
+                <CardDescription>{draft.type === "single" || draft.type === "multiple" ? "Accessibility hint: use number keys 1–4 to choose the corresponding answer." : "Use Tab to move through the question and answer fields."}</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

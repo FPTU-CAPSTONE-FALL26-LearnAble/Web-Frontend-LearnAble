@@ -330,10 +330,10 @@ export function UploadMaterialRoute() {
                   <div role="status" className={agentOnline ? "rounded-xl bg-success p-4 text-success-foreground" : "rounded-xl bg-warning p-4 text-warning-foreground"}>
                     <p className="flex items-center gap-2 font-bold">
                       {agentOnline ? <CheckCircle2 aria-hidden className="size-5" /> : <WifiOff aria-hidden className="size-5" />}
-                      {agentOnline ? "Audio device is online" : "Device is paired but offline"}
+                      {agentOnline ? "Audio device is online" : "Device paired · status unknown"}
                     </p>
                     <p className="mt-1 text-sm">
-                      {activeAgents[0]?.deviceName || "Local TTS device"} is still registered. {agentOnline ? "Generate a short audio sample to test it." : "If you unpaired it in the app, select Pair TTS Device in the sidebar to disconnect the old registration and pair again."}
+                      {activeAgents[0]?.deviceName || "Local TTS device"} is still registered. {agentOnline ? "Generate a short audio sample to test it." : "The app has not received a recent device heartbeat. Audio generation may still be running; check the audio job status before pairing again."}
                     </p>
                   </div>
                 ) : (

@@ -165,63 +165,60 @@ export function QuestionTypeForm({
     );
   if (draft.type === "code")
     return (
-      <div className="space-y-4">
-        <ChoiceField
-          label="Programming language"
-          value={draft.language}
-          options={codingLanguages}
-          disabled={codingLanguagesPending || !codingLanguages.length}
-          onChange={(language) => onChange({ ...draft, language })}
-        />
-        {codingLanguagesPending ? <p role="status" className="text-sm text-muted-foreground">Loading available coding runtimes…</p> : null}
-        {!codingLanguagesPending && codingLanguagesError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive p-4 text-sm text-destructive">
-            <span>The coding runtimes could not be loaded. {codingLanguagesError}</span>
-            <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Try again</Button>
+      <div className="space-y-5">
+        <section aria-labelledby="coding-setup-heading" className="space-y-4 rounded-xl border border-border p-4 sm:p-5">
+          <div className="border-b border-border pb-3">
+            <h3 id="coding-setup-heading" className="text-base font-bold text-primary">Code setup</h3>
           </div>
-        ) : null}
-        {!codingLanguagesPending && !codingLanguagesError && !codingLanguages.length ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning-border bg-warning p-4 text-sm text-warning-foreground">
-            <span>The Backend returned no coding runtime. Ask the Backend team to configure the code execution service.</span>
-            <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Check again</Button>
+          <ChoiceField
+            label="Programming language"
+            value={draft.language}
+            options={codingLanguages}
+            disabled={codingLanguagesPending || !codingLanguages.length}
+            onChange={(language) => onChange({ ...draft, language })}
+          />
+          {codingLanguagesPending ? <p role="status" className="text-sm text-muted-foreground">Loading available coding runtimes…</p> : null}
+          {!codingLanguagesPending && codingLanguagesError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive p-4 text-sm text-destructive">
+              <span>The coding runtimes could not be loaded. {codingLanguagesError}</span>
+              <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Try again</Button>
+            </div>
+          ) : null}
+          {!codingLanguagesPending && !codingLanguagesError && !codingLanguages.length ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning-border bg-warning p-4 text-sm text-warning-foreground">
+              <span>The Backend returned no coding runtime. Ask the Backend team to configure the code execution service.</span>
+              <Button type="button" variant="outline" onClick={onRetryCodingLanguages}>Check again</Button>
+            </div>
+          ) : null}
+          <TextField label="Starter code (required)" multiline placeholder="numbers = list(map(int, input().split()))\n# Write your solution below" value={draft.starterCode} onChange={(starterCode) => onChange({ ...draft, starterCode })} />
+          <TextField label="Constraints (required)" multiline placeholder="Example: 1 to 100 integers; each value is between -1000 and 1000." value={draft.constraints} onChange={(constraints) => onChange({ ...draft, constraints })} />
+        </section>
+        <section aria-labelledby="coding-tests-heading" className="space-y-4 rounded-xl border border-border p-4 sm:p-5">
+          <div className="border-b border-border pb-3">
+            <h3 id="coding-tests-heading" className="text-base font-bold text-primary">Test cases</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Compare the program output with the expected result.</p>
           </div>
-        ) : null}
-        <TextField
-          label="Starter code"
-          multiline
-          value={draft.starterCode}
-          onChange={(starterCode) => onChange({ ...draft, starterCode })}
-        />
-        <TextField
-          label="Constraints"
-          multiline
-          value={draft.constraints}
-          onChange={(constraints) => onChange({ ...draft, constraints })}
-        />
-        <TextField
-          label="Public test input"
-          multiline
-          value={draft.testInput}
-          onChange={(testInput) => onChange({ ...draft, testInput })}
-        />
-        <TextField
-          label="Public expected output"
-          multiline
-          value={draft.expectedOutput}
-          onChange={(expectedOutput) => onChange({ ...draft, expectedOutput })}
-        />
-        <TextField
-          label="Hidden test input"
-          multiline
-          value={draft.hiddenTestInput}
-          onChange={(hiddenTestInput) => onChange({ ...draft, hiddenTestInput })}
-        />
-        <TextField
-          label="Hidden expected output"
-          multiline
-          value={draft.hiddenExpectedOutput}
-          onChange={(hiddenExpectedOutput) => onChange({ ...draft, hiddenExpectedOutput })}
-        />
+          <div className="space-y-3 rounded-lg border border-border p-3 sm:p-4">
+            <div>
+              <h4 className="text-sm font-bold">Sample test</h4>
+              <p className="text-xs text-muted-foreground">Required. Students can see this example; the input and output must match the question.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label="Public test input" multiline placeholder="1 2 3 4 5" value={draft.testInput} onChange={(testInput) => onChange({ ...draft, testInput })} />
+              <TextField label="Public expected output" multiline placeholder="15" value={draft.expectedOutput} onChange={(expectedOutput) => onChange({ ...draft, expectedOutput })} />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-lg border border-border p-3 sm:p-4">
+            <div>
+              <h4 className="text-sm font-bold">Hidden test</h4>
+              <p className="text-xs text-muted-foreground">Required for grading. Students cannot see this case.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label="Hidden test input" multiline placeholder="10 -2 7" value={draft.hiddenTestInput} onChange={(hiddenTestInput) => onChange({ ...draft, hiddenTestInput })} />
+              <TextField label="Hidden expected output" multiline placeholder="15" value={draft.hiddenExpectedOutput} onChange={(hiddenExpectedOutput) => onChange({ ...draft, hiddenExpectedOutput })} />
+            </div>
+          </div>
+        </section>
       </div>
     );
   if (draft.type === "math")

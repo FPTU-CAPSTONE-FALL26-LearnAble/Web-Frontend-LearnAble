@@ -67,7 +67,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <LiveRegion />
       {children}
-      <Toaster />
+      <Toaster position="bottom-right" />
     </QueryClientProvider>
   );
 }
