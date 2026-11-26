@@ -357,6 +357,7 @@ export const router = createBrowserRouter([
                 element: <CandidateMonitoringRoute />,
               },
               { path: "/examiner/results", element: <GradeReleaseRoute /> },
+              { path: "/examiner/results/:scheduleId", element: <GradeReleaseRoute /> },
               { path: "/examiner/reviews", element: <IntegrityReviewRoute /> },
               { path: "/examiner/flags", element: <FlaggedSessionsRoute /> },
               { path: "/examiner/reports", element: <ExamReportsRoute /> },

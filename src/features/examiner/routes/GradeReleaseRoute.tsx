@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   Calculator,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ApiFailure } from "@/api/client";
 import { GraderAssignmentPanel } from "@/features/examiner/components/GraderAssignmentPanel";
+import { AssignedGraders } from "@/features/examiner/components/AssignedGraders";
 import { GradingScheduleQueue } from "@/features/examiner/components/GradingScheduleQueue";
 import {
   assignScheduleGrader,
@@ -22,12 +23,6 @@ import {
 } from "@/api/grading";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { Button } from "@/shared/ui/primitives/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/primitives/card";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
 import {
   Select,
@@ -49,7 +44,7 @@ function message(error: unknown, fallback: string) {
   return fallback;
 }
 
-function ResultReview({
+export function ResultReview({
   attemptId,
   onClose,
 }: {
@@ -63,6 +58,7 @@ function ResultReview({
   });
   const [reviewed, setReviewed] = useState(false);
   const [note, setNote] = useState("");
+  const [questionFilter, setQuestionFilter] = useState("all");
   useEffect(() => {
     if (detail.data) {
       setReviewed(Boolean(detail.data.reviewedAt));
@@ -108,39 +104,45 @@ function ResultReview({
         {message(detail.error, "The result detail could not be loaded.")}
       </div>
     );
+  const questions = detail.data.questions;
+  const pending = questions.filter((question) => question.score == null).length;
+  const shown = questions.filter((question) => questionFilter === "all" || questionFilter === "pending" && question.score == null || questionFilter === "graded" && question.score != null);
   return (
-    <section className="space-y-5 rounded-xl border border-border p-5">
+    <section aria-label="Attempt review" className="overflow-hidden rounded-xl border-2 border-border bg-card">
+      <div className="space-y-5 border-b border-border p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold">
-            Review · {detail.data.studentName}
+            {detail.data.studentName} · Answer review
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {detail.data.totalScore ?? "—"} / {detail.data.maxScore} points ·{" "}
-            {detail.data.gradingStatus}
+            {questions.length} questions · {questions.length - pending} scored · {pending} awaiting a score
           </p>
         </div>
         <Button variant="outline" onClick={onClose}>
           Close review
         </Button>
       </div>
-      <div className="space-y-3">
-        {detail.data.questions.map((question) => (
+      <dl className="flex flex-wrap gap-x-10 gap-y-4 text-sm">
+        {[ ["Automatic score", detail.data.autoScore], ["Manual score", detail.data.manualScore], ["Total score", detail.data.totalScore] ].map(([label, value]) => <div key={String(label)}><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 text-xl font-bold tabular-nums">{value ?? "Pending"}{label === "Total score" ? ` / ${detail.data.maxScore}` : ""}</dd></div>)}
+      </dl>
+      {pending > 0 ? <p role="status" className="rounded-lg border border-warning-border bg-warning p-4 text-sm text-warning-foreground">{pending} question(s) still need a score. For Essay questions, assign a Lecturer to mark them and confirm completion before reviewing the final result.</p> : null}
+      <div className="max-w-xs"><label htmlFor="review-question-filter" className="mb-2 block text-sm font-semibold">Show questions</label><Select value={questionFilter} onValueChange={setQuestionFilter}><SelectTrigger id="review-question-filter"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All questions ({questions.length})</SelectItem><SelectItem value="pending">Awaiting score ({pending})</SelectItem><SelectItem value="graded">Scored ({questions.length - pending})</SelectItem></SelectContent></Select></div>
+      </div>
+      <div className="divide-y divide-border">
+        {shown.map((question) => (
           <article
             key={question.attemptQuestionId}
-            className="rounded-lg bg-muted p-4"
+            className="space-y-4 p-5 sm:p-6"
           >
-            <div className="flex justify-between gap-3">
-              <p className="font-semibold">
-                {question.position}. {question.content}
-              </p>
-              <span className="shrink-0 font-bold">
-                {question.score ?? "—"} / {question.maxScore}
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold text-muted-foreground">Question {question.position}</span><Badge variant="outline">{question.questionType === "Essay" ? "Essay" : question.questionType}</Badge><Badge variant={question.score == null ? "secondary" : "outline"}>{question.score == null ? "Awaiting score" : "Scored"}</Badge></div>
+              <p className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold tabular-nums ${question.score == null ? "bg-warning text-warning-foreground" : "bg-secondary text-foreground"}`}>{question.score ?? "Pending"} / {question.maxScore}</p>
             </div>
-            {question.answerText ? (
-              <p className="mt-2 text-sm">Answer: {question.answerText}</p>
-            ) : null}
+            <h3 className="max-w-prose whitespace-pre-wrap break-words text-base font-semibold leading-relaxed">{question.content}</h3>
+            {question.options.length ? <ul aria-label={`Answer options for question ${question.position}`} className="grid gap-2 sm:grid-cols-2">{question.options.map((option) => { const selected = question.selectedOptionIds.includes(option.optionId); return <li key={option.optionId} className={`rounded-lg border p-3 text-sm ${option.isCorrect ? "border-success-border bg-success text-success-foreground" : "border-border"}`}><p className="whitespace-pre-wrap break-words">{option.content}</p><p className="mt-2 text-xs font-semibold">{selected ? "Student selected" : "Not selected"}{option.isCorrect ? " · Correct answer" : ""}</p></li>; })}</ul> : null}
+            {question.answerText || question.questionType === "Essay" ? <div className="rounded-lg bg-muted/50 p-4"><p className="mb-2 text-sm font-semibold text-muted-foreground">Student answer</p><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{question.answerText || "No written answer submitted."}</p></div> : null}
+            {question.referenceAnswer || question.gradingCriteria ? <details className="rounded-lg border border-border px-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">Reference answer & marking guidance</summary><div className="space-y-3 pb-4 text-sm leading-relaxed">{question.referenceAnswer ? <p className="whitespace-pre-wrap">{question.referenceAnswer}</p> : null}{question.gradingCriteria ? <p className="whitespace-pre-wrap text-muted-foreground">{question.gradingCriteria}</p> : null}</div></details> : null}
             {question.feedback ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 Feedback: {question.feedback}
@@ -148,7 +150,11 @@ function ResultReview({
             ) : null}
           </article>
         ))}
+        {!shown.length ? <p className="p-6 text-sm text-muted-foreground">No questions match this filter.</p> : null}
       </div>
+      <div className="space-y-4 border-t-2 border-border bg-muted/20 p-5 sm:p-6">
+      <h3 className="font-semibold">Examiner confirmation</h3>
+      <p className="text-sm text-muted-foreground">Confirm your review after checking the scores. This records your review; publishing results is a separate step.</p>
       <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
         <label
           htmlFor="attempt-reviewed"
@@ -177,12 +183,15 @@ function ResultReview({
       <Button disabled={save.isPending} onClick={() => save.mutate()}>
         {save.isPending ? "Saving…" : "Save review"}
       </Button>
+      {save.isError ? <p role="alert" className="text-sm text-destructive">{save.error instanceof ApiFailure && save.error.serverMessage ? save.error.serverMessage : message(save.error, "Review could not be saved. Refresh the result and check that grading is complete.")}</p> : null}
+      </div>
     </section>
   );
 }
 
 export function GradeReleaseRoute() {
-  const [scheduleId, setScheduleId] = useState("");
+  const { scheduleId = "" } = useParams();
+  const navigate = useNavigate();
   const [lecturerId, setLecturerId] = useState("");
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [reviewAttemptId, setReviewAttemptId] = useState("");
@@ -205,6 +214,7 @@ export function GradeReleaseRoute() {
       client.invalidateQueries({
         queryKey: ["examiner", "gradebook-summary", scheduleId],
       }),
+      client.invalidateQueries({ queryKey: ["examiner", "grading-assignments", scheduleId] }),
     ]);
   const autoGrade = useMutation({
     mutationFn: () =>
@@ -229,9 +239,12 @@ export function GradeReleaseRoute() {
         overwriteExisting,
       }),
     onSuccess: async (result) => {
+      const changed = result.assignedCount + result.reassignedCount;
       toast({
-        title: "Essay grader assigned",
-        description: `${result.assignedCount} attempts assigned and ${result.reassignedCount} reassigned.`,
+        title: changed ? "Essay grader assigned" : "No assignments changed",
+        description: result.eligibleAttempts === 0
+          ? "There are no eligible Essay attempts in this schedule. Selecting a Lecturer does not create an assignment without an eligible attempt."
+          : `${result.assignedCount} assigned, ${result.reassignedCount} reassigned, ${result.unchangedCount} unchanged.`,
       });
       await refresh();
     },
@@ -273,22 +286,12 @@ export function GradeReleaseRoute() {
   return (
     <main className="space-y-6">
       <header className="border-b border-border pb-5">
+        {scheduleId ? <Link to="/examiner/results" className="mb-3 inline-flex min-h-11 items-center text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline">Back to grading queue</Link> : null}
         <h1 className="text-3xl font-extrabold tracking-tight text-primary">
-          Grade review & release
+          {scheduleId ? "Exam gradebook" : "Grade review & release"}
         </h1>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Run automatic grading, assign Essay marking, review readiness, and
-          release results for an exam schedule.
-        </p>
       </header>
-      <GradingScheduleQueue
-        selectedId={scheduleId}
-        onSelect={(value) => {
-          setScheduleId(value);
-          setLecturerId("");
-          setReviewAttemptId("");
-        }}
-      />
+      {!scheduleId ? <GradingScheduleQueue selectedId="" onSelect={(value) => navigate(`/examiner/results/${encodeURIComponent(value)}`)} /> : null}
       {!scheduleId ? null : gradebook.isPending ? (
         <p role="status" className="rounded-xl border border-border p-6">
           Loading gradebook…
@@ -311,13 +314,13 @@ export function GradeReleaseRoute() {
         </div>
       ) : (
         <>
-          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <dl className="grid grid-cols-2 overflow-hidden rounded-xl border-2 border-border bg-muted/30 sm:grid-cols-3 xl:grid-cols-6">
             {metrics.map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-border p-4">
+              <div key={label} className="px-4 py-3">
                 <dt className="text-sm font-semibold text-muted-foreground">
                   {label}
                 </dt>
-                <dd className="mt-2 text-2xl font-extrabold">{value}</dd>
+                <dd className="mt-1 text-xl font-bold tabular-nums">{value}</dd>
               </div>
             ))}
           </dl>
@@ -338,39 +341,30 @@ export function GradeReleaseRoute() {
               </Button>
             </div>
           ) : null}
-          <div className="grid gap-5 xl:grid-cols-2">
-            <Card className="shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="size-5 text-primary" aria-hidden />
-                  Calculate results
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Scores objective questions and initializes result records.
-                  Essay answers remain pending until a Lecturer grades them.
-                </p>
+          <div className="space-y-4">
+            <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-border px-5 py-4">
+              <div><h2 className="flex items-center gap-2 font-semibold"><Calculator className="size-5 text-primary" aria-hidden />Automatic grading</h2><p className="mt-1 text-sm text-muted-foreground">Calculate objective-question scores for submitted attempts.</p></div>
                 <Button
-                  className="mt-4"
                   disabled={autoGrade.isPending}
                   onClick={() => autoGrade.mutate()}
                 >
                   {autoGrade.isPending ? "Grading…" : "Run automatic grading"}
                 </Button>
-              </CardContent>
-            </Card>
-            <Card className="shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            </section>
+            <section className="overflow-hidden rounded-xl border-2 border-border bg-card">
+              <header className="border-b border-border px-5 py-4"><h2 className="flex items-center gap-2 font-semibold">
                   <UserRoundCheck className="size-5 text-primary" aria-hidden />
-                  Assign Essay grader
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                  Essay graders
+                </h2></header>
+              <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+                <div className="min-w-0 p-5">
+                <AssignedGraders scheduleId={scheduleId} candidates={candidates.data?.items ?? []} />
+                {assign.isSuccess ? <div role="status" className={`mt-4 rounded-lg border p-4 text-sm ${assign.data.assignedCount + assign.data.reassignedCount > 0 ? "border-success-border bg-success text-success-foreground" : "border-warning-border bg-warning text-warning-foreground"}`}><p className="font-semibold">{assign.data.assignedCount + assign.data.reassignedCount > 0 ? "Assignment saved" : "No assignments changed"}</p><p className="mt-1">{assign.data.eligibleAttempts} eligible · {assign.data.assignedCount} assigned · {assign.data.reassignedCount} reassigned · {assign.data.unchangedCount} unchanged</p>{assign.data.eligibleAttempts === 0 ? <p className="mt-2">No Essay attempts are eligible for assignment in this schedule. Check the selected exam and submitted answers.</p> : assign.data.assignedCount + assign.data.reassignedCount === 0 ? <p className="mt-2">Existing assignments were kept. Check the current grader before choosing Replace existing assignments.</p> : null}</div> : null}
+                </div>
+                <div className="min-w-0 space-y-4 border-t border-border bg-muted/30 p-5 lg:border-l lg:border-t-0"><h3 className="text-sm font-semibold">Assign a Lecturer</h3>
                 <Select value={lecturerId} onValueChange={setLecturerId}>
-                  <SelectTrigger aria-label="Essay grader">
-                    <SelectValue placeholder="Select a suitable Lecturer" />
+                  <SelectTrigger className="w-full" aria-label="Essay grader" disabled={candidates.isPending || candidates.isError || !candidates.data?.items.length || assign.isPending}>
+                    <SelectValue placeholder={candidates.isPending ? "Loading lecturers…" : "Choose a Lecturer"} />
                   </SelectTrigger>
                   <SelectContent>
                     {candidates.data?.items.map((candidate) => (
@@ -385,7 +379,7 @@ export function GradeReleaseRoute() {
                 </Select>
                 <label
                   htmlFor="overwrite-grading-assignments"
-                  className="flex items-center gap-3 text-sm"
+                  className="flex min-h-11 items-center gap-3 text-sm"
                 >
                   <Checkbox
                     id="overwrite-grading-assignments"
@@ -396,17 +390,20 @@ export function GradeReleaseRoute() {
                   />
                   Replace existing assignments
                 </label>
+                {candidates.isError ? <p role="alert" className="text-sm text-destructive">Lecturers could not be loaded. <button type="button" className="min-h-11 underline underline-offset-4" onClick={() => void candidates.refetch()}>Try again</button></p> : candidates.isSuccess && !candidates.data.items.length ? <p className="text-sm text-muted-foreground">No eligible Lecturer is available for this schedule.</p> : null}
                 <Button
-                  variant="outline"
-                  disabled={!lecturerId || assign.isPending}
+                  className="w-full"
+                  disabled={!lecturerId || assign.isPending || candidates.isPending || candidates.isError}
                   onClick={() => assign.mutate()}
                 >
                   {assign.isPending
                     ? "Assigning…"
-                    : "Assign eligible Essay attempts"}
+                    : overwriteExisting ? "Update assignments" : "Assign Lecturer"}
                 </Button>
-              </CardContent>
-            </Card>
+                {assign.isError ? <p role="alert" className="text-sm text-destructive">{assign.error instanceof ApiFailure ? assign.error.serverMessage ?? "Assignment could not be saved. Try again." : "Assignment could not be saved. Try again."}</p> : null}
+                </div>
+              </div>
+            </section>
           </div>
           <GraderAssignmentPanel
             scheduleId={scheduleId}
@@ -414,16 +411,7 @@ export function GradeReleaseRoute() {
             candidates={candidates.data?.items ?? []}
             onChanged={refresh}
           />
-          {data.blockingReasons.length ? (
-            <section className="rounded-xl border border-warning-border p-5">
-              <h2 className="font-bold">Release requirements</h2>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                {data.blockingReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </section>
-          ) : (
+          {!data.blockingReasons.length ? (
             <p className="flex items-center gap-2 rounded-xl border border-success-border p-4 font-semibold">
               <CheckCircle2
                 className="size-5 text-success-foreground"
@@ -431,8 +419,9 @@ export function GradeReleaseRoute() {
               />
               All submitted results are ready to release.
             </p>
-          )}
-          <section className="overflow-hidden rounded-xl border border-border">
+          ) : null}
+          <section className="overflow-hidden rounded-xl border-2 border-border">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"><h2 className="font-semibold">Student results</h2><Button variant="outline" onClick={() => void refresh()}>Refresh gradebook</Button></header>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-sm">
                 <thead className="bg-muted/50 text-left">

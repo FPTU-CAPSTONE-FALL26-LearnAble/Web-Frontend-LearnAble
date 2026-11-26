@@ -6,10 +6,23 @@ vi.mock("@/api/client", async (importOriginal) => {
   return { ...actual, request: client.request };
 });
 
-import { assignAttemptGrader, getLecturerGradingAssignments, gradebookSchema, gradeEssayQuestion, updateMarkingCompletion } from "./grading";
+import { assignAttemptGrader, getLecturerGradingAssignments, gradebookSchema, gradeEssayQuestion, updateMarkingCompletion, reviewAttemptResult } from "./grading";
 
 describe("grading API", () => {
-  beforeEach(() => client.request.mockReset());
+  beforeEach(() => { client.request.mockReset(); });
+
+  it.each([null, { success: true, data: null, message: null }, { success: true, data: { attemptId: "attempt-1" } }])("accepts review success without requiring a grading detail (%j)", async (reply) => {
+    client.request.mockImplementation(async (_path, schema) => schema.parse(reply));
+    await expect(reviewAttemptResult("attempt-1", "revision-1", { reviewed: true, note: null })).resolves.toBeUndefined();
+    expect(client.request).toHaveBeenCalledWith("/exam-attempts/attempt-1/grading/review", expect.anything(), {
+      method: "PUT", headers: { "If-Match": '"attempt1-revision1"' }, json: { reviewed: true, note: null },
+    });
+  });
+
+  it("keeps a failed review response as an error", async () => {
+    client.request.mockResolvedValue({ success: false, data: null, message: "Review is locked", errors: null });
+    await expect(reviewAttemptResult("attempt-1", "revision-1", { reviewed: true })).rejects.toThrow();
+  });
 
   it("accepts the current Backend assignment completion fields", async () => {
     const assignment = {

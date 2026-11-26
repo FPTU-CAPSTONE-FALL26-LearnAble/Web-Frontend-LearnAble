@@ -15,7 +15,7 @@ import {
   MonitorCog,
 } from "lucide-react";
 import type { User } from "@/api/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/shared/ui/primitives/avatar";
 import { BrandIdentity } from "@/components/BrandIdentity";
 import {
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { NavLink } from "react-router";
 import { useEffect, useState } from "react";
 import { getUnreadNotificationCount } from "@/api/notifications";
-import { getMaterialTtsAgents } from "@/api/materialTts";
+import { getMaterialTtsAgents, type MaterialTtsBatch } from "@/api/materialTts";
 import { getAgentStatus } from "@/features/lecturer/materials/agentStatus";
 
 interface LecturerSidebarProps {
@@ -113,6 +113,22 @@ export function LecturerSidebar({
     queryFn: getUnreadNotificationCount,
     staleTime: 30_000,
   });
+  const queryClient = useQueryClient();
+  const [audioGenerating, setAudioGenerating] = useState(false);
+  useEffect(() => {
+    const checkActiveJobs = () => {
+      const active = queryClient.getQueryCache().findAll({ queryKey: ["material-tts", "batch"] }).some((query) => {
+        if (Date.now() - query.state.dataUpdatedAt > 15_000) return false;
+        const batch = query.state.data as MaterialTtsBatch | undefined;
+        return batch?.jobs?.some((job) => ["claimed", "processing", "running", "uploading"].includes(job.status?.toLowerCase() ?? ""));
+      });
+      setAudioGenerating(active);
+    };
+    checkActiveJobs();
+    const unsubscribe = queryClient.getQueryCache().subscribe(checkActiveJobs);
+    const timer = window.setInterval(checkActiveJobs, 5_000);
+    return () => { unsubscribe(); window.clearInterval(timer); };
+  }, [queryClient]);
   const ttsAgents = useQuery({
     queryKey: ["material-tts", "agents"],
     queryFn: getMaterialTtsAgents,
@@ -121,14 +137,16 @@ export function LecturerSidebar({
     meta: { silent: true },
   });
   const agentState = ttsAgents.data ? getAgentStatus(ttsAgents.data) : null;
-  const agentStatusLabel = ttsAgents.isPending
+  const agentStatusLabel = audioGenerating && agentState?.registered.length
+    ? "Generating audio"
+    : ttsAgents.isPending
     ? "Checking status"
     : ttsAgents.isError
       ? "Status unavailable"
       : agentState?.online
         ? "Online"
         : agentState?.registered.length
-          ? "Paired · offline"
+          ? "Paired · no recent signal"
           : "Not paired";
   const [questionsOpen, setQuestionsOpen] = useState(questionActive);
   const [examsOpen, setExamsOpen] = useState(examActive);
@@ -198,7 +216,7 @@ export function LecturerSidebar({
           >
             <MonitorCog aria-hidden className="size-5" />
           </NavLink>
-          <span role="status" aria-label={`TTS device: ${agentStatusLabel}`} title={agentStatusLabel} className={cn("size-2 rounded-full", agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
+          <span role="status" aria-label={`TTS device: ${agentStatusLabel}`} title={agentStatusLabel} className={cn("size-2 rounded-full", audioGenerating || agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
           <a
             href="/guides/local-tts-lecturer-guide.html"
             aria-label="Local TTS Setup Guide"
@@ -411,8 +429,8 @@ export function LecturerSidebar({
           <span className="whitespace-nowrap">Pair TTS Device</span>
         </NavLink>
         <div role="status" aria-label={`TTS device: ${agentStatusLabel}`} className="flex items-center gap-2 px-3 pb-2 pl-10 text-xs font-medium">
-          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
-          <span className={cn(agentState?.online ? "text-success-foreground" : agentState?.registered.length ? "text-warning-foreground" : "text-muted-foreground")}>{agentStatusLabel}</span>
+          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", audioGenerating || agentState?.online ? "bg-success-foreground" : agentState?.registered.length ? "bg-warning-foreground" : "bg-muted-foreground")} />
+          <span className={cn(audioGenerating || agentState?.online ? "text-success-foreground" : agentState?.registered.length ? "text-warning-foreground" : "text-muted-foreground")}>{agentStatusLabel}</span>
         </div>
         <a
           href="/guides/local-tts-lecturer-guide.html"

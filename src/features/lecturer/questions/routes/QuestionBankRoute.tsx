@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { CheckCheck, Download, FileQuestion, Plus, Search, SlidersHorizontal, Upload } from "lucide-react";
 import { Badge } from "@/shared/ui/primitives/badge";
 import { formatQuestionId } from "@/shared/strings/questionId";
+import { questionPromptWithoutGeneratedDetails } from "@/features/lecturer/questions/model/codingSpokenContent";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
@@ -437,9 +438,6 @@ export function QuestionBankRoute({
       <section className={refreshingList ? "min-w-0 overflow-hidden rounded-2xl border border-border opacity-60 transition-opacity" : "min-w-0 overflow-hidden rounded-2xl border border-border transition-opacity"}>
         <div className="border-b border-border p-5">
           <h2 className="text-lg font-bold text-primary">{view.title}</h2>
-          <p role="status" className="mt-1 text-sm text-muted-foreground">
-            {loadingList ? "Loading questions…" : <>Showing {rows.length} of {totalCount} questions from the server</>}
-          </p>
           {checkingAudio ? (
             <p role="status" className="mt-1 text-sm text-muted-foreground">
               Checking the audio of all {data.length} matching questions…
@@ -507,7 +505,7 @@ export function QuestionBankRoute({
                   </div>
                 </TableCell>
                 <TableCell className="min-w-80 max-w-lg whitespace-normal">
-                  <p className="font-medium leading-relaxed">{q.content}</p>
+                  <p className="font-medium leading-relaxed">{q.type === "Write Code" ? questionPromptWithoutGeneratedDetails(q.content) : q.content}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {q.type} · {q.score} points · {q.difficulty}
                   </p>
@@ -619,8 +617,10 @@ function AudioBadge({ audio }: { audio?: QuestionAudio }) {
   const names = { ready: "Ready", waiting: "In progress", failed: "Failed", none: "No audio" } as const;
   return (
     <div>
-      <Badge variant={audio.state === "failed" ? "destructive" : "outline"}>{names[audio.state]}</Badge>
-      {audio.total ? <p className="mt-1 text-xs text-muted-foreground">{audio.ready}/{audio.total} segments</p> : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={audio.state === "failed" ? "destructive" : "outline"} className={audio.state === "ready" ? "border-success-border bg-success font-semibold text-success-foreground" : undefined}>{names[audio.state]}</Badge>
+        {audio.total ? <span className="text-xs text-muted-foreground">{audio.ready}/{audio.total} segments</span> : null}
+      </div>
       {audio.questionReady && audio.state !== "ready" ? <p className="mt-1 text-xs font-semibold">Question audio ready</p> : null}
     </div>
   );

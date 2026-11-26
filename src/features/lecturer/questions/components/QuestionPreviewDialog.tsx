@@ -7,6 +7,7 @@ import { QuestionPreview } from "@/features/lecturer/questions/components/Questi
 import { QuestionSequenceAudio } from "@/features/lecturer/questions/components/QuestionSequenceAudio";
 import { readingOrder } from "@/features/lecturer/questions/components/accessibilityReview";
 import { createDraft, type QuestionDraft, type QuestionType } from "@/features/lecturer/questions/model";
+import { questionPromptWithoutGeneratedDetails } from "@/features/lecturer/questions/model/codingSpokenContent";
 import { formatQuestionId } from "@/shared/strings/questionId";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/ui/primitives/dialog";
 import { Button } from "@/shared/ui/primitives/button";
@@ -37,7 +38,8 @@ export function QuestionPreviewDialog({ questionId, course, topic, onClose }: {
     if (base.type === "essay") return { ...base, instructions: source.referenceAnswer ?? "" };
     if (base.type === "code") {
       const language = Object.keys(coding.data?.starterCodes ?? {})[0] ?? base.language;
-      return { ...base, language, starterCode: coding.data?.starterCodes?.[language] ?? coding.data?.starterCode ?? "", expectedOutput: coding.data?.testCases?.[0]?.expectedOutput ?? "" };
+      const publicTest = coding.data?.testCases?.find((test) => test.isPublic);
+      return { ...base, content: questionPromptWithoutGeneratedDetails(source.content), language, starterCode: coding.data?.starterCodes?.[language] ?? coding.data?.starterCode ?? "", constraints: coding.data?.constraints ?? "", testInput: publicTest?.input ?? "", expectedOutput: publicTest?.expectedOutput ?? "" };
     }
     if (base.type === "single" || base.type === "multiple") {
       return { ...base, options: options.map((option) => ({ text: option.content, description: "", correct: option.isCorrect })) };

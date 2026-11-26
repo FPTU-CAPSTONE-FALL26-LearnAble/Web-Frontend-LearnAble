@@ -165,6 +165,13 @@ export function validateDraft(
     errors.push(
       "Starter code, constraints, and both public and hidden test cases are required.",
     );
+  if (draft.type === "code") {
+    if (draft.starterCode.length > 16_384) errors.push("Starter code must be 16,384 characters or fewer.");
+    if (draft.constraints.length > 4_000) errors.push("Constraints must be 4,000 characters or fewer.");
+    if ([draft.testInput, draft.expectedOutput, draft.hiddenTestInput, draft.hiddenExpectedOutput].some((value) => value.length > 8_192 || value.includes("\0"))) {
+      errors.push("Each test input and expected output must be 8,192 characters or fewer and cannot contain null characters.");
+    }
+  }
   if (
     draft.type === "math" &&
     (!draft.formula.trim() || !draft.description.trim())

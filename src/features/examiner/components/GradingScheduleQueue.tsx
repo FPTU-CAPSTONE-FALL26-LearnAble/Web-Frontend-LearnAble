@@ -28,13 +28,7 @@ export function needsGrading(data: ExamGradebook | undefined) {
   return Boolean(
     data &&
     !data.releasedAt &&
-    data.submitted > 0 &&
-    (data.ungraded > 0 ||
-      data.needsManual > 0 ||
-      data.unreviewed > 0 ||
-      data.unconfirmedMarking > 0 ||
-      data.pendingIntegrityReviews > 0 ||
-      !data.canRelease),
+    data.submitted > 0,
   );
 }
 
@@ -111,19 +105,15 @@ export function GradingScheduleQueue({
     gradebooks.find((result) => result.error)?.error;
 
   return (
-    <section aria-labelledby="grading-queue-title" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+    <section aria-labelledby="grading-queue-title" className="overflow-hidden rounded-xl border-2 border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h2
             id="grading-queue-title"
-            className="text-xl font-bold text-primary"
+            className="text-base font-semibold"
           >
-            Current semester grading queue
+            Grading queue
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Completed exam shifts with submitted work that still needs grading,
-            review or release.
-          </p>
         </div>
         {semester ? (
           <Badge variant="outline">
@@ -139,7 +129,7 @@ export function GradingScheduleQueue({
             <div
               key={item}
               aria-hidden
-              className="h-52 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none"
+              className="h-20 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
             />
           ))}
         </div>
@@ -167,7 +157,7 @@ export function GradingScheduleQueue({
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="max-h-80 overflow-y-auto">
           {queue.map(({ schedule, result }) => (
             <ScheduleCard
               key={schedule.examScheduleId}
@@ -195,58 +185,15 @@ function ScheduleCard({
   onSelect: (scheduleId: string) => void;
 }) {
   return (
-    <article
-      className={`flex min-h-52 flex-col rounded-2xl border p-5 ${
-        selected ? "border-primary bg-primary/5" : "border-border bg-card"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-lg font-bold wrap-anywhere">
-            {schedule.examName ?? "Unnamed exam"}
-          </h3>
-          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarClock className="size-4 shrink-0" aria-hidden />
-            {formatDate(schedule.startsAt)} · {formatTime(schedule.startsAt)}–
-            {formatTime(schedule.endsAt)}
-          </p>
-          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="size-4 shrink-0" aria-hidden />
-            {schedule.roomName ?? "Room not reported"}
-          </p>
+    <article className={`grid items-center gap-4 border-b border-border p-4 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_auto_auto] ${selected ? "bg-primary/5" : "bg-card"}`}>
+      <div className="min-w-0"><h3 className="break-words text-base font-semibold">{schedule.examName ?? "Unnamed exam"}</h3>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+          <p className="flex items-center gap-2"><CalendarClock className="size-4 shrink-0" aria-hidden />{formatDate(schedule.startsAt)} · {formatTime(schedule.startsAt)}–{formatTime(schedule.endsAt)}</p>
+          <p className="flex items-center gap-2"><MapPin className="size-4 shrink-0" aria-hidden />{schedule.roomName ?? "Room not reported"}</p>
         </div>
-        <Badge variant="outline">
-          {gradebook.needsManual > 0 ? "Needs grading" : "Needs review"}
-        </Badge>
       </div>
-
-      <dl className="mt-5 grid grid-cols-3 gap-3 border-y border-border py-4 text-sm">
-        <div>
-          <dt className="text-muted-foreground">Submitted</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums">
-            {gradebook.submitted}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Ungraded</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums">
-            {gradebook.ungraded}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Manual</dt>
-          <dd className="mt-1 text-lg font-bold tabular-nums">
-            {gradebook.needsManual}
-          </dd>
-        </div>
-      </dl>
-
-      <Button
-        className="mt-4 w-full"
-        onClick={() => onSelect(schedule.examScheduleId)}
-      >
-        {selected ? "Gradebook open" : "Open gradebook"}
-      </Button>
+      <dl className="flex gap-6 text-sm">{[["Submitted", gradebook.submitted], ["Ungraded", gradebook.ungraded], ["Manual", gradebook.needsManual]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{value}</dd></div>)}</dl>
+      <div className="flex flex-wrap items-center gap-3"><Badge variant="outline">{gradebook.needsManual > 0 ? "Needs grading" : gradebook.canRelease ? "Ready to release" : "Needs review"}</Badge><Button variant={selected ? "outline" : "default"} aria-pressed={selected} onClick={() => onSelect(schedule.examScheduleId)}>{selected ? "Gradebook open" : "Open gradebook"}</Button></div>
     </article>
   );
 }
