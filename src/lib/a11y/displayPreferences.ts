@@ -49,6 +49,9 @@ const FROM_BACKEND = Object.fromEntries(
   Object.entries(TO_BACKEND).map(([theme, value]) => [value, theme]),
 ) as Record<BackendContrastTheme, ContrastTheme>;
 
+/** The app theme a Backend `ContrastTheme` value stands for. */
+export const themeFromBackend = (value: BackendContrastTheme): ContrastTheme => FROM_BACKEND[value];
+
 /** `fontSize` on the Backend is the base size in CSS pixels; 16 px is 100 %. */
 const BASE_FONT_SIZE = 16;
 const toFontSize = (scale: TextScale) => (BASE_FONT_SIZE * scale) / 100;

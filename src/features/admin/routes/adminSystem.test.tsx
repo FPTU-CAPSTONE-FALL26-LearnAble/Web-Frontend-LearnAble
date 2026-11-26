@@ -21,12 +21,14 @@ const voiceSettings: VoiceSettings = {
     { voiceKey: "vi-VN-HoaiMyNeural", displayName: "Hoài My", languageCode: "vi-VN", gender: "Female", isActive: true },
     { voiceKey: "en-US-JennyNeural", displayName: "Jenny", languageCode: "en-US", gender: "Female", isActive: true },
   ],
-  speeds: [
-    { value: 1, isActive: true },
-    { value: 1.5, isActive: true },
+  themes: [
+    { theme: "Default", isActive: true },
+    { theme: "HighContrast", isActive: true },
+    { theme: "Light", isActive: false },
+    { theme: "Dark", isActive: true },
   ],
   defaultVoiceKey: "vi-VN-HoaiMyNeural",
-  defaultSpeed: 1,
+  defaultTheme: "Default",
   updatedAt: "2026-11-01T09:30:00Z",
   updatedBy: "System Admin",
 };
@@ -174,7 +176,7 @@ describe("Admin navigation after the Staff split", () => {
   });
 });
 
-describe("Voices and speeds", { timeout: 30000 }, () => {
+describe("Voices and themes", { timeout: 30000 }, () => {
   it("blocks a configuration whose default is hidden from students", () => {
     expect(
       validateVoiceSettings({
@@ -203,19 +205,22 @@ describe("Voices and speeds", { timeout: 30000 }, () => {
     expect(saveVoiceSettings).not.toHaveBeenCalled();
 
     await user.click(screen.getByLabelText("Hidden — Hoài My"));
-    await user.type(screen.getByLabelText("New speed"), "3");
-    await user.click(screen.getByRole("button", { name: "Add speed" }));
-    expect(screen.getByText("Speed must be between 0.5 and 2.")).toBeInTheDocument();
-    await user.clear(screen.getByLabelText("New speed"));
-    await user.type(screen.getByLabelText("New speed"), "1.25");
-    await user.click(screen.getByRole("button", { name: "Add speed" }));
-    expect(screen.getByLabelText("1.25×")).toBeInTheDocument();
+    // Hiding the default theme is caught before saving, like a hidden default voice.
+    await user.click(screen.getByLabelText("Available — Light"));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Choose a default theme that is available to students.",
+    );
+    await user.click(screen.getByLabelText("Available — Yellow on black"));
+    expect(screen.getByLabelText("Hidden — Yellow on black")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Hidden — Light"));
+    await user.click(screen.getByLabelText("Hidden — Black on white"));
 
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(saveVoiceSettings).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(saveVoiceSettings).mock.calls[0][0].speeds.map((s) => s.value)).toEqual([
-      1, 1.25, 1.5,
-    ]);
+    expect(
+      vi.mocked(saveVoiceSettings).mock.calls[0][0].themes.filter((t) => t.isActive).map((t) => t.theme),
+    ).toEqual(["Default", "Light", "Dark"]);
   });
 });
 

@@ -18,6 +18,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: true,
         },
+        // Backend probes live at its root, outside /api (admin system health).
+        "/health": {
+          target: env.VITE_PROXY_TARGET || "https://backend-learnable.onrender.com",
+          changeOrigin: true,
+          secure: true,
+        },
       },
     },
     plugins: [react(), tailwindcss()],

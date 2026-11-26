@@ -69,7 +69,7 @@ export const adminNavigation: { dashboard: Item; groups: Group[] } = {
       icon: Settings2,
       items: [
         {
-          label: "Voices and speeds",
+          label: "Voices and themes",
           path: "/admin/voice-settings",
           icon: AudioLines,
         },

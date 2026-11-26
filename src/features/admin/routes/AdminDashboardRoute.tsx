@@ -108,8 +108,8 @@ const adminTools = [
     icon: Activity,
   },
   {
-    label: "Voices and speeds",
-    description: "Which reading voices and speeds students can choose.",
+    label: "Voices and themes",
+    description: "Which reading voices and colour themes students can choose.",
     path: "/admin/voice-settings",
     icon: AudioLines,
   },

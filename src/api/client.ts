@@ -60,6 +60,13 @@ async function errorMessage(res: Response): Promise<string | undefined> {
 
 const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
+/**
+ * Where the backend itself lives: the origin of an absolute API URL, or this
+ * site when the API is served under a relative path (the dev proxy). Probes such
+ * as `/health` sit at the backend root, outside `/api/v1`.
+ */
+export const apiOrigin = /^https?:\/\//.test(BASE_URL) ? new URL(BASE_URL).origin : "";
+
 /** Fired on `window` when the session can no longer be renewed; the auth guard signs the user out. */
 export const SESSION_EXPIRED_EVENT = "learnable:session-expired";
 

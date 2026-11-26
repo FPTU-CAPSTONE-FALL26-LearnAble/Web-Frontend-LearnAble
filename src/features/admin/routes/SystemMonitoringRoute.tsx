@@ -10,7 +10,7 @@ import {
   Timer,
   Users,
 } from "lucide-react";
-import { getSystemHealth } from "@/api/adminSystem";
+import { getSystemHealth, isBasicHealth } from "@/api/adminSystem";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
 import { Progress } from "@/shared/ui/primitives/progress";
@@ -110,6 +110,13 @@ export function SystemMonitoringRoute() {
                     : "Live updates are paused."}
                 </p>
               </div>
+              {isBasicHealth(data) ? (
+                <p className="mt-4 border-t border-border pt-4 text-sm">
+                  Only basic checks are available for now: whether the API answers and is ready to serve.
+                  Response times, usage and per-service details will appear once the full monitoring
+                  endpoint is available.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines, Gauge, Pencil, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { AudioLines, Palette, Pencil, Plus, RotateCcw, Save } from "lucide-react";
+import type { BackendContrastTheme } from "@/api/accessibility";
 import {
   getVoiceSettings,
   saveVoiceSettings,
@@ -10,10 +11,11 @@ import {
   type VoiceSettings,
   type VoiceSettingsBody,
 } from "@/api/adminSystem";
+import { themeFromBackend } from "@/lib/a11y/displayPreferences";
+import { vi } from "@/shared/strings/vi";
 import { Button } from "@/shared/ui/primitives/button";
 import { Card, CardContent } from "@/shared/ui/primitives/card";
 import { Checkbox } from "@/shared/ui/primitives/checkbox";
-import { Input } from "@/shared/ui/primitives/input";
 import { Label } from "@/shared/ui/primitives/label";
 import {
   Table,
@@ -30,10 +32,8 @@ import { adminKeys, useAdminWrite, useExpiredAdminSession } from "../api/useAdmi
 import { FormDialog } from "../components/AdminSurfaces";
 import { formatDateTime } from "../components/SystemSurfaces";
 
-export const MIN_SPEED = 0.5;
-export const MAX_SPEED = 2;
-
-const speedLabel = (value: number) => `${value}×`;
+/** The same theme names and descriptions students see in their own settings. */
+const themeText = (theme: BackendContrastTheme) => vi.a11ySettings.themes[themeFromBackend(theme)];
 const languageLabel = (code: string) =>
   code === "vi-VN" ? "Vietnamese" : code === "en-US" ? "English (US)" : code;
 
@@ -41,13 +41,13 @@ const languageLabel = (code: string) =>
 export function validateVoiceSettings(body: VoiceSettingsBody): string[] {
   const errors: string[] = [];
   const activeVoices = body.voices.filter((voice) => voice.isActive);
-  const activeSpeeds = body.speeds.filter((speed) => speed.isActive);
+  const activeThemes = body.themes.filter((theme) => theme.isActive);
   if (!activeVoices.length) errors.push("Make at least one voice available to students.");
-  if (!activeSpeeds.length) errors.push("Make at least one reading speed available.");
+  if (!activeThemes.length) errors.push("Make at least one colour theme available.");
   if (!body.defaultVoiceKey || !activeVoices.some((v) => v.voiceKey === body.defaultVoiceKey))
     errors.push("Choose a default voice that is available to students.");
-  if (body.defaultSpeed === null || !activeSpeeds.some((s) => s.value === body.defaultSpeed))
-    errors.push("Choose a default speed that is available to students.");
+  if (body.defaultTheme === null || !activeThemes.some((t) => t.theme === body.defaultTheme))
+    errors.push("Choose a default theme that is available to students.");
   for (const language of voiceLanguages) {
     if (
       body.voices.some((v) => v.languageCode === language) &&
@@ -75,14 +75,14 @@ const emptyVoice: VoiceDraft = {
 
 const toBody = (settings: VoiceSettings): VoiceSettingsBody => ({
   voices: settings.voices,
-  speeds: settings.speeds,
+  themes: settings.themes,
   defaultVoiceKey: settings.defaultVoiceKey,
-  defaultSpeed: settings.defaultSpeed,
+  defaultTheme: settings.defaultTheme,
 });
 
-/** FR-35 — which voices and speeds students may pick (FFCB-204). */
+/** FR-35 — which reading voices and colour themes students may pick (FFCB-204). */
 export function VoiceSettingsRoute() {
-  useRouteAnnouncer("Voices and speeds · LearnAble Admin", "Voices and speeds");
+  useRouteAnnouncer("Voices and themes · LearnAble Admin", "Voices and themes");
   const settings = useQuery({
     queryKey: adminKeys.list("voice-settings"),
     queryFn: getVoiceSettings,
@@ -95,8 +95,6 @@ export function VoiceSettingsRoute() {
     value: VoiceDraft;
   } | null>(null);
   const [voiceErrors, setVoiceErrors] = useState<string[]>([]);
-  const [newSpeed, setNewSpeed] = useState("");
-  const [speedError, setSpeedError] = useState<string | undefined>();
 
   const current = draft ?? (settings.data ? toBody(settings.data) : null);
   const dirty = draft !== null;
@@ -160,40 +158,14 @@ export function VoiceSettingsRoute() {
     setVoiceForm(null);
   };
 
-  const addSpeed = () => {
-    if (!current) return;
-    const value = Number(newSpeed);
-    if (!newSpeed.trim() || Number.isNaN(value)) {
-      setSpeedError("Enter a number, for example 1.25.");
-      return;
-    }
-    if (value < MIN_SPEED || value > MAX_SPEED) {
-      setSpeedError(`Speed must be between ${MIN_SPEED} and ${MAX_SPEED}.`);
-      return;
-    }
-    const rounded = Math.round(value * 100) / 100;
-    if (current.speeds.some((speed) => speed.value === rounded)) {
-      setSpeedError(`${speedLabel(rounded)} is already in the list.`);
-      return;
-    }
-    setSpeedError(undefined);
-    setNewSpeed("");
-    update((body) => ({
-      ...body,
-      speeds: [...body.speeds, { value: rounded, isActive: true }].sort(
-        (a, b) => a.value - b.value,
-      ),
-    }));
-  };
-
   const activeVoices = current?.voices.filter((voice) => voice.isActive) ?? [];
-  const activeSpeeds = current?.speeds.filter((speed) => speed.isActive) ?? [];
+  const activeThemes = current?.themes.filter((theme) => theme.isActive) ?? [];
 
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Voices and speeds"
-        description="The reading voices and speeds students can choose on the web and in the exam app."
+        title="Voices and themes"
+        description="The reading voices and colour themes students can choose on the web and in the exam app."
       >
         <Button
           variant="outline"
@@ -265,15 +237,18 @@ export function VoiceSettingsRoute() {
                   }
                 />
                 <ChoiceField
-                  label="Default speed"
-                  value={current.defaultSpeed === null ? "" : String(current.defaultSpeed)}
-                  placeholder="Choose a speed"
-                  options={activeSpeeds.map((speed) => ({
-                    value: String(speed.value),
-                    label: speedLabel(speed.value),
+                  label="Default theme"
+                  value={current.defaultTheme ?? ""}
+                  placeholder="Choose a theme"
+                  options={activeThemes.map((option) => ({
+                    value: option.theme,
+                    label: themeText(option.theme).name,
                   }))}
                   onChange={(value) =>
-                    update((body) => ({ ...body, defaultSpeed: Number(value) }))
+                    update((body) => ({
+                      ...body,
+                      defaultTheme: value as BackendContrastTheme,
+                    }))
                   }
                 />
               </div>
@@ -372,86 +347,64 @@ export function VoiceSettingsRoute() {
             </Table>
           </section>
 
-          <Card className="shadow-none">
-            <CardContent className="space-y-4 pt-6">
-              <div className="flex items-center gap-2">
-                <Gauge aria-hidden className="size-5" />
-                <h2 className="text-lg font-bold">Reading speeds</h2>
-              </div>
-              <ul className="flex flex-wrap gap-3" aria-label="Reading speeds">
-                {current.speeds.map((speed) => {
-                  const checkboxId = `speed-${speed.value}`;
-                  return (
-                    <li
-                      key={speed.value}
-                      className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3"
+          <section aria-labelledby="themes-heading" className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Palette aria-hidden className="size-5" />
+              <h2 id="themes-heading" className="text-lg font-bold">
+                Colour themes
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The themes are built into the web and exam apps. Choose which ones
+              students can switch to.
+            </p>
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Colour themes">
+              {current.themes.map((option) => {
+                const checkboxId = `theme-active-${option.theme}`;
+                const text = themeText(option.theme);
+                return (
+                  <li
+                    key={option.theme}
+                    className="flex flex-col gap-3 rounded-xl border border-border p-4"
+                  >
+                    {/* A preview drawn in the theme's own colours; the name below carries the meaning. */}
+                    <div
+                      aria-hidden
+                      data-contrast={themeFromBackend(option.theme)}
+                      className="flex h-16 items-center gap-3 rounded-lg border-2 border-foreground bg-background px-4 text-foreground"
                     >
+                      <span className="text-2xl font-extrabold">Aa</span>
+                      <span className="h-2 flex-1 rounded-full bg-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold">{text.name}</p>
+                      <p className="text-sm text-muted-foreground">{text.description}</p>
+                    </div>
+                    <div className="flex min-h-11 items-center gap-3">
                       <Checkbox
                         id={checkboxId}
-                        checked={speed.isActive}
+                        checked={option.isActive}
                         onCheckedChange={(checked) =>
                           update((body) => ({
                             ...body,
-                            speeds: body.speeds.map((item) =>
-                              item.value === speed.value
+                            themes: body.themes.map((item) =>
+                              item.theme === option.theme
                                 ? { ...item, isActive: checked === true }
                                 : item,
                             ),
                           }))
                         }
                       />
-                      <Label htmlFor={checkboxId} className="cursor-pointer tabular-nums">
-                        {speedLabel(speed.value)}
+                      <Label htmlFor={checkboxId} className="cursor-pointer">
+                        {option.isActive ? "Available" : "Hidden"}
+                        <span className="sr-only"> — {text.name}</span>
                       </Label>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Remove speed ${speedLabel(speed.value)}`}
-                        onClick={() =>
-                          update((body) => ({
-                            ...body,
-                            speeds: body.speeds.filter((item) => item.value !== speed.value),
-                          }))
-                        }
-                      >
-                        <Trash2 aria-hidden />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <form
-                className="flex flex-wrap items-end gap-2"
-                noValidate
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  addSpeed();
-                }}
-              >
-                <div className="w-48 space-y-2">
-                  <Label htmlFor="new-speed">New speed</Label>
-                  <Input
-                    id="new-speed"
-                    inputMode="decimal"
-                    value={newSpeed}
-                    aria-invalid={!!speedError}
-                    aria-describedby={speedError ? "new-speed-error" : "new-speed-help"}
-                    onChange={(event) => setNewSpeed(event.target.value)}
-                  />
-                </div>
-                <Button type="submit" variant="outline">
-                  <Plus aria-hidden />
-                  Add speed
-                </Button>
-                <p
-                  id={speedError ? "new-speed-error" : "new-speed-help"}
-                  className={`w-full text-sm ${speedError ? "text-destructive" : "text-muted-foreground"}`}
-                >
-                  {speedError ?? `Between ${MIN_SPEED} and ${MAX_SPEED}; 1 is normal speed.`}
-                </p>
-              </form>
-            </CardContent>
-          </Card>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </>
       )}
 

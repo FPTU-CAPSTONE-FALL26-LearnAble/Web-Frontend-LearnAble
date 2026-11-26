@@ -21,15 +21,14 @@ let voiceSettings: VoiceSettings = {
     { voiceKey: "en-US-JennyNeural", displayName: "Jenny", languageCode: "en-US", gender: "Female", isActive: true },
     { voiceKey: "en-US-GuyNeural", displayName: "Guy", languageCode: "en-US", gender: "Male", isActive: false },
   ],
-  speeds: [
-    { value: 0.75, isActive: true },
-    { value: 1, isActive: true },
-    { value: 1.25, isActive: true },
-    { value: 1.5, isActive: true },
-    { value: 2, isActive: false },
+  themes: [
+    { theme: "Default", isActive: true },
+    { theme: "HighContrast", isActive: true },
+    { theme: "Light", isActive: true },
+    { theme: "Dark", isActive: true },
   ],
   defaultVoiceKey: "vi-VN-HoaiMyNeural",
-  defaultSpeed: 1,
+  defaultTheme: "Default",
   updatedAt: "2026-11-01T09:30:00Z",
   updatedBy: "System Admin",
 };
@@ -77,8 +76,19 @@ export const adminSystemHandlers = [
     return ok(voiceSettings);
   }),
 
+  // The proposed FFCB-151 endpoint; the app reads the probes below until it ships.
   http.get("*/admin/system/health", async () => {
     await delay(250);
     return ok(health());
+  }),
+
+  // The backend's public probes, served at its root without the envelope.
+  http.get("*/health", async () => {
+    await delay(120);
+    return HttpResponse.json({ status: "healthy", timestamp: new Date().toISOString() });
+  }),
+  http.get("*/health/ready", async () => {
+    await delay(180);
+    return HttpResponse.json({ status: "healthy", timestamp: new Date().toISOString() });
   }),
 ];
