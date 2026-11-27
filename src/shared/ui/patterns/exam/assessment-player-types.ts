@@ -20,7 +20,8 @@ export type QuestionKind =
   | "composite"
   | "essay"
   | "textarea"
-  | "upload";
+  | "upload"
+  | "coding";
 
 /** Two-part questions; each part's answer is stored as `first|second`. */
 export type CompositeVariant =
@@ -35,6 +36,35 @@ export interface CompositeConfig {
   /** The one list of alternatives the variant needs (checkboxes or a select). */
   choices: string[];
 }
+
+/** A C coding question: samples shown in the problem and run by the sandbox. */
+export interface CodingConfig {
+  language: "c";
+  /** Problem name shown above the statement, e.g. "Sum of even numbers". */
+  title?: string;
+  samples: { input: string; output: string }[];
+  /** Pre-filled into the editor while there is no saved answer. */
+  starterCode?: string;
+}
+
+/** One sample test's outcome from the code sandbox. */
+export interface CodeTestResult {
+  /** 1-based, matches the sample order. */
+  index: number;
+  outcome: "passed" | "failed" | "timeLimitExceeded" | "runtimeError";
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  message?: string;
+}
+
+/** What a code run returns; transport failures are thrown instead. */
+export type CodeRunResult =
+  | { status: "compiled"; tests: CodeTestResult[] }
+  | {
+      status: "compileError";
+      errors: { line: number; column?: number; message: string }[];
+    };
 
 export interface PlayerOption {
   id: string;
@@ -60,6 +90,8 @@ export interface PlayerQuestion {
   segments?: InlineChoiceSegment[];
   slots?: InlineChoiceSlot[];
   composite?: CompositeConfig;
+  /** Kind "coding" only; its `prompt` is limited Markdown. */
+  coding?: CodingConfig;
 }
 
 export type Answer = string | string[] | undefined;

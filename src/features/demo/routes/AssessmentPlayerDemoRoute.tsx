@@ -9,11 +9,23 @@ import {
   assessmentPlayerTitle,
 } from "@/features/demo/data/assessmentPlayer";
 
+const DEMO_TOTAL_MS = 60 * 60 * 1000;
+const DEMO_REMAINING_MS = 35 * 60 * 1000;
+
 export function AssessmentPlayerDemoRoute() {
   const [answers, setAnswers] = useState<Answers>({});
   const [flagged, setFlagged] = useState<string[]>([]);
   const [textScale, setTextScale] = useState<TextScaleOption>(100);
   const [contrast, setContrast] = useState<ContrastOption>("default");
+  const [remainingMs, setRemainingMs] = useState(DEMO_REMAINING_MS);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setRemainingMs((ms) => Math.max(0, ms - 1000)),
+      1000,
+    );
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -45,8 +57,8 @@ export function AssessmentPlayerDemoRoute() {
     <AssessmentPlayer
       title={assessmentPlayerTitle}
       candidate={assessmentPlayerCandidate}
-      examCode="PRO192"
-      remainingTime="35 minutes left"
+      exam={{ name: "PRO192 - Final Exam", id: "07342" }}
+      timeLimit={{ remainingMs, totalMs: DEMO_TOTAL_MS }}
       questions={assessmentPlayerQuestions}
       answers={answers}
       flagged={flagged}

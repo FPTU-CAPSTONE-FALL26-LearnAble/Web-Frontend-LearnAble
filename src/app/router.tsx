@@ -92,6 +92,7 @@ import {
 } from "@/features/examiner/routes/ExaminerWorkflowRoutes";
 import { ComponentDemoRoute } from "@/features/demo/routes/ComponentDemoRoute";
 import { AssessmentPlayerDemoRoute } from "@/features/demo/routes/AssessmentPlayerDemoRoute";
+import { CodingWorkspaceDemoRoute } from "@/features/demo/routes/CodingWorkspaceDemoRoute";
 import { RecordingConsentRoute } from "@/features/exam/routes/RecordingConsentRoute";
 import { PublicLayout } from "@/features/landing/components/PublicLayout";
 import { ChallengesRoute } from "@/features/landing/routes/ChallengesRoute";
@@ -151,6 +152,7 @@ export const router = createBrowserRouter([
   },
   { path: "/demo/components", element: <ComponentDemoRoute /> },
   { path: "/demo/assessment-player", element: <AssessmentPlayerDemoRoute /> },
+  { path: "/demo/coding-workspace", element: <CodingWorkspaceDemoRoute /> },
   { path: "/demo", element: <Navigate to="/demo/components" replace /> },
   {
     // Sign-in pages keep the text size and colours a visitor chose as a guest.

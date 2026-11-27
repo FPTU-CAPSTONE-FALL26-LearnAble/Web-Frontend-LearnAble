@@ -5,8 +5,10 @@ import { vi } from "@/shared/strings/vi";
 import {
   decodedAnswer,
   type Answer,
+  type CodeRunResult,
   type PlayerQuestion as PlayerQuestionData,
 } from "./assessment-player-types";
+import { CodingWorkspace } from "./CodingWorkspace";
 import { CompositeQuestion } from "./CompositeQuestion";
 import { GraphicTextEntryQuestion } from "./GraphicTextEntryQuestion";
 import { HotspotQuestion } from "./HotspotQuestion";
@@ -31,6 +33,12 @@ export interface PlayerQuestionProps {
   onToggleFlag: () => void;
   className?: string;
   disabled?: boolean;
+  /** Coding questions: runs the code against the question's sample tests. */
+  onRunCode?: (code: string) => Promise<CodeRunResult>;
+  /** Coding questions: the latest run, shown again when the question reopens. */
+  lastCodeRun?: CodeRunResult;
+  /** Coding questions: a run started on an earlier visit is still going. */
+  codeRunPending?: boolean;
 }
 
 const selectClassName =
@@ -48,6 +56,9 @@ export function PlayerQuestion({
   onToggleFlag,
   className,
   disabled = false,
+  onRunCode,
+  lastCodeRun,
+  codeRunPending,
 }: PlayerQuestionProps) {
   const strings = vi.exam.player;
   const value = typeof answer === "string" ? answer : "";
@@ -194,6 +205,23 @@ export function PlayerQuestion({
             label: typeof option === "string" ? option : option.text,
           }))}
           targets={question.targets ?? []}
+        />
+      );
+    case "coding":
+      return (
+        <CodingWorkspace
+          questionNumber={questionNumber}
+          questionCount={questionCount}
+          prompt={question.prompt}
+          stemLang={question.stemLang}
+          coding={question.coding ?? { language: "c", samples: [] }}
+          code={typeof answer === "string" ? answer : undefined}
+          onCodeChange={onAnswerChange}
+          onRun={onRunCode}
+          lastRun={lastCodeRun}
+          runPending={codeRunPending}
+          disabled={disabled}
+          className={className}
         />
       );
     case "composite":

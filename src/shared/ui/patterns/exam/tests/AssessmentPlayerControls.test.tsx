@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { AssessmentPlayerContrastOptions, type ContrastOption } from "../AssessmentPlayerContrastOptions";
 import { AssessmentPlayerTextSizeOptions, type TextScaleOption } from "../AssessmentPlayerTextSizeOptions";
 import { AssessmentPlayerOptions } from "../AssessmentPlayerOptions";
-import { AssessmentPlayerFooter } from "../AssessmentPlayerFooter";
+import { QuestionPager } from "../QuestionPager";
 
 function Contrast() {
   const [value, setValue] = useState<ContrastOption>("default");
@@ -64,15 +64,15 @@ describe("remaining-time toggle", () => {
   });
 });
 
-describe("player footer", () => {
-  it("names the question strip as a group and adds no empty Tab stop before Previous and Next", async () => {
+describe("question pager", () => {
+  it("adds no empty Tab stop before Previous and Next, and renders no footer", async () => {
     const user = userEvent.setup();
-    render(<AssessmentPlayerFooter answers={{}} currentIndex={0} flagged={[]} view="question"
-      questions={[{ id: "one", kind: "text", title: "Text entry", prompt: "Stem" }]} onGoTo={() => {}} onViewChange={() => {}} />);
-    expect(screen.getByRole("group", { name: "Question navigation" })).toBeInTheDocument();
+    render(<QuestionPager currentIndex={0} questionCount={1} view="question" onGoTo={() => {}} onViewChange={() => {}} />);
     const navigation = screen.getByRole("navigation", { name: "Previous / next question" });
     expect(navigation).not.toHaveAttribute("tabindex");
     await user.tab();
     expect(screen.getByRole("button", { name: "Previous" })).toHaveFocus();
+    expect(screen.queryByRole("group", { name: "Question navigation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
   });
 });
