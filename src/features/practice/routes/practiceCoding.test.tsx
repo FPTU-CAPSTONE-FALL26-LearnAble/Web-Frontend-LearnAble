@@ -129,19 +129,33 @@ describe("coding questions in practice", () => {
     expect(results).toHaveLength(2);
   });
 
-  it("says there is nothing to run when no program is saved, without asking the Backend", async () => {
+  it("runs the untouched starter code of an unanswered question by saving it first", async () => {
+    const saves: { revision: number; answer: unknown }[] = [];
+    server.use(
+      http.put(`*/me/practice-sessions/${SESSION}/answers`, async ({ request }) => {
+        const operation = (await request.json()) as { operationId: string; revision: number; answer: unknown };
+        saves.push(operation);
+        return ok({
+          attemptId: ATTEMPT,
+          attemptQuestionId: "c-q",
+          operationId: operation.operationId,
+          acceptedRevision: operation.revision,
+          serverSavedAt: new Date().toISOString(),
+          serverNow: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          status: "Active",
+        });
+      }),
+    );
     openAttempt([]);
     await openQuestion(/Question 1/);
     await userEvent.click(screen.getByRole("button", { name: /^Run/ }));
-    const results = screen.getByRole("region", { name: "Test results" });
-    expect(
-      await within(results).findByText(
-        "There is no program to run yet. Change the starter code, then run it.",
-        {},
-        { timeout: 3000 },
-      ),
-    ).toBeInTheDocument();
-    expect(runs).toEqual([]);
+    expect(await screen.findByText("1 of 2 sample tests passed", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(saves).toEqual([
+      { operationId: expect.any(String), attemptQuestionId: "c-q", baseRevision: 0, revision: 1, answer: { kind: "Coding", sourceCode: STARTER, languageCode: "c-gcc-9.2.0" } },
+    ]);
+    // The run waits for the save and tests the revision it was accepted at.
+    expect(runs).toEqual([{ operationId: expect.any(String), expectedRevision: 1 }]);
   });
 
   it("shows the Backend's reason when it refuses the run", async () => {

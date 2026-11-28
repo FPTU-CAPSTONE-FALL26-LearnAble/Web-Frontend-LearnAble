@@ -161,7 +161,6 @@ describe("useAttemptAnswers", () => {
       await act(async () => result.current.change("c", undefined));
       expect(save.mock.calls[0][0].answer).toEqual({ kind: "Coding", sourceCode: "", languageCode: "c-clang-7.0.1" });
       expect(result.current.answers.c).toBeUndefined();
-      await expect(result.current.savedRevision("c")).resolves.toBeNull();
     });
 
     it("sends nothing when there is no program to clear, now or on submit", async () => {
@@ -186,7 +185,7 @@ describe("useAttemptAnswers", () => {
       );
       act(() => result.current.change("c", "int y;"));
       let revision: number | null = null;
-      const asked = result.current.savedRevision("c").then((value) => {
+      const asked = result.current.savedRevision("c", "int y;").then((value) => {
         revision = value;
       });
       await act(async () => {
@@ -197,21 +196,60 @@ describe("useAttemptAnswers", () => {
         await asked;
       });
       expect(revision).toBe(8);
+      // The program the run asked for was already saved: it is not sent twice.
       expect(save).toHaveBeenCalledOnce();
     });
 
-    it("gives no revision while the program could not be saved or was never typed", async () => {
+    it("saves untouched starter code for a run, as the desktop does, and only once", async () => {
+      const save = vi.fn(async (operation: AnswerOperation) => accepted(operation));
+      const { result } = renderHook(() => useAttemptAnswers({ questions: [cQuestion], stored: [], save }));
+      let revision: number | null = null;
+      await act(async () => {
+        revision = await result.current.savedRevision("c", STARTER);
+      });
+      expect(revision).toBe(1);
+      expect(save.mock.calls[0][0]).toMatchObject({
+        baseRevision: 0,
+        revision: 1,
+        answer: { kind: "Coding", sourceCode: STARTER, languageCode: "c-gcc-9.2.0" },
+      });
+      // Starter code still reads as no answer on screen.
+      expect(result.current.answers.c).toBeUndefined();
+      await act(async () => {
+        revision = await result.current.savedRevision("c", STARTER);
+      });
+      expect(revision).toBe(1);
+      expect(save).toHaveBeenCalledOnce();
+    });
+
+    it("drops a waiting clear once the run has saved the starter, so submit does not undo it", async () => {
+      const save = vi
+        .fn<(operation: AnswerOperation) => Promise<ReturnType<typeof accepted>>>()
+        .mockRejectedValueOnce(new TypeError("offline"))
+        .mockImplementation(async (operation) => accepted(operation));
+      const { result } = renderHook(() =>
+        useAttemptAnswers({ questions: [cQuestion], stored: [program("c", "int x;")], save }),
+      );
+      // Back to the starter: the clear fails and waits to be sent again.
+      await act(async () => result.current.change("c", undefined));
+      expect(result.current.saveFailed).toBe(true);
+      await act(async () => {
+        await result.current.savedRevision("c", STARTER);
+      });
+      expect(save.mock.calls.at(-1)?.[0].answer).toMatchObject({ sourceCode: STARTER });
+      expect(result.current.saveFailed).toBe(false);
+      await expect(result.current.finalAnswers()).resolves.toEqual([]);
+    });
+
+    it("runs nothing from an empty editor and reports a failed save", async () => {
       const failing = vi.fn().mockRejectedValue(new TypeError("offline"));
       const { result } = renderHook(() => useAttemptAnswers({ questions: [cQuestion], stored: [], save: failing }));
-      await expect(result.current.savedRevision("c")).resolves.toBeNull();
-      await act(async () => result.current.change("c", "int x;"));
-      let revision: number | null = 0;
+      await expect(result.current.savedRevision("c", "  \n")).resolves.toBeNull();
+      expect(failing).not.toHaveBeenCalled();
       await act(async () => {
-        revision = await result.current.savedRevision("c");
+        await expect(result.current.savedRevision("c", "int x;")).rejects.toThrow("code-run:save-failed");
       });
-      expect(revision).toBeNull();
-      // The failed save was tried again for the run.
-      expect(failing).toHaveBeenCalledTimes(2);
+      expect(result.current.saveFailed).toBe(true);
     });
   });
 

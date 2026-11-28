@@ -8,14 +8,14 @@ import { isSupportedCoding } from "./playerMapping";
 
 /**
  * The player's `onRunCode` for a practice attempt. The Backend runs the saved
- * program, not the code on screen, so a run first waits for the save
- * (`savedRevision`) and then runs that revision against the question's public
- * examples. Runs still going when the attempt closes are abandoned.
+ * program, not the code on screen, so a run first saves the editor's program
+ * (untouched starter code too, as on the desktop) and then runs the revision
+ * the Backend accepted against the question's public examples. Runs still
+ * going when the attempt closes are abandoned.
  *
  * Two failures have a reason the student can act on, thrown as
  * `CodeRunFailure` so the player shows it instead of "couldn't run":
- * - no program is saved (only the starter code, a cleared program, or a
- *   failed save), so nothing is sent;
+ * - the editor is empty, so nothing is sent;
  * - the Backend refused the run, for example at the run limit, in its words.
  */
 export function useCodeRuns({
@@ -27,7 +27,7 @@ export function useCodeRuns({
   sessionId: string;
   attemptId: string;
   questions: StudentQuestion[];
-  savedRevision: (questionId: string) => Promise<number | null>;
+  savedRevision: (questionId: string, code: string) => Promise<number | null>;
 }) {
   const examples = useMemo(
     () =>
@@ -46,11 +46,11 @@ export function useCodeRuns({
   }, []);
 
   return useCallback(
-    async (questionId: string): Promise<CodeRunResult> => {
+    async (questionId: string, code: string): Promise<CodeRunResult> => {
       const samples = examples.get(questionId);
       // The player offers Run only on questions it edits, which are all here.
       if (!samples) throw new Error(`code-run:not-a-C-question:${questionId}`);
-      const revision = await savedRevision(questionId);
+      const revision = await savedRevision(questionId, code);
       if (revision === null) throw new CodeRunFailure(vi.exam.coding.runNothingSaved);
       const controller = new AbortController();
       running.current.add(controller);

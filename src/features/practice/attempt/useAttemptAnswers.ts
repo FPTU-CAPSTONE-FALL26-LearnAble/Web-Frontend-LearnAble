@@ -35,9 +35,10 @@ const storedPrograms = (stored: StoredAnswer[]) =>
  * on. Saves of one question never overlap, so revisions arrive in order; a
  * failed save stays pending and goes with the next change or with the submit.
  *
- * A Coding question's answer is its program. Starter code or nothing is not a
- * program: it clears a saved one, and is not sent when nothing was saved. Runs
- * need the revision of the saved program, which `savedRevision` returns.
+ * A Coding question's answer is its program. Editing back to the starter code
+ * or to nothing clears a saved program, and sends nothing when none was saved.
+ * A run saves the editor's program (the starter too) and gets its revision
+ * from `savedRevision`.
  */
 export function useAttemptAnswers({
   questions,
@@ -93,11 +94,53 @@ export function useAttemptAnswers({
     [byId],
   );
 
+  /** Sends one operation and records what the Backend accepted. Runs inside the question's save chain. */
+  const send = useCallback(
+    async (questionId: string, operation: AnswerOperation) => {
+      inFlight.current += 1;
+      setSaveState("saving");
+      try {
+        const result = await save(operation);
+        revisions.current[questionId] = result.acceptedRevision;
+        if (operation.answer.kind === "Coding") {
+          programs.current[questionId] = operation.answer.sourceCode ?? "";
+          if (operation.answer.languageCode) languages.current[questionId] = operation.answer.languageCode;
+        }
+        failed.current.delete(questionId);
+        return true;
+      } catch {
+        failed.current.add(questionId);
+        return false;
+      } finally {
+        inFlight.current -= 1;
+        setSaveFailed(failed.current.size > 0);
+        if (inFlight.current === 0) {
+          const offline = typeof navigator !== "undefined" && !navigator.onLine;
+          setSaveState(failed.current.size > 0 ? (offline ? "offline" : "error") : "saved");
+        }
+      }
+    },
+    [save],
+  );
+
+  /** Queues work after this question's earlier saves, so its revisions arrive in order. */
+  const queue = useCallback(<T,>(questionId: string, work: () => Promise<T>) => {
+    const previous = chains.current.get(questionId) ?? Promise.resolve();
+    const next = previous.then(work);
+    chains.current.set(
+      questionId,
+      next.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return next;
+  }, []);
+
   const flush = useCallback(
     (questionId: string) => {
       timers.current.delete(questionId);
-      const previous = chains.current.get(questionId) ?? Promise.resolve();
-      const next = previous.then(async () => {
+      return queue(questionId, async () => {
         if (!pending.current.has(questionId)) return;
         const operation = operationFor(questionId);
         if (!operation) return;
@@ -108,32 +151,10 @@ export function useAttemptAnswers({
           if (inFlight.current === 0 && failed.current.size === 0) setSaveState("saved");
           return;
         }
-        inFlight.current += 1;
-        setSaveState("saving");
-        try {
-          const result = await save(operation);
-          revisions.current[questionId] = result.acceptedRevision;
-          if (operation.answer.kind === "Coding") {
-            programs.current[questionId] = operation.answer.sourceCode ?? "";
-            if (operation.answer.languageCode) languages.current[questionId] = operation.answer.languageCode;
-          }
-          failed.current.delete(questionId);
-        } catch {
-          pending.current.add(questionId);
-          failed.current.add(questionId);
-        } finally {
-          inFlight.current -= 1;
-          setSaveFailed(failed.current.size > 0);
-          if (inFlight.current === 0) {
-            const offline = typeof navigator !== "undefined" && !navigator.onLine;
-            setSaveState(failed.current.size > 0 ? (offline ? "offline" : "error") : "saved");
-          }
-        }
+        if (!(await send(questionId, operation))) pending.current.add(questionId);
       });
-      chains.current.set(questionId, next);
-      return next;
     },
-    [operationFor, save],
+    [operationFor, queue, send],
   );
 
   const change = useCallback(
@@ -172,19 +193,44 @@ export function useAttemptAnswers({
   }, [operationFor]);
 
   /**
-   * The revision at which the Backend holds this question's program, for a
-   * run. Saves a change still waiting first. `null` when there is no saved
-   * program to run: nothing typed yet, a cleared program, or a failed save.
+   * Saves `code`, the program in the editor, for a run and returns the
+   * revision the Backend accepted it at; a run tests that saved revision. As
+   * on the desktop, untouched starter code is saved too, so a student can run
+   * it before changing anything (editing back to the starter still clears a
+   * saved program). A program the Backend already holds is not sent again.
+   * `null` when the editor is empty; throws when the save fails.
    */
   const savedRevision = useCallback(
-    async (questionId: string): Promise<number | null> => {
+    async (questionId: string, code: string): Promise<number | null> => {
       clearTimeout(timers.current.get(questionId));
       await flush(questionId);
-      if (pending.current.has(questionId) || failed.current.has(questionId)) return null;
-      if (!programs.current[questionId]) return null;
-      return revisions.current[questionId] ?? null;
+      if (!code.trim()) return null;
+      const question = byId.get(questionId);
+      if (!question?.coding) return null;
+      return queue(questionId, async () => {
+        const revision = revisions.current[questionId];
+        if (programs.current[questionId] === code && revision !== undefined) return revision;
+        const baseRevision = revision ?? 0;
+        const operation: AnswerOperation = {
+          operationId: newOperationId(),
+          attemptQuestionId: questionId,
+          baseRevision,
+          revision: baseRevision + 1,
+          answer: {
+            kind: "Coding",
+            sourceCode: code,
+            languageCode: languages.current[questionId] ?? question.coding?.languageCode ?? "",
+          },
+        };
+        if (!(await send(questionId, operation))) throw new Error("code-run:save-failed");
+        // The Backend now holds what is on screen (the starter reads as no answer), so an
+        // older change waiting to be sent is dropped; one typed since stays queued.
+        const shown = latest.current[questionId];
+        if (shown === undefined || shown === code) pending.current.delete(questionId);
+        return revisions.current[questionId];
+      });
     },
-    [flush],
+    [byId, flush, queue, send],
   );
 
   return { answers, change, saveState, saveFailed, finalAnswers, savedRevision };

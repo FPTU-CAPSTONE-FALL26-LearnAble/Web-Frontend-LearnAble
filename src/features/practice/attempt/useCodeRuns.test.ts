@@ -37,7 +37,7 @@ const completed = envelope({
 
 afterEach(() => vi.unstubAllGlobals());
 
-function setup(savedRevision: (questionId: string) => Promise<number | null>, response = () => new Response(completed)) {
+function setup(savedRevision: (questionId: string, code: string) => Promise<number | null>, response = () => new Response(completed)) {
   const fetcher = vi.fn<typeof fetch>(async () => response());
   vi.stubGlobal("fetch", fetcher);
   const { result } = renderHook(() =>
@@ -50,22 +50,22 @@ describe("useCodeRuns", () => {
   it("runs the saved revision of the question against its examples", async () => {
     const savedRevision = vi.fn(async () => 5);
     const { run, fetcher } = setup(savedRevision);
-    await expect(run("c")).resolves.toEqual({
+    await expect(run("c", "int main(void) {}")).resolves.toEqual({
       status: "compiled",
       tests: [{ index: 1, outcome: "passed", input: "1\n", expectedOutput: "1\n", actualOutput: "1\n" }],
     });
-    expect(savedRevision).toHaveBeenCalledWith("c");
+    expect(savedRevision).toHaveBeenCalledWith("c", "int main(void) {}");
     const [url, init] = fetcher.mock.calls[0];
     expect(String(url)).toBe("/api/v1/me/practice-sessions/s-1/attempts/a-1/questions/c/code-runs");
     expect(JSON.parse(String(init?.body))).toMatchObject({ expectedRevision: 5 });
   });
 
-  it("tells the student there is nothing to run when no program is saved, without asking the Backend", async () => {
+  it("tells the student the editor is empty, without asking the Backend", async () => {
     const { run, fetcher } = setup(async () => null);
-    const failure = run("c");
+    const failure = run("c", "int main(void) {}");
     await expect(failure).rejects.toBeInstanceOf(CodeRunFailure);
     await expect(failure).rejects.toMatchObject({
-      reason: "There is no program to run yet. Change the starter code, then run it.",
+      reason: "The editor is empty. Write your program, then run it.",
     });
     expect(fetcher).not.toHaveBeenCalled();
   });
@@ -79,7 +79,7 @@ describe("useCodeRuns", () => {
           { status: 409 },
         ),
     );
-    await expect(run("c")).rejects.toMatchObject({
+    await expect(run("c", "int main(void) {}")).rejects.toMatchObject({
       name: "CodeRunFailure",
       reason: "The Coding limit for this question has been reached.",
     });
@@ -87,7 +87,7 @@ describe("useCodeRuns", () => {
 
   it("leaves other failures to the player's generic text", async () => {
     const { run } = setup(async () => 5, () => new Response("oops", { status: 500 }));
-    const failure = run("c");
+    const failure = run("c", "int main(void) {}");
     await expect(failure).rejects.not.toBeInstanceOf(CodeRunFailure);
     await expect(failure).rejects.toMatchObject({ detail: { kind: "server", status: 500 } });
   });
@@ -95,7 +95,7 @@ describe("useCodeRuns", () => {
   it("runs nothing for a question the web editor cannot edit", async () => {
     const savedRevision = vi.fn(async () => 5);
     const { run, fetcher } = setup(savedRevision);
-    await expect(run("py")).rejects.not.toBeInstanceOf(CodeRunFailure);
+    await expect(run("py", "print(1)")).rejects.not.toBeInstanceOf(CodeRunFailure);
     expect(savedRevision).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
   });
