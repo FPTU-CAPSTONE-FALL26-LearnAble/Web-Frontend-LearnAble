@@ -9,7 +9,8 @@ import {
   type PracticeSession,
 } from "@/api/studentPractice";
 import { practiceKeys, usePracticeAttempt } from "@/features/practice/api/usePracticeSessions";
-import { toPlayerQuestions } from "@/features/practice/attempt/playerMapping";
+import { isSupportedCoding, toPlayerQuestions } from "@/features/practice/attempt/playerMapping";
+import { useCodeRuns } from "@/features/practice/attempt/useCodeRuns";
 import {
   formatRemaining,
   useAttemptAnswers,
@@ -112,14 +113,20 @@ function LiveAttempt({
       ?.find((session) => session.sessionId === sessionId)
       ?.name?.trim() || t.untitled;
   const questions = useMemo(() => toPlayerQuestions(attempt.questions), [attempt.questions]);
-  const kinds = useMemo(
-    () => new Map(attempt.questions.map((q) => [q.attemptQuestionId, q.questionType])),
+  const byId = useMemo(
+    () => new Map(attempt.questions.map((q) => [q.attemptQuestionId, q])),
     [attempt.questions],
   );
-  const { answers, change, saveState, saveFailed, finalAnswers } = useAttemptAnswers({
+  const { answers, change, saveState, saveFailed, finalAnswers, savedRevision } = useAttemptAnswers({
     questions: attempt.questions,
     stored: attempt.answers,
     save: (operation) => savePracticeAnswer(sessionId, operation),
+  });
+  const runCode = useCodeRuns({
+    sessionId,
+    attemptId: attempt.attemptId,
+    questions: attempt.questions,
+    savedRevision,
   });
 
   const storageKey = `learnable.practice.${attempt.attemptId}`;
@@ -171,7 +178,9 @@ function LiveAttempt({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeUp]);
 
-  const currentKind = navigation.view === "question" && navigation.questionId ? kinds.get(navigation.questionId) : undefined;
+  const current = navigation.view === "question" && navigation.questionId ? byId.get(navigation.questionId) : undefined;
+  // A coding question the web editor cannot edit (not C) is shown but not answerable.
+  const unsupportedCoding = current?.questionType === "Coding" && !isSupportedCoding(current);
   const answered = questions.filter((q) => {
     const value = answers[q.id];
     return Array.isArray(value) ? value.length > 0 : Boolean(value);
@@ -189,7 +198,7 @@ function LiveAttempt({
     <p role="alert" className="mx-2 mb-2 rounded border-2 border-destructive px-4 py-3 font-semibold text-destructive">
       {t.saveFailed}
     </p>
-  ) : currentKind === "Coding" ? (
+  ) : unsupportedCoding ? (
     <p className="mx-2 mb-2 rounded border-2 border-foreground px-4 py-3 font-semibold">{t.codingUnsupported}</p>
   ) : null;
 
@@ -217,6 +226,7 @@ function LiveAttempt({
           if (setting === "remainingTime") setShowTimer((shown) => !shown);
         }}
         onGoToSubmission={() => setConfirming(true)}
+        onRunCode={runCode}
         feedback={feedback}
         focusOnMount
       />
