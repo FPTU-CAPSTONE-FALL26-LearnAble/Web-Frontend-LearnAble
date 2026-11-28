@@ -231,6 +231,10 @@ export const en = {
       sample: (n: number) => `Sample ${n}`,
       input: "Input",
       output: "Output",
+      /** Section labels in a problem statement; Input and Output above are reused there. */
+      constraints: "Constraints",
+      limits: (cpuSeconds: number, memoryKb: number) =>
+        `Limits: ${cpuSeconds} ${cpuSeconds === 1 ? "second" : "seconds"} of CPU time, ${Math.round(memoryKb / 1024)} MB of memory.`,
       expectedOutput: "Expected output",
       yourOutput: "Your output",
       language: "C",
@@ -283,6 +287,8 @@ export const en = {
       errorAt: (line: number, message: string) => `Line ${line}: ${message}`,
       goToLine: (line: number) => `Go to line ${line}`,
       noErrors: "No compile errors.",
+      /** A compile error whose compiler output says nothing usable. */
+      didNotCompile: "The program did not compile.",
       runFailed: "Couldn't run your code. Your answer is still saved.",
       tryAgain: "Try again",
       truncated: (n: number) => `Output shortened to the first ${n.toLocaleString("en")} characters.`,
@@ -412,7 +418,7 @@ export const en = {
       Essay: "Essay",
       Coding: "Coding",
     },
-    codingUnsupported: "Coding questions cannot be answered on the web yet. Skip this question or answer it in the LearnAble desktop app.",
+    codingUnsupported: "This coding question is not in C, which is the only language the web editor supports. Skip this question.",
     submitTitle: "Submit this practice attempt?",
     submitBody: (answered: number, total: number) =>
       `You answered ${answered} of ${total} questions. After submitting you cannot change your answers.`,
