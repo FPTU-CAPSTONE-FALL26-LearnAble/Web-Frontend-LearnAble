@@ -95,7 +95,9 @@ const question = (name: RegExp) => screen.findByRole("article", { name }, { time
 
 describe("reviewing a coding question", () => {
   it("shows the saved program and the reference answer in read-only C editors", async () => {
-    openResult([grade("code", 1, "Coding", { referenceAnswer: REFERENCE })]);
+    openResult([
+      grade("code", 1, "Coding", { referenceAnswer: REFERENCE, content: "Read `n` integers. Sum the **even** ones." }),
+    ]);
     const item = await question(/Question 1 · Coding/);
     const program = await within(item).findByRole("textbox", { name: "Your program, C, read only" });
     expect(program).toHaveAttribute("aria-readonly", "true");
@@ -103,6 +105,10 @@ describe("reviewing a coding question", () => {
     const reference = within(item).getByRole("textbox", { name: "Reference answer, C, read only" });
     expect(reference).toHaveTextContent("scanf");
     expect(within(item).getByText("1 of 2 points")).toBeInTheDocument();
+    // The statement's Markdown is rendered, as in the player, not shown raw.
+    expect(within(item).getByText("even", { selector: "strong" })).toBeInTheDocument();
+    expect(within(item).getByText("n", { selector: "code" })).toBeInTheDocument();
+    expect(within(item).queryByText(/\*\*even\*\*/)).not.toBeInTheDocument();
     // The grading status is written out, not shown as the Backend's code.
     expect(screen.getByText("Grading: complete")).toBeInTheDocument();
   });

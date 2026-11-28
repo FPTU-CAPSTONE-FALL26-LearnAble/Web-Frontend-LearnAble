@@ -5,6 +5,7 @@ import type { QuestionGrade } from "@/api/assessmentAttempt";
 import { usePracticePrograms, usePracticeResult } from "@/features/practice/api/usePracticeSessions";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
 import { CodeEditor } from "@/shared/ui/patterns/exam/CodeEditor";
+import { LimitedMarkdown } from "@/shared/ui/patterns/exam/LimitedMarkdown";
 import { vi } from "@/shared/strings/vi";
 import { cn } from "@/shared/ui/cn";
 
@@ -98,7 +99,9 @@ function ReviewItem({ grade, number, programs }: { grade: QuestionGrade; number:
         </h2>
         <p className="text-xl font-bold">{t.points(grade.score, grade.maxScore)}</p>
       </div>
-      {grade.content ? <p className="whitespace-pre-line">{grade.content}</p> : null}
+      {/* A Coding statement is limited Markdown, rendered as the player renders it. */}
+      {grade.content && coding ? <LimitedMarkdown source={grade.content} /> : null}
+      {grade.content && !coding ? <p className="whitespace-pre-line">{grade.content}</p> : null}
 
       {choice ? (
         <ul className="flex flex-col gap-2">
