@@ -1,15 +1,34 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { EditorView } from "@codemirror/view";
 import { LiveRegion } from "@/shared/a11y/LiveRegion";
 import { PracticeAttemptRoute } from "./PracticeAttemptRoute";
 
 // jsdom has no layout; CodeMirror measures text ranges (as in CodingWorkspace.test.tsx).
 Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
 Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+
+// Under Node 24, Node's `Request` refuses jsdom's AbortSignal, so a router
+// navigation (here, submit → result) throws. That is what fails the submit test
+// in practiceRoutes.test.tsx. In this file only, a navigation request is built
+// without the signal, which nothing here aborts.
+const NodeRequest = globalThis.Request;
+class NavigationSafeRequest extends NodeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    try {
+      super(input, init);
+    } catch (error) {
+      if (!(error instanceof TypeError) || !init?.signal) throw error;
+      super(input, { ...init, signal: undefined });
+    }
+  }
+}
+beforeAll(() => vi.stubGlobal("Request", NavigationSafeRequest));
+afterAll(() => vi.unstubAllGlobals());
 
 /**
  * Coding questions in a practice attempt: the C workspace with Run wired to
@@ -100,15 +119,20 @@ function openAttempt(answers: unknown[]) {
     http.post(`*/me/practice-sessions/${SESSION}/attempt`, () => ok(attempt(answers))),
     http.get(`*/me/practice-sessions/${SESSION}/attempt`, () => ok(attempt(answers))),
   );
-  const router = createMemoryRouter([{ path: "/practice/:sessionId", element: <PracticeAttemptRoute /> }], {
-    initialEntries: [`/practice/${SESSION}`],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: "/practice/:sessionId", element: <PracticeAttemptRoute /> },
+      { path: "/practice/:sessionId/result", element: <p>Result page</p> },
+    ],
+    { initialEntries: [`/practice/${SESSION}`] },
+  );
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <RouterProvider router={router} />
       <LiveRegion />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 async function openQuestion(name: RegExp) {
@@ -156,6 +180,54 @@ describe("coding questions in practice", () => {
     ]);
     // The run waits for the save and tests the revision it was accepted at.
     expect(runs).toEqual([{ operationId: expect.any(String), expectedRevision: 1 }]);
+  });
+
+  it("saves what the student types, runs it with Ctrl+Enter, and submits the attempt", async () => {
+    const saves: { revision: number; answer: { sourceCode?: string } }[] = [];
+    let submitted: unknown = null;
+    server.use(
+      http.put(`*/me/practice-sessions/${SESSION}/answers`, async ({ request }) => {
+        const operation = (await request.json()) as { operationId: string; revision: number; answer: { sourceCode?: string } };
+        saves.push(operation);
+        return ok({
+          attemptId: ATTEMPT,
+          attemptQuestionId: "c-q",
+          operationId: operation.operationId,
+          acceptedRevision: operation.revision,
+          serverSavedAt: new Date().toISOString(),
+          serverNow: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          status: "Active",
+        });
+      }),
+      http.post(`*/me/practice-sessions/${SESSION}/submit`, async ({ request }) => {
+        submitted = await request.json();
+        return ok({ ...attempt([]), status: "Submitted", submittedAt: new Date().toISOString() });
+      }),
+    );
+    const router = openAttempt([]);
+    await openQuestion(/Question 1/);
+    const editor = screen.getByRole("textbox", { name: "Code editor, C" });
+    // jsdom cannot drive CodeMirror's DOM input, so the text goes in through
+    // the editor's own view, as a keystroke would; the keys below are real.
+    const view = EditorView.findFromDOM(editor.closest<HTMLElement>(".cm-editor")!)!;
+    act(() => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: PROGRAM } }));
+    editor.focus();
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+
+    expect(await screen.findByText("1 of 2 sample tests passed", {}, { timeout: 4000 })).toBeInTheDocument();
+    // The typed program was saved once, and the run tested that revision.
+    expect(saves.map((save) => [save.revision, save.answer.sourceCode])).toEqual([[1, PROGRAM]]);
+    expect(runs).toEqual([{ operationId: expect.any(String), expectedRevision: 1 }]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open options" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Go to submission page/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Submit this practice attempt?" });
+    expect(within(dialog).getByText(/You answered 1 of 2 questions/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Submit attempt" }));
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe(`/practice/${SESSION}/result`), { timeout: 3000 });
+    // The program was already saved, so the submit has nothing left to carry.
+    expect(submitted).toEqual({ operationId: expect.any(String), finalAnswers: [] });
   });
 
   it("shows the Backend's reason when it refuses the run", async () => {
