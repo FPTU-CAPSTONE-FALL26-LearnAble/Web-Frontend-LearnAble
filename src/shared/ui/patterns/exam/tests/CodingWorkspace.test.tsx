@@ -215,6 +215,18 @@ describe("CodingWorkspace", () => {
     expect(findStartPoint(Text.of(["int main(void) {", "    return 0;", "}"]))).toBeNull();
   });
 
+  it("without a comment, puts the code on the blank line inside an empty block", () => {
+    // A blank line: one level deeper than the brace.
+    const blank = Text.of(["#include <stdio.h>", "", "int main(void) {", "", "    return 0;", "}"]);
+    expect(findStartPoint(blank)).toEqual({ pos: blank.line(4).from, indent: "    " });
+    // A line that already holds the indentation: the caret goes after it, nothing is added.
+    const indented = Text.of(["#include <stdio.h>", "", "int main(void) {", "    ", "    return 0;", "}"]);
+    expect(findStartPoint(indented)).toEqual({ pos: indented.line(4).to, indent: "" });
+    // A hint comment still wins over an earlier brace.
+    const hinted = Text.of(["int main(void) {", "", "    // Your code here.", "", "}"]);
+    expect(findStartPoint(hinted)).toEqual({ pos: hinted.line(4).from, indent: "    " });
+  });
+
   it("marks where the code goes and puts the caret there on keyboard focus", () => {
     const hinted = "int main(void) {\n    int n;\n    // Your code here.\n\n    return 0;\n}\n";
     setup({ coding: { language: "c", samples: [{ input: "1", output: "1" }], starterCode: hinted } });

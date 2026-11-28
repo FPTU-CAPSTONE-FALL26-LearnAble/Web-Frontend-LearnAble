@@ -192,25 +192,37 @@ function positionOf(state: EditorState): CodeEditorPosition {
 
 /** Where the candidate's code goes in the starter code. */
 export interface StartPoint {
-  /** Document offset: the start of an empty line. */
+  /** Document offset: on a blank line, after any spaces it already holds. */
   pos: number;
-  /** Indentation the first typed character gets, matching the code around it. */
+  /** Indentation the first typed character still needs, matching the code around it. */
   indent: string;
 }
 
+const leading = (text: string) => /^[ \t]*/.exec(text)?.[0] ?? "";
+
+/** The caret goes after the blank line's own spaces; only the missing indentation is added. */
+function startOn(line: { to: number; text: string }, indent: string): StartPoint {
+  return { pos: line.to, indent: indent.startsWith(line.text) ? indent.slice(line.text.length) : "" };
+}
+
 /**
- * The first empty line right after a comment (the starter's "write your code
- * here" hint), indented like that comment. `null` when the starter has none.
+ * Where the candidate's code goes in the starter code:
+ * - the first blank line right after a comment (the starter's "write your
+ *   code here" hint), indented like that comment;
+ * - else the first blank line right after an opening brace, as in an empty
+ *   `main`, indented one level deeper than the brace's line.
+ * `null` when the starter has neither.
  */
 export function findStartPoint(doc: EditorState["doc"]): StartPoint | null {
+  let afterBrace: StartPoint | null = null;
   for (let n = 1; n < doc.lines; n += 1) {
     const line = doc.line(n);
-    if (!/^\s*(\/\/|\/\*)/.test(line.text)) continue;
     const next = doc.line(n + 1);
     if (next.text.trim() !== "") continue;
-    return { pos: next.from, indent: /^[ \t]*/.exec(line.text)?.[0] ?? "" };
+    if (/^\s*(\/\/|\/\*)/.test(line.text)) return startOn(next, leading(line.text));
+    if (!afterBrace && line.text.trimEnd().endsWith("{")) afterBrace = startOn(next, `${leading(line.text)}    `);
   }
-  return null;
+  return afterBrace;
 }
 
 /** Reset reloads the starter, so the marker comes back; any other edit removes it. */
