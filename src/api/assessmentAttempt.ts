@@ -29,6 +29,26 @@ const imageSchema = z.object({
   url: nullableString,
 });
 
+/**
+ * `CodingQuestionView`: a Coding question as a student sees it. `examples` are
+ * the public tests only, in the order a run reports them; hidden tests never
+ * reach the client. `starterCodes` maps every runtime the question allows to
+ * its starter, and `languageCode` is the one the editor opens in.
+ */
+export const codingQuestionSchema = z.object({
+  languageCode: z.string().min(1),
+  starterCode: z.string(),
+  starterCodes: z.record(z.string(), z.string()),
+  inputDescription: z.string(),
+  outputDescription: z.string(),
+  constraints: z.string(),
+  cpuSeconds: z.number().positive(),
+  wallSeconds: z.number().positive(),
+  memoryKb: z.number().int().positive(),
+  examples: z.array(z.object({ input: z.string(), expectedOutput: z.string() })),
+});
+export type CodingQuestion = z.infer<typeof codingQuestionSchema>;
+
 /** `StudentQuestionResponseModel`. */
 export const studentQuestionSchema = z.object({
   attemptQuestionId: z.string(),
@@ -48,6 +68,8 @@ export const studentQuestionSchema = z.object({
   ),
   images: list(imageSchema),
   answerFormat: nullableString,
+  /** Coding questions only; the Backend leaves it out otherwise. */
+  coding: codingQuestionSchema.nullable().optional(),
 });
 export type StudentQuestion = z.infer<typeof studentQuestionSchema>;
 
