@@ -4,7 +4,7 @@ import { Text } from "@codemirror/state";
 import { findStartPoint } from "../CodeEditor";
 import userEvent from "@testing-library/user-event";
 import { CodingWorkspace, savedCode, type CodingWorkspaceProps } from "../CodingWorkspace";
-import type { CodeRunResult } from "../assessment-player-types";
+import { CodeRunFailure, type CodeRunResult } from "../assessment-player-types";
 
 // jsdom has no layout; CodeMirror measures text ranges after updates.
 Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
@@ -81,7 +81,23 @@ describe("CodingWorkspace", () => {
     const items = within(screen.getByRole("region", { name: "Test results" })).getAllByRole("listitem");
     expect(items[0]).toHaveTextContent("Test 2: Failed");
     expect(items[1]).toHaveTextContent("Test 1: Passed");
-    expect(within(items[0]).getByLabelText("Your output")).toHaveTextContent("4");
+    // The visible label comes right before the output; the block itself has no name of its own.
+    const output = within(items[0]).getByText("Your output").nextElementSibling;
+    expect(output?.tagName).toBe("PRE");
+    expect(output).toHaveTextContent("4");
+    expect(output).not.toHaveAttribute("aria-label");
+  });
+
+  it("shows and announces the host's reason when a run is refused, without a retry", async () => {
+    const user = userEvent.setup();
+    setup({ onRun: vi.fn().mockRejectedValue(new CodeRunFailure("The Coding limit for this question has been reached.")) });
+    await user.click(screen.getByRole("button", { name: /^Run/ }));
+    const results = screen.getByRole("region", { name: "Test results" });
+    expect(
+      await within(results).findByText("The Coding limit for this question has been reached."),
+    ).toBeInTheDocument();
+    expect(announce).toHaveBeenCalledWith("The Coding limit for this question has been reached.");
+    expect(within(results).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("shows compile errors with a way to the line", async () => {

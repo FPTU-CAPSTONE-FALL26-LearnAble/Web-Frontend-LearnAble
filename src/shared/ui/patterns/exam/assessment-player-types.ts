@@ -58,6 +58,19 @@ export interface CodeTestResult {
   message?: string;
 }
 
+/**
+ * Thrown by a host's `onRunCode` when it knows why the code could not run,
+ * for example that the run limit is reached. The player shows and announces
+ * `reason` in place of its generic "couldn't run" text, and offers no retry,
+ * since running again would not help. Any other error keeps the generic text.
+ */
+export class CodeRunFailure extends Error {
+  constructor(public readonly reason: string) {
+    super(reason);
+    this.name = "CodeRunFailure";
+  }
+}
+
 /** What a code run returns; transport failures are thrown instead. */
 export type CodeRunResult =
   | { status: "compiled"; tests: CodeTestResult[] }

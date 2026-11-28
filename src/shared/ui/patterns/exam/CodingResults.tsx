@@ -8,7 +8,8 @@ export type CodeRunState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: CodeRunResult }
-  | { kind: "failed" };
+  /** `reason`: the host's own explanation, shown instead of the generic text. */
+  | { kind: "failed"; reason?: string };
 
 /** Longest output shown per block; the server should also cap it. */
 export const OUTPUT_LIMIT = 2000;
@@ -49,7 +50,6 @@ function OutputBlock({ label, text, failed }: { label: string; text: string; fai
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-sm text-muted-foreground">{label}</span>
       <pre
-        aria-label={label}
         className={cn(
           "m-0 min-h-10 rounded border px-3 py-2 font-mono text-sm whitespace-pre-wrap [font-variant-ligatures:none]",
           failed ? "border-destructive" : "border-border bg-muted/40",
@@ -134,10 +134,13 @@ export function CodingResults({ state, sampleCount, onRetry, onGoToLine }: Codin
   if (state.kind === "failed") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p className="m-0 font-semibold">{s.runFailed}</p>
-        <Button type="button" variant="outline" size="xl" onClick={onRetry}>
-          {s.tryAgain}
-        </Button>
+        <p className="m-0 font-semibold">{state.reason ?? s.runFailed}</p>
+        {/* A known reason (a run limit, nothing saved) is not fixed by running again. */}
+        {state.reason ? null : (
+          <Button type="button" variant="outline" size="xl" onClick={onRetry}>
+            {s.tryAgain}
+          </Button>
+        )}
       </div>
     );
   }

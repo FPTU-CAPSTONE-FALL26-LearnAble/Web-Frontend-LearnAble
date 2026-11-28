@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import type { StudentQuestion } from "@/api/assessmentAttempt";
-import { CodeNotSaved, useCodeRuns } from "./useCodeRuns";
+import { CodeRunFailure } from "@/shared/ui/patterns/exam/assessment-player-types";
+import { useCodeRuns } from "./useCodeRuns";
 
 const examples = [{ input: "1\n", expectedOutput: "1\n" }];
 const question = (attemptQuestionId: string, languageCode = "c-gcc-9.2.0"): StudentQuestion => ({
@@ -26,26 +27,23 @@ const question = (attemptQuestionId: string, languageCode = "c-gcc-9.2.0"): Stud
     examples,
   },
 });
-const envelope = (data: unknown) => JSON.stringify({ success: true, message: null, data, errors: null });
+const envelope = (data: unknown, success = true, message: string | null = null, errors: string[] | null = null) =>
+  JSON.stringify({ success, message, data, errors });
+const completed = envelope({
+  submissionId: "job-1",
+  status: "Completed",
+  publicResults: [{ verdict: "Accepted", stdout: "1\n", stderr: null, compilationOutput: null }],
+});
 
 afterEach(() => vi.unstubAllGlobals());
 
-function setup(savedRevision: (questionId: string) => Promise<number | null>) {
-  const fetcher = vi.fn<typeof fetch>(
-    async () =>
-      new Response(
-        envelope({
-          submissionId: "job-1",
-          status: "Completed",
-          publicResults: [{ verdict: "Accepted", stdout: "1\n", stderr: null, compilationOutput: null }],
-        }),
-      ),
-  );
+function setup(savedRevision: (questionId: string) => Promise<number | null>, response = () => new Response(completed)) {
+  const fetcher = vi.fn<typeof fetch>(async () => response());
   vi.stubGlobal("fetch", fetcher);
-  const { result, unmount } = renderHook(() =>
+  const { result } = renderHook(() =>
     useCodeRuns({ sessionId: "s-1", attemptId: "a-1", questions: [question("c"), question("py", "python3")], savedRevision }),
   );
-  return { run: result.current, fetcher, unmount };
+  return { run: result.current, fetcher };
 }
 
 describe("useCodeRuns", () => {
@@ -62,16 +60,42 @@ describe("useCodeRuns", () => {
     expect(JSON.parse(String(init?.body))).toMatchObject({ expectedRevision: 5 });
   });
 
-  it("runs nothing when no program is saved", async () => {
+  it("tells the student there is nothing to run when no program is saved, without asking the Backend", async () => {
     const { run, fetcher } = setup(async () => null);
-    await expect(run("c")).rejects.toBeInstanceOf(CodeNotSaved);
+    const failure = run("c");
+    await expect(failure).rejects.toBeInstanceOf(CodeRunFailure);
+    await expect(failure).rejects.toMatchObject({
+      reason: "There is no program to run yet. Change the starter code, then run it.",
+    });
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("passes on the Backend's reason when it refuses the run", async () => {
+    const { run } = setup(
+      async () => 5,
+      () =>
+        new Response(
+          envelope(null, false, "The Coding limit for this question has been reached.", ["CODING_REQUEST_REJECTED"]),
+          { status: 409 },
+        ),
+    );
+    await expect(run("c")).rejects.toMatchObject({
+      name: "CodeRunFailure",
+      reason: "The Coding limit for this question has been reached.",
+    });
+  });
+
+  it("leaves other failures to the player's generic text", async () => {
+    const { run } = setup(async () => 5, () => new Response("oops", { status: 500 }));
+    const failure = run("c");
+    await expect(failure).rejects.not.toBeInstanceOf(CodeRunFailure);
+    await expect(failure).rejects.toMatchObject({ detail: { kind: "server", status: 500 } });
   });
 
   it("runs nothing for a question the web editor cannot edit", async () => {
     const savedRevision = vi.fn(async () => 5);
     const { run, fetcher } = setup(savedRevision);
-    await expect(run("py")).rejects.toBeInstanceOf(CodeNotSaved);
+    await expect(run("py")).rejects.not.toBeInstanceOf(CodeRunFailure);
     expect(savedRevision).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
   });

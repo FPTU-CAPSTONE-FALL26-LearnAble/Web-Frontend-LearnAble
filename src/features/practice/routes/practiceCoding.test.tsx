@@ -129,15 +129,43 @@ describe("coding questions in practice", () => {
     expect(results).toHaveLength(2);
   });
 
-  it("says it couldn't run when no program is saved, without asking the Backend", async () => {
+  it("says there is nothing to run when no program is saved, without asking the Backend", async () => {
     openAttempt([]);
     await openQuestion(/Question 1/);
     await userEvent.click(screen.getByRole("button", { name: /^Run/ }));
     const results = screen.getByRole("region", { name: "Test results" });
     expect(
-      await within(results).findByText("Couldn't run your code. Your answer is still saved.", {}, { timeout: 3000 }),
+      await within(results).findByText(
+        "There is no program to run yet. Change the starter code, then run it.",
+        {},
+        { timeout: 3000 },
+      ),
     ).toBeInTheDocument();
     expect(runs).toEqual([]);
+  });
+
+  it("shows the Backend's reason when it refuses the run", async () => {
+    server.use(
+      http.post(`*/me/practice-sessions/${SESSION}/attempts/${ATTEMPT}/questions/c-q/code-runs`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            message: "The Coding limit for this question has been reached.",
+            data: null,
+            errors: ["CODING_REQUEST_REJECTED"],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    openAttempt([savedProgram]);
+    await openQuestion(/Question 1/);
+    await userEvent.click(screen.getByRole("button", { name: /^Run/ }));
+    const results = screen.getByRole("region", { name: "Test results" });
+    expect(
+      await within(results).findByText("The Coding limit for this question has been reached.", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(within(results).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("explains a coding question that is not in C instead of offering the editor", async () => {

@@ -31,7 +31,7 @@ import {
 import { cn } from "@/shared/ui/cn";
 import { announce } from "@/shared/a11y/announcer";
 import { vi } from "@/shared/strings/vi";
-import type { CodeRunResult, CodingConfig } from "./assessment-player-types";
+import { CodeRunFailure, type CodeRunResult, type CodingConfig } from "./assessment-player-types";
 import {
   CodeEditor,
   type CodeEditorHandle,
@@ -252,10 +252,11 @@ export function CodingWorkspace({
       if (!mounted.current) return;
       setRun({ kind: "done", result });
       announce(runSummary(result));
-    } catch {
+    } catch (error) {
       if (!mounted.current) return;
-      setRun({ kind: "failed" });
-      announce(strings.runFailed);
+      const reason = error instanceof CodeRunFailure ? error.reason : undefined;
+      setRun({ kind: "failed", reason });
+      announce(reason ?? strings.runFailed);
     }
   };
 
@@ -414,7 +415,6 @@ export function CodingWorkspace({
                       {block.label}
                     </span>
                     <pre
-                      aria-label={`${strings.sample(index + 1)} ${block.label.toLowerCase()}`}
                       className="m-0 rounded border border-border bg-muted/40 px-3 py-2 font-mono text-base whitespace-pre-wrap [font-variant-ligatures:none]"
                     >
                       {block.text}

@@ -290,6 +290,8 @@ export const en = {
       /** A compile error whose compiler output says nothing usable. */
       didNotCompile: "The program did not compile.",
       runFailed: "Couldn't run your code. Your answer is still saved.",
+      /** Run pressed while only the starter code (or nothing) is in the editor. */
+      runNothingSaved: "There is no program to run yet. Change the starter code, then run it.",
       tryAgain: "Try again",
       truncated: (n: number) => `Output shortened to the first ${n.toLocaleString("en")} characters.`,
       emptyOutput: "(no output)",
