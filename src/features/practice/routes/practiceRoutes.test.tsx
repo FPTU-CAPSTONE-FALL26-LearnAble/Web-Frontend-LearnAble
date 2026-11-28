@@ -9,6 +9,10 @@ import { PracticeAttemptRoute } from "./PracticeAttemptRoute";
 import { PracticeListRoute } from "./PracticeListRoute";
 import { PracticeResultRoute } from "./PracticeResultRoute";
 
+// jsdom has no layout; the review's read-only C editors measure text ranges (as in CodingWorkspace.test.tsx).
+Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
+Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+
 const server = setupServer(...studentPracticeHandlers);
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterAll(() => server.close());
@@ -89,5 +93,9 @@ describe("student practice", () => {
     const staticOption = within(second).getByText("static").closest("li")!;
     expect(within(staticOption).getByText("Your choice")).toBeInTheDocument();
     expect(within(staticOption).queryByText("Correct answer")).not.toBeInTheDocument();
+
+    const coding = within(review).getByRole("article", { name: /Question 4 · Coding/ });
+    expect(await within(coding).findByRole("textbox", { name: "Your program, C, read only" }, { timeout: 3000 })).toHaveTextContent("scanf");
+    expect(within(coding).getByText("0 of 1 points")).toBeInTheDocument();
   });
 });

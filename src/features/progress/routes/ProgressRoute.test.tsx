@@ -39,6 +39,7 @@ describe("ProgressRoute", () => {
       "Multiple choice100% · 1 of 1 points · 1 question",
       "Multiple response0% · 0 of 1 points · 1 question",
       "Essay100% · 1 of 1 points · 1 question",
+      "Coding0% · 0 of 1 points · 1 question",
     ]);
 
     const history = screen.getByRole("region", { name: "Practice history" });

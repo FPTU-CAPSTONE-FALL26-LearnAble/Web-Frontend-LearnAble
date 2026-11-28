@@ -7,8 +7,8 @@ import { HttpResponse, delay, http } from "msw";
  */
 
 const ok = <T,>(data: T) => HttpResponse.json({ success: true, message: null, data, errors: null });
-const fail = (status: number, message: string) =>
-  HttpResponse.json({ success: false, message, data: null, errors: null }, { status });
+const fail = (status: number, message: string, errors: string[] | null = null) =>
+  HttpResponse.json({ success: false, message, data: null, errors }, { status });
 
 const hour = 60 * 60 * 1000;
 const iso = (offset: number) => new Date(Date.now() + offset).toISOString();
@@ -39,6 +39,30 @@ const option = (id: string, position: number, content: string) => ({
   optionId: id, position, label: String.fromCharCode(64 + position), content, audio: null,
 });
 
+const CODING = "q-4";
+const CODING_STARTER = "#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n";
+const CODING_REFERENCE = [
+  "#include <stdio.h>",
+  "",
+  "int main(void) {",
+  "    int n, x;",
+  "    long sum = 0;",
+  "    scanf(\"%d\", &n);",
+  "    for (int i = 0; i < n; i++) {",
+  "        scanf(\"%d\", &x);",
+  "        if (x % 2 == 0) sum += x;",
+  "    }",
+  "    printf(\"%ld\\n\", sum);",
+  "    return 0;",
+  "}",
+  "",
+].join("\n");
+const CODING_EXAMPLES = [
+  { input: "5\n1 2 3 4 5", expectedOutput: "6" },
+  { input: "3\n7 9 11", expectedOutput: "0" },
+  { input: "4\n-2 4 0 3", expectedOutput: "2" },
+];
+
 const questions = [
   {
     attemptQuestionId: "q-1", questionType: "Single", position: 1, maxWords: null, audio: null, images: [], answerFormat: null,
@@ -55,8 +79,21 @@ const questions = [
     content: "In two or three sentences, explain the difference between a class and an object.",
   },
   {
-    attemptQuestionId: "q-4", questionType: "Coding", position: 4, maxWords: null, audio: null, images: [], answerFormat: null, options: [],
-    content: "Write a method that returns the larger of two integers.",
+    // C, as on the desktop mock (`fixtures/backend-mock/server.mjs`). Only the public tests are sent, as examples.
+    attemptQuestionId: CODING, questionType: "Coding", position: 4, maxWords: null, audio: null, images: [], answerFormat: null, options: [],
+    content: "Read a whole number `n`, then `n` integers. Print the sum of the integers that are **even**.\n\nNegative numbers and 0 count too.",
+    coding: {
+      languageCode: "c-gcc-9.2.0",
+      starterCode: CODING_STARTER,
+      starterCodes: { "c-gcc-9.2.0": CODING_STARTER },
+      inputDescription: "The first line holds `n`. The second line holds `n` integers separated by spaces.",
+      outputDescription: "One line with the sum of the even integers.",
+      constraints: "1 <= n <= 1000; each integer is between -1000000 and 1000000.",
+      cpuSeconds: 1,
+      wallSeconds: 2,
+      memoryKb: 65536,
+      examples: CODING_EXAMPLES,
+    },
   },
 ];
 const correct: Record<string, string[]> = { "q-1": ["q1-a"], "q-2": ["q2-a", "q2-b", "q2-d"] };
@@ -89,12 +126,62 @@ const review = (selected: (id: string) => string[], text: (id: string) => string
     const score = auto ? (right.length === chosen.length && right.every((id) => chosen.includes(id)) ? 1 : 0) : null;
     return {
       attemptQuestionId: q.attemptQuestionId, position: q.position, questionType: q.questionType, content: q.content,
-      answerText: text(q.attemptQuestionId), referenceAnswer: q.questionType === "Essay" ? "A class is a blueprint; an object is one instance built from it." : null,
+      answerText: text(q.attemptQuestionId),
+      referenceAnswer: q.questionType === "Essay" ? "A class is a blueprint; an object is one instance built from it."
+        : q.questionType === "Coding" ? CODING_REFERENCE : null,
       gradingCriteria: null, maxScore: 1, score, gradingMethod: auto ? "Automatic" : "Manual", gradedBy: null, gradedAt: null,
       feedback: null, selectedOptionIds: chosen, images: [], answerFormat: null,
       options: q.options.map((o) => ({ optionId: o.optionId, position: o.position, content: o.content, isCorrect: right?.includes(o.optionId) ?? false })),
     };
   });
+
+/**
+ * Scripted sandbox results, chosen by what the program contains (there is no compiler here), as on the desktop mock:
+ * `#error` → compile error at that line; `MOCK_INFRA` → sandbox failure; `for (;;)` or `while (1)` → time limit;
+ * `NULL` → runtime error; `% 2` → every example passes; anything else prints nothing, so examples expecting output fail.
+ */
+function scriptRun(sourceCode: string) {
+  const every = (result: object) => CODING_EXAMPLES.map(() => ({ stdout: null, stderr: null, compilationOutput: null, ...result }));
+  const lines = sourceCode.split("\n");
+  const errorLine = lines.findIndex((line) => line.includes("#error"));
+  if (errorLine >= 0) {
+    const column = lines[errorLine].indexOf("#error") + 2;
+    return { status: "Completed", publicResults: every({ verdict: "CompilationError",
+      compilationOutput: `main.c: In function 'main':\nmain.c:${errorLine + 1}:${column}: error: #error ${lines[errorLine].split("#error")[1].trim()}\n` }) };
+  }
+  if (sourceCode.includes("MOCK_INFRA")) return { status: "InfrastructureFailed", publicResults: null };
+  if (/for\s*\(\s*;\s*;\s*\)|while\s*\(\s*1\s*\)/.test(sourceCode)) return { status: "Completed", publicResults: every({ verdict: "TimeLimitExceeded" }) };
+  if (sourceCode.includes("NULL")) return { status: "Completed", publicResults: every({ verdict: "RuntimeError", stderr: "Segmentation fault (core dumped)\n" }) };
+  const solved = sourceCode.includes("% 2");
+  return { status: "Completed", publicResults: CODING_EXAMPLES.map((example) => {
+    const stdout = solved ? `${example.expectedOutput}\n` : "";
+    return { verdict: stdout.trim() === example.expectedOutput ? "Accepted" : "WrongAnswer", stdout, stderr: null, compilationOutput: null };
+  }) };
+}
+
+const CODE_RUN_LIMIT = 10;
+type Job = { operationId: string; revision: number; createdAt: number; result: ReturnType<typeof scriptRun> };
+const jobs = new Map<string, Job>();
+
+/** A run as the student polls it: queued, running, then its scripted result. */
+function jobView(submissionId: string, job: Job) {
+  const elapsed = Date.now() - job.createdAt;
+  const status = elapsed < 700 ? "Pending" : elapsed < 1500 ? "Running" : job.result.status;
+  return { submissionId, status, publicResults: status === "Completed" ? job.result.publicResults : null };
+}
+const accepted = <T,>(data: T) => HttpResponse.json({ success: true, message: null, data, errors: null }, { status: 202 });
+
+/** The released session's submitted attempt: the review reads the saved program from it. */
+const RELEASED_PROGRAM = "#include <stdio.h>\n\nint main(void) {\n    int n;\n    scanf(\"%d\", &n);\n    printf(\"%d\\n\", n);\n    return 0;\n}\n";
+const releasedAttempt = () => ({
+  attemptId: "8c000000-0000-4000-8000-000000000003", sessionId: RELEASED, status: "Submitted",
+  startedAt: iso(-71.5 * hour), deadlineAt: iso(-71 * hour), submittedAt: iso(-71 * hour), submissionReason: "Student",
+  serverNow: new Date().toISOString(), questions,
+  answers: [{
+    attemptQuestionId: CODING, answer: { kind: "Coding", sourceCode: RELEASED_PROGRAM, languageCode: "c-gcc-9.2.0" },
+    revision: 6, lastOperationId: "8c000000-0000-4000-8000-0000000000aa", serverSavedAt: iso(-71 * hour),
+  }],
+});
 
 export const studentPracticeHandlers = [
   http.get("*/me/practice-sessions", async () => {
@@ -112,9 +199,40 @@ export const studentPracticeHandlers = [
     return ok(attemptBody());
   }),
 
-  http.get("*/me/practice-sessions/:id/attempt", async () => {
+  http.get("*/me/practice-sessions/:id/attempt", async ({ params }) => {
     await delay(200);
-    return attempt ? ok(attemptBody()) : fail(404, "No attempt has been started.");
+    if (params.id === RELEASED) return ok(releasedAttempt());
+    return attempt && params.id === OPEN ? ok(attemptBody()) : fail(404, "No attempt has been started.");
+  }),
+
+  // Run the saved program against the examples (CodingAttemptController), then poll the job.
+  http.post("*/me/practice-sessions/:id/attempts/:attemptId/questions/:questionId/code-runs", async ({ params, request }) => {
+    await delay(200);
+    if (!attempt || params.id !== OPEN || params.attemptId !== attempt.attemptId) return fail(404, "Attempt not found.");
+    if (params.questionId !== CODING) return fail(400, "Select a Coding question.");
+    const body = (await request.json()) as { operationId: string; expectedRevision: number };
+    const existing = [...jobs.entries()].find(([, job]) => job.operationId === body.operationId);
+    if (existing) {
+      return existing[1].revision === body.expectedRevision
+        ? accepted(jobView(...existing))
+        : fail(409, "Operation ID was already used for a different request.", ["CODING_REQUEST_REJECTED"]);
+    }
+    const saved = attempt.answers.get(CODING);
+    const sourceCode = typeof saved?.answer.sourceCode === "string" ? saved.answer.sourceCode : "";
+    const refusal = attempt.submittedAt || Date.now() > Date.parse(attempt.deadlineAt) ? "The attempt is no longer accepting code."
+      : !saved || saved.revision !== body.expectedRevision || !sourceCode.trim() ? "Save a valid Coding answer before running or submitting."
+      : jobs.size >= CODE_RUN_LIMIT ? "The Coding limit for this question has been reached." : null;
+    if (refusal) return fail(409, refusal, ["CODING_REQUEST_REJECTED"]);
+    const submissionId = crypto.randomUUID();
+    const job = { operationId: body.operationId, revision: body.expectedRevision, createdAt: Date.now(), result: scriptRun(sourceCode) };
+    jobs.set(submissionId, job);
+    return accepted(jobView(submissionId, job));
+  }),
+
+  http.get("*/me/coding-jobs/:id", async ({ params }) => {
+    await delay(150);
+    const job = jobs.get(String(params.id));
+    return job ? ok(jobView(String(params.id), job)) : fail(404, "Coding submission not found.");
   }),
 
   http.put("*/me/practice-sessions/:id/answers", async ({ request }) => {
@@ -142,8 +260,12 @@ export const studentPracticeHandlers = [
     if (params.id === RELEASED) {
       const items = review((id) => (id === "q-1" ? ["q1-a"] : id === "q-2" ? ["q2-a", "q2-c"] : []), (id) => (id === "q-3" ? "A class describes objects." : null));
       return ok({
-        result: { studentId: "me", attemptId: "old", participation: "Submitted", submittedAt: iso(-71 * hour), gradingStatus: "Completed", autoScore: 1, manualScore: 1, totalScore: 2, maxScore: 4, scoreOnTen: 5, passed: true },
-        review: items.map((item) => (item.questionType === "Essay" ? { ...item, score: 1, feedback: "Clear and correct." } : item)),
+        result: { studentId: "me", attemptId: "old", participation: "Submitted", submittedAt: iso(-71 * hour), gradingStatus: "Complete", autoScore: 1, manualScore: 1, totalScore: 2, maxScore: 4, scoreOnTen: 5, passed: true },
+        review: items.map((item) =>
+          item.questionType === "Essay" ? { ...item, score: 1, feedback: "Clear and correct." }
+            // The saved program prints `n`, so the hidden tests fail.
+            : item.questionType === "Coding" ? { ...item, score: 0 } : item,
+        ),
       });
     }
     return fail(403, "Your lecturer has not released the results of this session yet.");
