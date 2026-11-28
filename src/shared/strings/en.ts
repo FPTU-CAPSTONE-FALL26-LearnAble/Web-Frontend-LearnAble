@@ -436,6 +436,18 @@ export const en = {
     passed: "Passed",
     notPassed: "Not passed",
     grading: (status: string) => `Grading: ${status}`,
+    /** The Backend's `gradingStatus` values; anything else is shown as sent. */
+    gradingStatuses: {
+      NotGraded: "not graded yet",
+      CodingPending: "your code is still being tested",
+      NeedsManual: "waiting for your lecturer to grade the written answers",
+      Complete: "complete",
+    } as Record<string, string>,
+    yourProgram: "Your program",
+    programEditorLabel: "Your program, C, read only",
+    referenceEditorLabel: "Reference answer, C, read only",
+    loadingProgram: "Loading your program…",
+    programUnavailable: "Your program could not be loaded. Your score is not affected.",
     reviewLabel: "Question review",
     questionHeading: (n: number) => `Question ${n}`,
     points: (score: number | null | undefined, max: number) =>

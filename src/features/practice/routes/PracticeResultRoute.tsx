@@ -2,12 +2,15 @@ import { Check, X } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { describeError } from "@/app/providers";
 import type { QuestionGrade } from "@/api/assessmentAttempt";
-import { usePracticeResult } from "@/features/practice/api/usePracticeSessions";
+import { usePracticePrograms, usePracticeResult } from "@/features/practice/api/usePracticeSessions";
 import { useRouteAnnouncer } from "@/shared/a11y/useRouteAnnouncer";
+import { CodeEditor } from "@/shared/ui/patterns/exam/CodeEditor";
 import { vi } from "@/shared/strings/vi";
 import { cn } from "@/shared/ui/cn";
 
 const t = vi.practice;
+
+type Programs = ReturnType<typeof usePracticePrograms>;
 
 const backLink =
   "inline-flex min-h-14 w-fit items-center rounded-md border-4 border-foreground px-6 text-xl font-extrabold underline-offset-4 hover:underline";
@@ -22,6 +25,9 @@ export function PracticeResultRoute() {
   const { sessionId = "" } = useParams<"sessionId">();
   useRouteAnnouncer(vi.exam.pageTitle(t.resultHeading), t.resultHeading);
   const result = usePracticeResult(sessionId);
+  const hasCoding = result.data?.review.some((grade) => grade.questionType === "Coding") ?? false;
+  const programs = usePracticePrograms(sessionId, hasCoding);
+  const status = result.data?.result.gradingStatus;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 text-lg">
@@ -55,7 +61,7 @@ export function PracticeResultRoute() {
                 {result.data.result.passed ? t.passed : t.notPassed}
               </p>
             ) : null}
-            {result.data.result.gradingStatus ? <p>{t.grading(result.data.result.gradingStatus)}</p> : null}
+            {status ? <p>{t.grading(t.gradingStatuses[status] ?? status)}</p> : null}
           </section>
 
           {result.data.review.length ? (
@@ -64,7 +70,7 @@ export function PracticeResultRoute() {
                 .sort((a, b) => a.position - b.position)
                 .map((grade, index) => (
                   <li key={grade.attemptQuestionId}>
-                    <ReviewItem grade={grade} number={index + 1} />
+                    <ReviewItem grade={grade} number={index + 1} programs={programs} />
                   </li>
                 ))}
             </ol>
@@ -79,10 +85,11 @@ export function PracticeResultRoute() {
   );
 }
 
-function ReviewItem({ grade, number }: { grade: QuestionGrade; number: number }) {
+function ReviewItem({ grade, number, programs }: { grade: QuestionGrade; number: number; programs: Programs }) {
   const headingId = `review-${grade.attemptQuestionId}`;
   const options = [...grade.options].sort((a, b) => a.position - b.position);
   const choice = grade.questionType === "Single" || grade.questionType === "Multiple";
+  const coding = grade.questionType === "Coding";
   return (
     <article aria-labelledby={headingId} className="flex flex-col gap-4 rounded-lg border-4 border-foreground bg-card p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -121,6 +128,8 @@ function ReviewItem({ grade, number }: { grade: QuestionGrade; number: number })
           })}
           {grade.selectedOptionIds.length === 0 ? <li className="font-bold">{t.noAnswer}</li> : null}
         </ul>
+      ) : coding ? (
+        <ProgramReview questionId={grade.attemptQuestionId} programs={programs} />
       ) : (
         <div className="flex flex-col gap-2">
           <p className="font-extrabold">{t.yourAnswer}</p>
@@ -131,7 +140,11 @@ function ReviewItem({ grade, number }: { grade: QuestionGrade; number: number })
       {grade.referenceAnswer ? (
         <div className="flex flex-col gap-2">
           <p className="font-extrabold">{t.referenceAnswer}</p>
-          <p className="whitespace-pre-line">{grade.referenceAnswer}</p>
+          {coding ? (
+            <ReadOnlyProgram code={grade.referenceAnswer} label={t.referenceEditorLabel} />
+          ) : (
+            <p className="whitespace-pre-line">{grade.referenceAnswer}</p>
+          )}
         </div>
       ) : null}
       {grade.feedback ? (
@@ -142,4 +155,35 @@ function ReviewItem({ grade, number }: { grade: QuestionGrade; number: number })
       ) : null}
     </article>
   );
+}
+
+/**
+ * The program the student saved, read from the submitted attempt because the
+ * result carries no source code for Coding. Sample-test results are not
+ * shown: the Backend keeps no student-readable record of runs.
+ */
+function ProgramReview({ questionId, programs }: { questionId: string; programs: Programs }) {
+  const program = programs.data?.get(questionId);
+  const code = program?.sourceCode.trim() ? program.sourceCode : null;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-extrabold">{t.yourProgram}</p>
+      {programs.isPending ? (
+        <p role="status">{t.loadingProgram}</p>
+      ) : programs.isError ? (
+        <p className="rounded-md border-2 border-border p-3">{t.programUnavailable}</p>
+      ) : code && program?.languageCode.startsWith("c-") ? (
+        <ReadOnlyProgram code={code} label={t.programEditorLabel} />
+      ) : code ? (
+        <pre className="m-0 overflow-x-auto rounded-md border-2 border-border p-3 font-mono text-base">{code}</pre>
+      ) : (
+        <p className="rounded-md border-2 border-border p-3">{t.noAnswer}</p>
+      )}
+    </div>
+  );
+}
+
+/** The same C editor as in the attempt, read only, so the code is read line by line as it was written. */
+function ReadOnlyProgram({ code, label }: { code: string; label: string }) {
+  return <CodeEditor initialValue={code} label={label} readOnly onChange={() => {}} className="rounded-md border-2 border-border" />;
 }
